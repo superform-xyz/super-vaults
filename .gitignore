@@ -1,0 +1,16 @@
+cache/
+out/
+
+node_modules
+.env
+coverage
+coverage.json
+typechain
+
+#Hardhat files
+cache
+artifacts
+
+cache-hh/
+artifacts-hh/
+src/flat/*.sol
