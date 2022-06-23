@@ -44,7 +44,7 @@ interface UniRouter {
     ) external returns (uint256[] memory amounts);
 }
 
-contract ContractTest is BaseTest {
+contract Benqi_Eth_Test is BaseTest {
     using SafeERC20 for IERC20;
     using SafeERC20 for IERC20Meta;
     // using SafeERC20 for Wrapped;
@@ -65,7 +65,7 @@ contract ContractTest is BaseTest {
     function setUp() public override {
         super.setUp();
         /* ------------------------------- deployments ------------------------------ */
-        benqiClaimer = new BenqiClaimer(0x486Af39519B4Dc9a7fCcd318217352830E8AD9b4);
+        benqiClaimer = new BenqiClaimer(0x486Af39519B4Dc9a7fCcd318217352830E8AD9b4,0x60aE616a2155Ee3d9A68541Ba4544862310933d4);
         benqiVault = new BenqiEthVault(address(cETH),"Benqi ETH Market Vault", "sBETH", address(benqiClaimer));
         /* --------------------------------- labels --------------------------------- */
         // label(address(benqiVault), "vault");

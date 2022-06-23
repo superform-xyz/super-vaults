@@ -65,7 +65,7 @@ contract BenqiUSDCTest is BaseTest {
     function setUp() public override {
         super.setUp();
         /* ------------------------------- deployments ------------------------------ */
-        benqiClaimer = new BenqiClaimer(0x486Af39519B4Dc9a7fCcd318217352830E8AD9b4);
+        benqiClaimer = new BenqiClaimer(0x486Af39519B4Dc9a7fCcd318217352830E8AD9b4, 0x60aE616a2155Ee3d9A68541Ba4544862310933d4);
         benqiVault = new BenqiEthVault(address(cUSDC),"Benqi USDC Market Vault", "sBUSDC", address(benqiClaimer));
 
         /* --------------------------------- labels --------------------------------- */

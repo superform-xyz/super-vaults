@@ -70,6 +70,11 @@ contract BenqiEthVault is ERC4626 {
         rewardsCore = IRewardsCore(_rewardsCore);
     }
 
+    modifier onlyRewardsCore() {
+        require(msg.sender == address(rewardsCore), "caller is not permissioned!");
+        _;
+    }
+
     function beforeWithdraw(uint256 underlyingAmount, uint256)
         internal
         override
@@ -157,9 +162,25 @@ contract BenqiEthVault is ERC4626 {
 
     function claimRewards() external {
         rewardsCore.claimRewards();
+        // sending balance eth to rewards contract for re-investing
+        if(address(this).balance > 0)
+            SafeTransferLib.safeTransferETH(address(rewardsCore), address(this).balance);
     }
 
-    function withdrawTokens(address tokenAddress, uint256 amount) external {
+    /**
+     * @dev allows calling approve for a token to a specific sepnder
+     * @notice this is an internal function. only used to give approval of
+     * @notice the funds in this contract to other contracts
+     * @param token the token to give approval for
+     * @param spender the spender of the token
+     */
+    function approveTokenIfNeeded(address token, address spender) external onlyRewardsCore() {
+        if (ERC20(token).allowance(address(this), spender) == 0) {
+            ERC20(token).safeApprove(spender, type(uint256).max);
+        }
+    }
+
+    function emergencyWithdrawTokens(address tokenAddress, uint256 amount) external {
         require(msg.sender == address(rewardsCore));
         if (tokenAddress != address(0)) {
             ERC20 token = ERC20(tokenAddress);
