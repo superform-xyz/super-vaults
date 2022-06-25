@@ -65,7 +65,8 @@ contract BenqiUSDCTest is BaseTest {
     function setUp() public override {
         super.setUp();
         /* ------------------------------- deployments ------------------------------ */
-        benqiClaimer = new BenqiClaimer(0x486Af39519B4Dc9a7fCcd318217352830E8AD9b4, 0x60aE616a2155Ee3d9A68541Ba4544862310933d4);
+        IERC20 qiToken = IERC20(0x8729438EB15e2C8B576fCc6AeCdA6A148776C0F5);
+        benqiClaimer = new BenqiClaimer(0x486Af39519B4Dc9a7fCcd318217352830E8AD9b4,address(WAVAX),0xE530dC2095Ef5653205CF5ea79F8979a7028065c, 0x0e0100Ab771E9288e0Aa97e11557E6654C3a9665,address(qiToken));
         benqiVault = new BenqiEthVault(address(cUSDC),"Benqi USDC Market Vault", "sBUSDC", address(benqiClaimer));
 
         /* --------------------------------- labels --------------------------------- */
@@ -113,7 +114,6 @@ contract BenqiUSDCTest is BaseTest {
         emit log_named_uint("cUSDC Bal", CToken(cUSDC).balanceOf(address(benqiVault)));
     }
 
-    // test includes reward claiming
     function testWithdrawSuccess() public {
         uint256 amt = 2000e18;
         // get 2000 wAVAX to user
@@ -133,14 +133,46 @@ contract BenqiUSDCTest is BaseTest {
         // we are warping it
         vm.warp(block.timestamp + 12);
         benqiVault.withdraw(benqiVault.maxWithdraw(address(this)), address(this), address(this));
-         emit log_named_uint("Qi rewards accrued after warping 12 blocks", benqiClaimer.rewardsAccrued(0));
-          emit log_named_uint("AVAX rewards accrued after warping 12 blocks", benqiClaimer.rewardsAccrued(1));
+            emit log_named_uint("Qi rewards accrued after warping 12 blocks", benqiClaimer.rewardsAccrued(0));
+            emit log_named_uint("AVAX rewards accrued after warping 12 blocks", benqiClaimer.rewardsAccrued(1));
         benqiVault.claimRewards();
         emit log_named_uint("qi bal after warping 12 blocks", qiToken.balanceOf(address(benqiVault)));
         emit log_named_uint("AVAX bal after warping 12 blocks", address(benqiVault).balance);
 
         emit log_named_uint("USDC Bal after withdraw", IERC20(USDC).balanceOf(address(this)));
         emit log_named_uint("cUSDC Bal after withdraw", CToken(cUSDC).balanceOf(address(benqiVault)));
+    }
+
+    function testReinvestSuccess() public {
+        uint256 amt = 2000e18;
+        // get 2000 wAVAX to user
+        getWAVAX(amt);
+        // swap for USDC
+        address[] memory path = new address[](2);
+        path[0] = address(WAVAX);
+        path[1] = USDC;
+        assertTrue(IERC20(USDC).balanceOf(address(this)) == 0);
+        uint256 amountUSDC = swap(amt, path);
+        emit log_named_uint("USDC Bal", IERC20(USDC).balanceOf(address(this)));
+        IERC20(path[1]).safeApprove(address(benqiVault), amountUSDC);
+        benqiVault.deposit(amountUSDC, address(this));
+        emit log_named_uint("USDC Bal", IERC20(USDC).balanceOf(address(this)));
+        emit log_named_uint("cUSDC Bal", CToken(cUSDC).balanceOf(address(benqiVault)));
+        emit log_named_uint("preview withdrawable before withdraw", benqiVault.maxWithdraw(address(this)));
+        // we are warping it
+        vm.warp(block.timestamp + 1200);
+        //benqiVault.withdraw(benqiVault.maxWithdraw(address(this)), address(this), address(this));
+        emit log_named_uint("Qi rewards accrued after warping 12 blocks", benqiClaimer.rewardsAccrued(0));
+        emit log_named_uint("AVAX rewards accrued after warping 12 blocks", benqiClaimer.rewardsAccrued(1));
+        benqiVault.claimRewards();
+        emit log_named_uint("qi bal after warping 12 blocks", qiToken.balanceOf(address(benqiVault)));
+        emit log_named_uint("AVAX bal after warping 12 blocks", address(benqiVault).balance);
+        emit log_named_uint("USDC Bal after claim", IERC20(USDC).balanceOf(address(benqiClaimer)));
+        emit log_named_uint("vault underlying balance before re-invest", benqiVault.totalAssets());
+        benqiVault.reinvest();
+        emit log_named_uint("vault underlying balance after re-invest", benqiVault.totalAssets());
+        // emit log_named_uint("USDC Bal after withdraw", IERC20(USDC).balanceOf(address(this)));
+        // emit log_named_uint("cUSDC Bal after withdraw", CToken(cUSDC).balanceOf(address(benqiVault)));
     }
 
     function testRedeemSuccess() public {

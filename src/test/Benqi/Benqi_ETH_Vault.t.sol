@@ -65,7 +65,8 @@ contract Benqi_Eth_Test is BaseTest {
     function setUp() public override {
         super.setUp();
         /* ------------------------------- deployments ------------------------------ */
-        benqiClaimer = new BenqiClaimer(0x486Af39519B4Dc9a7fCcd318217352830E8AD9b4,0x60aE616a2155Ee3d9A68541Ba4544862310933d4);
+        IERC20 qiToken = IERC20(0x8729438EB15e2C8B576fCc6AeCdA6A148776C0F5);
+        benqiClaimer = new BenqiClaimer(0x486Af39519B4Dc9a7fCcd318217352830E8AD9b4,address(WAVAX),0xE530dC2095Ef5653205CF5ea79F8979a7028065c, 0x7c05d54fc5CB6e4Ad87c6f5db3b807C94bB89c52,address(qiToken));
         benqiVault = new BenqiEthVault(address(cETH),"Benqi ETH Market Vault", "sBETH", address(benqiClaimer));
         /* --------------------------------- labels --------------------------------- */
         // label(address(benqiVault), "vault");
@@ -73,7 +74,7 @@ contract Benqi_Eth_Test is BaseTest {
         // _labelCToken(cETH);
         benqiClaimer.setVault(address(benqiVault));
         benqiClaimer.setRewardToken(address(0));
-        IERC20 qiToken = IERC20(0x8729438EB15e2C8B576fCc6AeCdA6A148776C0F5);
+        
         benqiClaimer.setRewardToken(0x8729438EB15e2C8B576fCc6AeCdA6A148776C0F5);
     }
 

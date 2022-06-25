@@ -99,6 +99,14 @@ contract BenqiEthVault is ERC4626 {
         require(cToken.mint(underlyingAmount) == 0, "MINT_FAILED");
     }
 
+    function reinvest() external {
+        uint256 reinvestAmount = asset.balanceOf(address(rewardsCore));
+        if(reinvestAmount > 0){
+            asset.safeTransferFrom(address(rewardsCore), address(this), asset.balanceOf(address(rewardsCore)));
+            afterDeposit(reinvestAmount, 0);
+        }
+    }
+
     /// @notice Total amount of the underlying asset that
     /// is "managed" by Vault.
     function totalAssets() public view override returns (uint256) {

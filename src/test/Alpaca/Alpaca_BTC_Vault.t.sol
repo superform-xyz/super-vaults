@@ -59,7 +59,8 @@ contract Alpaca_BTC_Test is BaseTest {
     function setUp() public override {
         super.setUp();
         /* ------------------------------- deployments ------------------------------ */
-        AlpacaVault = new AlpacaBTCVault(address(iWBTC),"Alpaca BTC Market Vault", "sBWBTC", 0xA625AB01B08ce023B2a342Dbb12a16f2C8489A8F, 18);
+        AlpacaVault = new AlpacaBTCVault(address(iWBTC),"Alpaca BTC Market Vault", "sBWBTC", 0xA625AB01B08ce023B2a342Dbb12a16f2C8489A8F, 18, 0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56,
+        0x7752e1FA9F3a2e860856458517008558DEb989e3,0xF45cd219aEF8618A92BAa7aD848364a158a24F33);
 
     }
 
@@ -124,8 +125,9 @@ contract Alpaca_BTC_Test is BaseTest {
         emit log_named_uint("iWBTC Bal", IBToken(iWBTC).balanceOf(address(AlpacaVault)));
         emit log_named_uint("vault shares Bal", AlpacaVault.balanceOf(address(this)));
         emit log_named_uint("preview withdrawable before withdraw", AlpacaVault.maxWithdraw(address(this)));
-        vm.warp(block.timestamp + 1);
-        AlpacaVault.withdraw(AlpacaVault.maxWithdraw(address(this)), address(this), address(this));
+        vm.warp(block.timestamp + 12);
+        //AlpacaVault.withdraw(AlpacaVault.maxWithdraw(address(this)), address(this), address(this));
+        AlpacaVault.reinvest();
         emit log_named_uint("alpaca Bal after withdraw", alpacaToken.balanceOf(address(AlpacaVault)));
         emit log_named_uint("WBTC Bal after withdraw", IERC20(WBTC).balanceOf(address(this)));
         emit log_named_uint("WBTC Bal after withdraw in Alpaca", IERC20(WBTC).balanceOf(address(AlpacaVault)));

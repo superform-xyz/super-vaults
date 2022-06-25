@@ -6,6 +6,7 @@ import {Ownable} from "openzeppelin-contracts/access/Ownable.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import "forge-std/console.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import {DexSwap} from "../utils/swapUtils.sol";
 
 interface Unitroller {
     function claimReward(uint8 rewardType, address payable holder) external;
@@ -13,20 +14,13 @@ interface Unitroller {
     function comptrollerImplementation() external view returns(address);
 }
 
-interface IUniRouter {
-    function factory() external view returns (address);
-
-    function swapExactTokensForTokens(
-        uint256 amountIn,
-        uint256 amountOutMin,
-        address[] calldata path,
-        address to,
-        uint256 deadline
-    ) external returns (uint256[] memory amounts);
-}
-
 interface IVault {
     function approveTokenIfNeeded(address,address) external;
+    function cTokenUnderlying() external view returns(address);
+}
+interface IWrappedNative {
+    function deposit() external payable;
+    function balanceOf(address) external view returns(uint256);
 }
 contract BenqiClaimer is IRewardsCore, Ownable {
     using SafeTransferLib for ERC20;
@@ -34,14 +28,22 @@ contract BenqiClaimer is IRewardsCore, Ownable {
     ERC20[] public rewardTokens;
     mapping(address => bool) public isRewardToken;
     address payable public vault;
-    IUniRouter public unirouter;
-    
+    IWrappedNative public wrappedNative;
+    address private qiTokenSwap;
+    address private depositTokenSwap;
+    ERC20 public qiToken;
     constructor(
         address _unitroller,
-        address _router
+        address _wrappedNative,
+        address _qiTokenSwap,
+        address _depositTokenSwap,
+        address _qiToken
     ){
         unitroller = Unitroller(_unitroller);
-        unirouter = IUniRouter(_router);
+        wrappedNative = IWrappedNative(_wrappedNative);
+        qiTokenSwap = _qiTokenSwap;
+        depositTokenSwap = _depositTokenSwap;
+        qiToken = ERC20(_qiToken);
     }
 
     function setVault(address _vault) external onlyOwner(){
@@ -58,18 +60,33 @@ contract BenqiClaimer is IRewardsCore, Ownable {
 
     function claimRewards() external {
         require(vault != address(0));
-        for (uint8 index = 0; index < rewardTokens.length; ++index) {
-            unitroller.claimReward(index, vault);
-            ERC20 currRewardToken = rewardTokens[index];
-            if(address(currRewardToken) != address(0)){
-                IVault(vault).approveTokenIfNeeded(address(currRewardToken), address(this));
-                currRewardToken.safeTransferFrom(vault,address(this),currRewardToken.balanceOf(vault));
-            }
+        unitroller.claimReward(0, vault);
+        unitroller.claimReward(1, vault);
+        IVault(vault).approveTokenIfNeeded(address(qiToken), address(this));
+        qiToken.safeTransferFrom(vault,address(this),qiToken.balanceOf(vault));
+        reinvest();
+    }
+
+    function reinvest() public {
+       uint256 wNative = _convertRewardsToNative();
+       uint256 depositTokenAmount = DexSwap.swap(wNative,address(wrappedNative), IVault(vault).cTokenUnderlying(), depositTokenSwap);
+       if (ERC20(IVault(vault).cTokenUnderlying()).allowance(address(this), vault) == 0) {
+            ERC20(IVault(vault).cTokenUnderlying()).safeApprove(vault, type(uint256).max);
         }
     }
 
-    function reinvest() external {
-        
+    function _convertRewardsToNative() private returns(uint256) {
+        uint256 avaxAmount = wrappedNative.balanceOf(address(this));
+        uint256 balance = address(this).balance;
+        if (balance > 0) {
+            wrappedNative.deposit{value: balance}();
+            avaxAmount = avaxAmount + (balance);
+        }
+        uint256 amount = qiToken.balanceOf(address(this));
+        if (amount > 0 && address(qiTokenSwap) != address(0)) {
+                avaxAmount = avaxAmount + (DexSwap.swap(amount, address(qiToken), address(wrappedNative), qiTokenSwap));
+            }
+        return avaxAmount;
     }
 
     function rewardsAccrued(uint8 rewardType) external view returns (uint256) {
