@@ -8,7 +8,7 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {IRewardsCore} from "../interfaces/IRewardsCore.sol";
 //import "../../node_modules/hardhat/console.sol";
 import "forge-std/console.sol";
-import {Ownable} from "openzeppelin-contracts/access/Ownable.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {DexSwap} from "../utils/swapUtils.sol";
 
 interface IBToken {

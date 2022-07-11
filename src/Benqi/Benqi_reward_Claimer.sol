@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.10;
+pragma solidity ^0.8.14;
 
 import {IRewardsCore} from "../interfaces/IRewardsCore.sol";
-import {Ownable} from "openzeppelin-contracts/access/Ownable.sol";
-import {ERC20} from "solmate/tokens/ERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ERC20} from "@rari-capital/solmate/src/tokens/ERC20.sol";
 import "forge-std/console.sol";
-import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import {SafeTransferLib} from "@rari-capital/solmate/src/utils/SafeTransferLib.sol";
 import {DexSwap} from "../utils/swapUtils.sol";
 
 interface Unitroller {
@@ -97,6 +97,8 @@ contract BenqiClaimer is IRewardsCore, Ownable {
     function setRewardDestination() external virtual {}
     function updateDeposits(address user, uint256 amount) external virtual {}
     function beforeWithdraw(address user, uint256 amount) external virtual {}
+
+    function claimRewards(address, address, bytes calldata) external virtual {}
 
     receive() external payable {}
 }
