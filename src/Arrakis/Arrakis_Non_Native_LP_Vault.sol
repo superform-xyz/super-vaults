@@ -96,11 +96,11 @@ contract ArrakisNonNativeVault is ERC4626 {
 
     IGauge public gauge;
 
-    uint256 tokenBal;
-
-    bool blah = true;
+    bool blah; // used just for imitating swap , will be and can be removed in the next iteration
 
     uint160 X96 = 2**96;
+
+    uint160 slippage;
 
     struct swapParams {
         address receiver;
@@ -120,7 +120,8 @@ contract ArrakisNonNativeVault is ERC4626 {
         string memory symbol,
         bool isToken0, //if true, token0 in the pool is the asset, else token1 is the asset
         address _arrakisRouter,
-        address _gauge // the contract which gives staking Rewards
+        address _gauge,  // the contract which gives staking Rewards
+        uint160 _slippage  // 50 would give you 2% slippage which  means sqrtPrice +/- 2 tickSpaces
     )
         ERC4626(
             ERC20(
@@ -136,33 +137,42 @@ contract ArrakisNonNativeVault is ERC4626 {
         zeroForOne = isToken0;
         arrakisRouter = IArrakisRouter(_arrakisRouter);
         gauge = IGauge(_gauge);
+        slippage = _slippage;
+        blah = zeroForOne;
     }
 
     function beforeWithdraw(uint256 underlyingLiquidity, uint256)
         internal
         override
     {
-        (uint128 liquidity_, , , , ) = arrakisVault.pool().positions(
+        IUniswapV3Pool uniPool = arrakisVault.pool();
+        (uint128 liquidity_, , , , ) = uniPool.positions(
             arrakisVault.getPositionID()
         );
         uint256 sharesToWithdraw = (underlyingLiquidity *
             arrakisVault.totalSupply()) / liquidity_;
         gauge.withdraw(sharesToWithdraw);
         arrakisVault.burn(sharesToWithdraw, address(this));
-        uint256 token0Bal = arrakisVault.token0().balanceOf(address(this));
-        uint256 token1Bal = arrakisVault.token1().balanceOf(address(this));
-        IUniswapV3Pool uniPool = arrakisVault.pool();
-        ERC20(address(arrakisVault.token1())).safeApprove(
+        ERC20 non_asset;
+        if(address(arrakisVault.token0()) == address(asset)){
+            non_asset = arrakisVault.token1();
+        }
+        else {
+            non_asset = arrakisVault.token0();
+        }
+
+        uint256 nonAssetBal = non_asset.balanceOf(address(this));
+        non_asset.safeApprove(
             address(uniPool),
-            token1Bal
+            nonAssetBal
         );
         // should be moved to new place later!
         (uint160 sqrtPriceX96, , , , , , ) = uniPool.slot0();
-        uint160 twoPercentSqrtPrice = sqrtPriceX96 / 100;
+        uint160 twoPercentSqrtPrice = sqrtPriceX96 / slippage;
         swapParams memory params = swapParams({
             receiver: address(this),
             direction: !zeroForOne,
-            amount: int256(token1Bal),
+            amount: int256(nonAssetBal),
             sqrtPrice: !zeroForOne
                 ? sqrtPriceX96 - (twoPercentSqrtPrice)
                 : sqrtPriceX96 + (twoPercentSqrtPrice),
@@ -184,10 +194,10 @@ contract ArrakisNonNativeVault is ERC4626 {
         // should be moved to new place later!
         IUniswapV3Pool uniPool = arrakisVault.pool();
         (uint160 sqrtPriceX96, , , , , , ) = uniPool.slot0();
-        uint160 twoPercentSqrtPrice = sqrtPriceX96 / 50;
+        uint160 twoPercentSqrtPrice = sqrtPriceX96 / slippage;
         uint160 lowerLimit = sqrtPriceX96 - (twoPercentSqrtPrice);
         uint160 upperLimit = sqrtPriceX96 + (twoPercentSqrtPrice);
-        uint256 swapAmount = underlyingAmount / 3;
+        uint256 swapAmount = underlyingAmount / 3; // initial swap to start calculating expected mint amounts according to the sqrtPrice of arrakisVault
         swapParams memory params = swapParams({
             receiver: address(this),
             direction: zeroForOne,
@@ -195,11 +205,20 @@ contract ArrakisNonNativeVault is ERC4626 {
             sqrtPrice: zeroForOne ? lowerLimit : upperLimit,
             data: ""
         });
+        //escaping stack too deep error
         _paramSwap(params);
-        uint256 amount0In1 = (arrakisVault.token0().balanceOf(address(this)) *
+        ERC20 non_asset;
+        // calculating amount of asset token that needs to be swapped to non-asset lp token with best liquidity fitting in the arrakis LP
+        if(address(arrakisVault.token0()) == address(asset)){
+            non_asset = arrakisVault.token1();
+        }
+        else {
+            non_asset = arrakisVault.token0();
+        }
+        uint256 amountAssetToNonAsset = (arrakisVault.token0().balanceOf(address(this)) *
             ((sqrtPriceX96 * sqrtPriceX96) / X96)) / X96;
-        uint256 bps = (amount0In1 * 1 ether) /
-            (arrakisVault.token1().balanceOf(address(this)) + amount0In1);
+        uint256 bps = (amountAssetToNonAsset * 1 ether) /
+            (arrakisVault.token1().balanceOf(address(this)) + amountAssetToNonAsset);
         (uint256 amount0Used, uint256 amount1Used, ) = arrakisVault
             .getMintAmounts(
                 arrakisVault.token0().balanceOf(address(this)),
@@ -244,8 +263,8 @@ contract ArrakisNonNativeVault is ERC4626 {
                 address(this)
             );
         console.log(amount0Delta1, amount1Delta1);
-        token0Bal = arrakisVault.token0().balanceOf(address(this));
-        token1Bal = arrakisVault.token1().balanceOf(address(this));
+        token0Bal = asset.balanceOf(address(this));
+        token1Bal = non_asset.balanceOf(address(this));
         console.log(token0Bal, token1Bal);
         if (token1Bal != 0) {
             params.receiver = msg.sender;
@@ -254,10 +273,32 @@ contract ArrakisNonNativeVault is ERC4626 {
             params.amount = int256(token1Bal);
             _paramSwap(params);
         }
-        ERC20(address(arrakisVault.token0())).safeTransfer(
+        asset.safeTransfer(
             msg.sender,
             token0Bal
         );
+    }
+
+    function redeem(
+        uint256 shares,
+        address receiver,
+        address owner
+    ) public override returns (uint256 assets) {
+        if (msg.sender != owner) {
+            uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
+
+            if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
+        }
+        uint256 liquidity;
+        // Check for rounding error since we round down in previewRedeem.
+        require((liquidity = previewRedeem(shares)) != 0, "ZERO_ASSETS");
+        beforeWithdraw(liquidity, shares);
+
+        _burn(owner, shares);
+        assets = asset.balanceOf(address(this));
+        emit Withdraw(msg.sender, receiver, owner, assets, shares);
+
+        asset.safeTransfer(receiver, assets);
     }
 
     /// @notice Total amount of the underlying asset that
@@ -340,13 +381,7 @@ contract ArrakisNonNativeVault is ERC4626 {
     //using this just for simulating swaps for testing whether it accrues yield or not
     function swap() external {
         uint256 amount;
-        if (blah) {
-            amount = asset.balanceOf(address(this));
-        } else {
-            amount =
-                ERC20(address(arrakisVault.token1())).balanceOf(address(this)) -
-                tokenBal;
-        }
+        amount = ERC20(!blah ? address(arrakisVault.token1()) : address(arrakisVault.token0())).balanceOf(address(this));
 
         IUniswapV3Pool uniPool = arrakisVault.pool();
         (uint160 sqrtPriceX96, , , , , , ) = uniPool.slot0();
@@ -363,41 +398,6 @@ contract ArrakisNonNativeVault is ERC4626 {
         // console.logInt(amount0Delta);
         // console.logInt(amount1Delta);
         blah = !blah;
-    }
-
-    function getRebalanceParams(
-        uint256 amount0In,
-        uint256 amount1In,
-        uint256 price18Decimals
-    ) external view returns (bool direction, uint256 swapAmount) {
-        uint256 amount0Left = amount0In;
-        uint256 amount1Left = amount1In;
-
-        (uint256 gross0, uint256 gross1) = arrakisVault.getUnderlyingBalances();
-
-        if (gross1 == 0) {
-            return (false, amount1Left);
-        }
-
-        if (gross0 == 0) {
-            return (true, amount0Left);
-        }
-
-        uint256 factor0 = 10 **
-            (18 - ERC20(address(arrakisVault.token0())).decimals());
-        uint256 factor1 = 10 **
-            (18 - ERC20(address(arrakisVault.token1())).decimals());
-        uint256 weightX18 = ((gross0 * factor0) * 1 ether) / (gross1 * factor1);
-        uint256 proportionX18 = (weightX18 * price18Decimals) / 1 ether;
-        uint256 factorX18 = (proportionX18 * 1 ether) /
-            (proportionX18 + 1 ether);
-
-        if (amount0Left > amount1Left) {
-            direction = true;
-            swapAmount = (amount0Left * (1 ether - factorX18)) / 1 ether;
-        } else if (amount1Left > amount0Left) {
-            swapAmount = (amount1Left * factorX18) / 1 ether;
-        }
     }
 
     function emergencyWithdrawAssets() external {

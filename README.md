@@ -12,6 +12,10 @@ for Avalanche Vaults:
 
 command: forge test -f https://api.avax.network/ext/bc/C/rpc --match-contract BenqiUSDCTest --match-test testWithdrawSuccess -vv (vv gives the logs, vvv and vvvv to increase verbosity)
 
+for Arrakis Vaults:
+
+command: forge test -f https://polygon-rpc.com --match-contract Arrakis_LP_Test -vv
+
 # Developers Space
 Alpaca vault itself acts as rewardClaimer for harvesting staking yield.
 
