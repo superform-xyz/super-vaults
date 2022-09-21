@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.10;
+pragma solidity 0.8.14;
 
 import "ds-test/test.sol";
 import {Utilities} from "../utils/Utilities.sol";
