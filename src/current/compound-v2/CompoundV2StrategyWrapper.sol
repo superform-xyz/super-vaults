@@ -11,7 +11,6 @@ import {ICERC20} from "../utils/compound/ICERC20.sol";
 import {IComptroller} from "../utils/compound/IComptroller.sol";
 
 import {DexSwap} from "../utils/swapUtils.sol";
-// import "hardhat/console.sol";
 
 /// @title CompoundV2StrategyWrapper - Custom implementation of yield-daddy wrappers with flexible reinvesting logic
 /// Rationale: Forked protocols often implement custom functions and modules on top of forked code.
