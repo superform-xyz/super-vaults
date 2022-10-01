@@ -4,7 +4,15 @@ ERC4626 different wrappers for SuperForm Vault system
 
 # Build
 
-`forge build`
+Repository uses MakeFile to streamline testing operations. You can use `forge install` and other forge naitive commands, but expected execution is achived with `make`.
+
+`make install`
+
+`make build`
+
+`make test` for current implementation
+
+`make test-old` for old implementation
 
 # To run OLD test:
 

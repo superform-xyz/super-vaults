@@ -3,8 +3,6 @@ src = 'src'
 out = 'out'
 libs = ['lib']
 solc = "0.8.14"
-# no_match_path = 'src/old/test/'
-
 
 # See more config options: https://github.com/foundry-rs/foundry/tree/master/config
 # matching tests: https://github.com/foundry-rs/foundry/issues/1346

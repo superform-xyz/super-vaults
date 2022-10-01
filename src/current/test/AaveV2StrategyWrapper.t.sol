@@ -8,6 +8,12 @@ import {IMultiFeeDistribution} from "../utils/aave/IMultiFeeDistribution.sol";
 import {ILendingPool} from "../utils/aave/ILendingPool.sol";
 
 contract AaveV2StrategyWrapperTest is Test {
+    uint256 public ethFork;
+    uint256 public ftmFork;
+
+    string ETH_RPC_URL = vm.envString("ETH_MAINNET_RPC");
+    string FTM_RPC_URL = vm.envString("FTM_MAINNET_RPC");
+
     AaveV2StrategyWrapper public vault;
 
     /// Fantom's Geist Forked AAVE-V2 Protocol DAI Pool Config
@@ -18,6 +24,8 @@ contract AaveV2StrategyWrapperTest is Test {
     address rewardToken = 0xd8321AA83Fb0a4ECd6348D4577431310A6E0814d;
     
     function setUp() public {
+        ftmFork = vm.createFork(FTM_RPC_URL);
+        vm.selectFork(ftmFork);
         vault = new AaveV2StrategyWrapper(
             underlying,
             aToken,

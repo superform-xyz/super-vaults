@@ -44,7 +44,7 @@ interface UniRouter {
     ) external returns (uint256[] memory amounts);
 }
 
-contract ContractTest is BaseTest {
+contract Benqi_Native_Test is BaseTest {
     using SafeERC20 for IERC20;
     using SafeERC20 for IERC20Meta;
     // using SafeERC20 for Wrapped;
