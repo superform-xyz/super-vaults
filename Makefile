@@ -8,9 +8,9 @@ update:; forge update
 
 # Build & test
 build  :; forge build
-test   :; forge test --no-match-contract Alpaca\|Benqi*.*Test
+test   :; forge test --no-match-contract Alpaca\|Benqi*.*Test -vv
 test-old :; forge test --match-contract Alpaca\|Benqi.*Test
 clean  :; forge clean
 snapshot :; forge snapshot
 fmt    :; forge fmt && forge fmt test/
-# test-mainnet-bnb :; forge test --fork-url $(RPC_URL_MAINNET) --match-contract Alpaca_BTC_Test\|StETHERC4626.*Test -vvv
+test-aave :; forge test --fork-url $(FTM_MAINNET_RPC) --no-match-contract Alpaca\|Benqi*.*Test -vvv
