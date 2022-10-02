@@ -52,22 +52,22 @@ contract AaveV2StrategyWrapperTest is Test {
         uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
 
         // Expect exchange rate to be 1:1 on initial deposit.
-        // assertEq(aliceUnderlyingAmount, aliceShareAmount);
-        // assertEq(vault.previewWithdraw(aliceShareAmount), aliceUnderlyingAmount);
-        // assertEq(vault.previewDeposit(aliceUnderlyingAmount), aliceShareAmount);
-        // assertEq(vault.totalSupply(), aliceShareAmount);
-        // assertEq(vault.totalAssets(), aliceUnderlyingAmount);
-        // assertEq(vault.balanceOf(alice), aliceShareAmount);
-        // assertEq(vault.convertToAssets(vault.balanceOf(alice)), aliceUnderlyingAmount);
-        // assertEq(underlying.balanceOf(alice), alicePreDepositBal - aliceUnderlyingAmount);
+        assertEq(aliceUnderlyingAmount, aliceShareAmount);
+        assertEq(vault.previewWithdraw(aliceShareAmount), aliceUnderlyingAmount);
+        assertEq(vault.previewDeposit(aliceUnderlyingAmount), aliceShareAmount);
+        assertEq(vault.totalSupply(), aliceShareAmount);
+        assertEq(vault.totalAssets(), aliceUnderlyingAmount);
+        assertEq(vault.balanceOf(alice), aliceShareAmount);
+        assertEq(vault.convertToAssets(vault.balanceOf(alice)), aliceUnderlyingAmount);
+        assertEq(underlying.balanceOf(alice), alicePreDepositBal - aliceUnderlyingAmount);
 
         vm.prank(alice);
         vault.withdraw(aliceUnderlyingAmount, alice, alice);
 
-        // assertEq(vault.totalAssets(), 0);
-        // assertEq(vault.balanceOf(alice), 0);
-        // assertEq(vault.convertToAssets(vault.balanceOf(alice)), 0);
-        // assertEq(underlying.balanceOf(alice), alicePreDepositBal);
+        assertEq(vault.totalAssets(), 0);
+        assertEq(vault.balanceOf(alice), 0);
+        assertEq(vault.convertToAssets(vault.balanceOf(alice)), 0);
+        assertEq(underlying.balanceOf(alice), alicePreDepositBal);
     }
 
 
