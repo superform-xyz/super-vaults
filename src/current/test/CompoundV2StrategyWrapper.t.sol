@@ -12,7 +12,7 @@ contract CompoundV2StrategyWrapperTest is Test {
 
     string ETH_RPC_URL = vm.envString("ETH_MAINNET_RPC");
 
-    CompoundV2StrategyWrapper public compoundWrapper;
+    CompoundV2StrategyWrapper public vault;
 
     ERC20 public asset = ERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
     ERC20 public reward = ERC20(0xc00e94Cb662C3520282E6f5717214004A7f26888);
@@ -23,18 +23,42 @@ contract CompoundV2StrategyWrapperTest is Test {
     function setUp() public {
         ethFork = vm.createFork(ETH_RPC_URL);
         vm.selectFork(ethFork);
-        compoundWrapper = new CompoundV2StrategyWrapper(
+        vault = new CompoundV2StrategyWrapper(
             asset,
             reward,
             cToken,
             comptroller,
             msg.sender
         );
-        address alice = address(0x1cA60862a771f1F47d94F87bebE4226141b19C9c);
-        vm.prank(alice);
     }
 
-    function testDepositWithdraw() public {}
+    function testDepositWithdraw() public {
+        uint256 amount = 100 ether;
+
+        address alice = address(0x616eFd3E811163F8fc180611508D72D842EA7D07);
+        vm.prank(alice);
+        
+        uint256 aliceUnderlyingAmount = amount;
+        
+        asset.approve(address(vault), aliceUnderlyingAmount);
+        assertEq(asset.allowance(alice, address(vault)), aliceUnderlyingAmount);
+
+        uint256 alicePreDepositBal = asset.balanceOf(alice);
+
+        vm.prank(alice);
+        uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
+        assertEq(aliceUnderlyingAmount, aliceShareAmount);
+        assertEq(vault.totalSupply(), aliceShareAmount);
+        assertEq(vault.balanceOf(alice), aliceShareAmount);
+
+        // vm.prank(alice);
+        // vault.withdraw(aliceUnderlyingAmount, alice, alice);
+
+        // assertEq(vault.totalAssets(), 0);
+        // assertEq(vault.balanceOf(alice), 0);
+        // assertEq(vault.convertToAssets(vault.balanceOf(alice)), 0);
+        // assertEq(asset.balanceOf(alice), alicePreDepositBal);        
+    }
 
     function testMintRedeem() public {}
 }
