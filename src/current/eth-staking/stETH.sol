@@ -45,18 +45,17 @@ contract StETHERC4626 is ERC4626 {
     /// Constructor
     /// -----------------------------------------------------------------------
 
-    /// @param asset_ wstETH address (Vault has this on balance)
+    /// @param weth_ weth address (Vault's underlying / deposit token)
     /// @param stEth_ stETH (Lido contract) address
     /// @param wstEth_ wstETH contract addresss
-    /// @param weth_ address of wrapped eth erc20 contract
     /// @dev @notice Beware of proxy contracts!
     /// Vault.balanceOf(asset) === wstETH
     /// All calculations are on wstETH
     /// Deposit needs to receive non-wrapped ETH to get stETH from Lido
-    constructor(ERC20 asset_, IStETH stEth_, wstETH wstEth_, IWETH weth_) ERC4626(asset_, "ERC4626-Wrapped Lido stETH", "wlstETH") {
+    constructor(address weth_, IStETH stEth_, wstETH wstEth_) ERC4626(ERC20(weth_), "ERC4626-Wrapped Lido stETH", "wlstETH") {
         stEth = stEth_;
         wstEth = wstEth_;
-        weth = weth_;
+        weth = IWETH(weth_);
         stEth.approve(address(wstEth_), type(uint256).max);
     }
 
@@ -66,8 +65,7 @@ contract StETHERC4626 is ERC4626 {
 
     function beforeWithdraw(uint256 assets, uint256) internal override {
         uint256 stEthAmount = wstEth.unwrap(assets);
-        uint256 ethAmount = stEth.burnShares(address(this), stEthAmount);
-        // SafeTransferLib.safeTransferETH(to, amount); /// move to withdraw
+        stEth.burnShares(address(this), stEthAmount);
     }
 
     function afterDeposit(uint256 ethAmount, uint256) internal override {
@@ -82,10 +80,9 @@ contract StETHERC4626 is ERC4626 {
     /// Standard ERC4626 deposit can only accept ERC20
     /// Vault's underlying is WETH (ERC20), Lido expects ETH (Native), we make wraperooo magic
     function deposit(uint256 assets, address receiver) public override returns (uint256 shares) {
-        // Check for rounding error since we round down in previewDeposit.
+
         require((shares = previewDeposit(assets)) != 0, "ZERO_SHARES");
 
-        // Need to transfer before minting or ERC777s could reenter.
         asset.safeTransferFrom(msg.sender, address(this), assets);
 
         uint256 ethAmount = weth.unwrap(assets);
@@ -99,14 +96,84 @@ contract StETHERC4626 is ERC4626 {
 
     /// Deposit function accepting ETH (Native) directly
     function deposit(address receiver) public payable returns (uint256 shares) {
-        require((shares = previewDeposit(msg.value)) != 0, "ZERO_SHARES");
         require(msg.value != 0, "0");
+
+        require((shares = previewDeposit(msg.value)) != 0, "ZERO_SHARES");
 
         _mint(receiver, shares);
 
         emit Deposit(msg.sender, receiver, msg.value, shares);
 
         afterDeposit(msg.value, shares);
+    }
+
+    function mint(uint256 shares, address receiver) public override returns (uint256 assets) {
+        assets = previewMint(shares); 
+
+        asset.safeTransferFrom(msg.sender, address(this), assets);
+
+        uint256 ethAmount = weth.unwrap(assets);
+
+        _mint(receiver, shares);
+
+        emit Deposit(msg.sender, receiver, assets, shares);
+
+        afterDeposit(ethAmount, shares);
+    }
+
+    /// @dev payable mint() is difficult to implement, probably should be dropped fully
+    /// we can live with mint() being only available through weth
+    // function mint(uint256 shares, address receiver, bool isPayable) public payable returns (uint256 assets) {
+    //     require((ethAmount = previewMint(shares)) == msg.value, "NOT_ENOUGH");
+    //     _mint(receiver, shares);
+    //     emit Deposit(msg.sender, receiver, ethAmount, shares);
+    //     afterDeposit(msg.value, shares);
+    // }
+
+    function withdraw(
+        uint256 assets,
+        address receiver,
+        address owner
+    ) public override returns (uint256 shares) {
+        shares = previewWithdraw(assets);
+
+        if (msg.sender != owner) {
+            uint256 allowed = allowance[owner][msg.sender];
+
+            if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
+        }
+
+        beforeWithdraw(assets, shares);
+
+        _burn(owner, shares);
+
+        emit Withdraw(msg.sender, receiver, owner, assets, shares);
+
+        SafeTransferLib.safeTransferETH(receiver, assets);
+    }
+
+
+    function redeem(
+        uint256 shares,
+        address receiver,
+        address owner
+    ) public override returns (uint256 assets) {
+        if (msg.sender != owner) {
+            uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
+
+            if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
+        }
+
+        // Check for rounding error since we round down in previewRedeem.
+        require((assets = previewRedeem(shares)) != 0, "ZERO_ASSETS");
+
+        beforeWithdraw(assets, shares);
+
+        _burn(owner, shares);
+
+        emit Withdraw(msg.sender, receiver, owner, assets, shares);
+
+        SafeTransferLib.safeTransferETH(receiver, assets);
     }
 
     function totalAssets() public view virtual override returns (uint256) {
