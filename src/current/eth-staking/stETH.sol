@@ -7,6 +7,12 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 abstract contract IStETH is ERC20 {
     function getTotalShares() external view virtual returns (uint256);
+    function submit(address) external payable returns (uint256);
+}
+
+interface wstETH {
+    function wrap(uint256) external returns (uint256);
+    function unwrap(uint256) external returns (uint256);
 }
 
 /// @title StETHERC4626
@@ -15,6 +21,9 @@ abstract contract IStETH is ERC20 {
 /// @dev Uses stETH's internal shares accounting instead of using regular vault accounting
 /// since this prevents attackers from atomically increasing the vault's share value
 /// and exploiting lending protocols that use this vault as a borrow asset.
+/// @notice This wrappers isn't suited to SuperForm needs
+/// Case 1: User gives BUSDC on BSC and reqs wstETH (no-rebase) on ETH with Shares minted on BSC
+/// We need Zap contract (for this & "double sided" pools)
 contract StETHERC4626 is ERC4626 {
     /// -----------------------------------------------------------------------
     /// Libraries usage
@@ -26,7 +35,13 @@ contract StETHERC4626 is ERC4626 {
     /// Constructor
     /// -----------------------------------------------------------------------
 
-    constructor(ERC20 asset_) ERC4626(asset_, "ERC4626-Wrapped Lido stETH", "wlstETH") {}
+    /// @param asset_ wstETH address (Vault has this on balance)
+    /// Vault.balanceOf(asset) === wstETH
+    /// All calculations are on wstETH
+    /// Deposit needs to send ETH to get stETH
+    constructor(ERC20 asset_) ERC4626(asset_, "ERC4626-Wrapped Lido stETH", "wlstETH") {
+        IStETH.approve(wstETH, type(uint256).max);
+    }
 
     /// -----------------------------------------------------------------------
     /// Getters
@@ -40,14 +55,37 @@ contract StETHERC4626 is ERC4626 {
                           INTERNAL HOOKS LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function beforeWithdraw(uint256 assets, uint256 shares) internal virtual {}
+    function beforeWithdraw(uint256 assets, uint256 shares) internal virtual {
+        wstETH.unwrap(assets);
+    }
 
-    function afterDeposit(uint256 assets, uint256 shares) internal virtual {}
-}
+    function afterDeposit(uint256 assets, uint256 shares) internal virtual {
+        uint256 stEthAmount = IStETH.submit(0){msg.value}; /// this accepts eth with msg.value, not ERC20 token
+        wstETH.wrap(stEthAmount);
+    }
 
     /// -----------------------------------------------------------------------
     /// ERC4626 overrides
     /// -----------------------------------------------------------------------
+
+    function deposit(address receiver) public payable returns (uint256 shares) {
+        require((shares = previewDeposit(msg.value)) != 0, "ZERO_SHARES");
+
+        // Need to transfer before minting or ERC777s could reenter.
+        asset.safeTransferFrom(msg.sender, address(this), assets);
+
+        _mint(receiver, shares);
+
+        emit Deposit(msg.sender, receiver, assets, shares);
+
+        afterDeposit(assets, shares);
+    }
+
+    function deposit(uint256 assets, address receiver) public override payable returns (uint256 shares) {
+        // Check for rounding error since we round down in previewDeposit.
+        uint256 assets = msg.value;
+        super.deposit(assets, receiver);
+    }
 
     function totalAssets() public view virtual override returns (uint256) {
         return stETH().balanceOf(address(this));

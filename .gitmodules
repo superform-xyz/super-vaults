@@ -13,3 +13,6 @@
 [submodule "lib/forge-std"]
 	path = lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
+[submodule "lib/yield-daddy"]
+	path = lib/yield-daddy
+	url = https://github.com/timeless-fi/yield-daddy
