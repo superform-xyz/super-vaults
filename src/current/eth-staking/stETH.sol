@@ -4,11 +4,13 @@ pragma solidity 0.8.14;
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
-abstract contract IStETH is ERC20 {
-    function getTotalShares() external view virtual returns (uint256);
+interface IStETH {
+    function getTotalShares() external view returns (uint256);
     function submit(address) external payable returns (uint256);
-    function burnShares(address _account, uint256 _sharesAmount) external returns (uint256);
+    function burnShares(address,uint256) external returns (uint256);
+    function approve(address,uint256) external returns (bool);
 }
 
 interface wstETH {
@@ -17,76 +19,93 @@ interface wstETH {
     function getStETHByWstETH(uint256) external view returns (uint256);
 }
 
-/// @title StETHERC4626
-/// @author zefram.eth
-/// @notice ERC4626 wrapper for Lido stETH
-/// @dev Uses stETH's internal shares accounting instead of using regular vault accounting
-/// since this prevents attackers from atomically increasing the vault's share value
-/// and exploiting lending protocols that use this vault as a borrow asset.
-/// @notice This wrappers isn't suited to SuperForm needs
-/// Case 1: User gives BUSDC on BSC and reqs wstETH (no-rebase) on ETH with Shares minted on BSC
-/// We need Zap contract (for this & "double sided" pools)
+/// @notice Modified yield-daddy version with wrapped stEth as underlying asset to avoid rebasing balance
+/// @author ZeroPoint Labs
 contract StETHERC4626 is ERC4626 {
+
+    IStETH public stEth;
+    wstETH public wstEth;
+    address public immutable ZERO_ADDRESS = address(0);
+
     /// -----------------------------------------------------------------------
     /// Libraries usage
     /// -----------------------------------------------------------------------
 
     using FixedPointMathLib for uint256;
+    using SafeTransferLib for ERC20;
 
     /// -----------------------------------------------------------------------
     /// Constructor
     /// -----------------------------------------------------------------------
 
     /// @param asset_ wstETH address (Vault has this on balance)
+    /// @param stEth_ stETH (Lido contract) address
+    /// @param wstEth_ wstETH contract addresss
+    /// @dev @notice Beware of proxy contracts!
     /// Vault.balanceOf(asset) === wstETH
     /// All calculations are on wstETH
-    /// Deposit needs to send ETH to get stETH
-    constructor(ERC20 asset_) ERC4626(asset_, "ERC4626-Wrapped Lido stETH", "wlstETH") {
-        IStETH.approve(wstETH, type(uint256).max);
-    }
-
-    /// -----------------------------------------------------------------------
-    /// Getters
-    /// -----------------------------------------------------------------------
-
-    function stETH() public view returns (IStETH) {
-        return IStETH(address(asset));
+    /// Deposit needs to receive non-wrapped ETH to get stETH from Lido
+    constructor(ERC20 asset_, IStETH stEth_, wstETH wstEth_) ERC4626(asset_, "ERC4626-Wrapped Lido stETH", "wlstETH") {
+        stEth = stEth_;
+        wstEth = wstEth_;
+        stEth.approve(address(wstEth_), type(uint256).max);
     }
 
     /*//////////////////////////////////////////////////////////////
                           INTERNAL HOOKS LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function beforeWithdraw(uint256 assets, uint256 shares) internal virtual {
-        uint256 stEthAmount = wstETH.unwrap(assets);
-        IStETH.burnShares(address(this), stEthAmount);
+    function beforeWithdraw(uint256 assets, uint256 shares) internal override {
+        uint256 stEthAmount = wstEth.unwrap(assets);
+        stEth.burnShares(address(this), stEthAmount);
     }
 
-    function afterDeposit(uint256 assets, uint256 shares) internal virtual {
-        uint256 stEthAmount = IStETH.submit(0){msg.value}; /// this accepts eth with msg.value, not ERC20 token
-        wstETH.wrap(stEthAmount);
+    function afterDeposit(uint256 assets, uint256 shares) internal override {
+        uint256 stEthAmount = stEth.submit{value: msg.value}(ZERO_ADDRESS); /// Lido's submit() accepts only native ETH
+        wstEth.wrap(stEthAmount);
     }
 
     /// -----------------------------------------------------------------------
     /// ERC4626 overrides
     /// -----------------------------------------------------------------------
 
-    function deposit(address receiver) public payable returns (uint256 shares) {
+    function deposit(address receiver) external payable returns (uint256 shares) {
         require((shares = previewDeposit(msg.value)) != 0, "ZERO_SHARES");
 
         // Need to transfer before minting or ERC777s could reenter.
-        asset.safeTransferFrom(msg.sender, address(this), assets);
+        asset.safeTransferFrom(msg.sender, address(this), msg.value);
 
         _mint(receiver, shares);
 
-        emit Deposit(msg.sender, receiver, assets, shares);
+        emit Deposit(msg.sender, receiver, msg.value, shares);
 
-        afterDeposit(assets, shares);
+        afterDeposit(msg.value, shares);
     }
 
     function deposit(uint256 assets, address receiver) public override payable returns (uint256 shares) {
-        uint256 assets = msg.value;
-        super.deposit(assets, receiver);
+        return deposit{value: msg.value}(receiver);
+    }
+
+    function withdraw(
+        uint256 assets,
+        address receiver,
+        address owner
+    ) public virtual returns (uint256 shares) {
+        shares = previewWithdraw(assets);
+
+        if (msg.sender != owner) {
+            uint256 allowed = allowance[owner][msg.sender];
+
+            if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
+        }
+
+        beforeWithdraw(assets, shares);
+
+        _burn(owner, shares);
+
+        emit Withdraw(msg.sender, receiver, owner, assets, shares);
+
+        asset.safeTransfer(receiver, assets);
     }
 
     function totalAssets() public view virtual override returns (uint256) {
@@ -94,25 +113,25 @@ contract StETHERC4626 is ERC4626 {
     }
 
     function convertToShares(uint256 assets) public view virtual override returns (uint256) {
-        uint256 supply = totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
+        uint256 supply = totalSupply;
 
         return supply == 0 ? assets : assets.mulDivDown(supply, totalAssets());
     }
 
     function convertToAssets(uint256 shares) public view virtual override returns (uint256) {
-        uint256 supply = totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
+        uint256 supply = totalSupply; 
 
-        return totalShares == 0 ? shares : shares.mulDivDown(totalAssets(), supply);
+        return supply == 0 ? shares : shares.mulDivDown(totalAssets(), supply);
     }
 
     function previewMint(uint256 shares) public view virtual override returns (uint256) {
-        uint256 supply = totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
+        uint256 supply = totalSupply; 
 
-        return totalShares == 0 ? shares : shares.mulDivUp(totalAssets(), supply);
+        return supply == 0 ? shares : shares.mulDivUp(totalAssets(), supply);
     }
 
     function previewWithdraw(uint256 assets) public view virtual override returns (uint256) {
-        uint256 supply = totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
+        uint256 supply = totalSupply;
 
         return supply == 0 ? assets : assets.mulDivUp(supply, totalAssets());
     }
