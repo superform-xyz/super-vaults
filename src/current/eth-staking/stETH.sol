@@ -8,11 +8,13 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 abstract contract IStETH is ERC20 {
     function getTotalShares() external view virtual returns (uint256);
     function submit(address) external payable returns (uint256);
+    function burnShares(address _account, uint256 _sharesAmount) external returns (uint256);
 }
 
 interface wstETH {
     function wrap(uint256) external returns (uint256);
     function unwrap(uint256) external returns (uint256);
+    function getStETHByWstETH(uint256) external view returns (uint256);
 }
 
 /// @title StETHERC4626
@@ -56,7 +58,8 @@ contract StETHERC4626 is ERC4626 {
     //////////////////////////////////////////////////////////////*/
 
     function beforeWithdraw(uint256 assets, uint256 shares) internal virtual {
-        wstETH.unwrap(assets);
+        uint256 stEthAmount = wstETH.unwrap(assets);
+        IStETH.burnShares(address(this), stEthAmount);
     }
 
     function afterDeposit(uint256 assets, uint256 shares) internal virtual {
@@ -82,36 +85,35 @@ contract StETHERC4626 is ERC4626 {
     }
 
     function deposit(uint256 assets, address receiver) public override payable returns (uint256 shares) {
-        // Check for rounding error since we round down in previewDeposit.
         uint256 assets = msg.value;
         super.deposit(assets, receiver);
     }
 
     function totalAssets() public view virtual override returns (uint256) {
-        return stETH().balanceOf(address(this));
+        return wstETH().balanceOf(address(this));
     }
 
     function convertToShares(uint256 assets) public view virtual override returns (uint256) {
-        uint256 supply = stETH().totalSupply();
+        uint256 supply = totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
 
-        return supply == 0 ? assets : assets.mulDivDown(stETH().getTotalShares(), supply);
+        return supply == 0 ? assets : assets.mulDivDown(supply, totalAssets());
     }
 
     function convertToAssets(uint256 shares) public view virtual override returns (uint256) {
-        uint256 totalShares = stETH().getTotalShares();
+        uint256 supply = totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
 
-        return totalShares == 0 ? shares : shares.mulDivDown(stETH().totalSupply(), totalShares);
+        return totalShares == 0 ? shares : shares.mulDivDown(totalAssets(), supply);
     }
 
     function previewMint(uint256 shares) public view virtual override returns (uint256) {
-        uint256 totalShares = stETH().getTotalShares();
+        uint256 supply = totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
 
-        return totalShares == 0 ? shares : shares.mulDivUp(stETH().totalSupply(), totalShares);
+        return totalShares == 0 ? shares : shares.mulDivUp(totalAssets(), supply);
     }
 
     function previewWithdraw(uint256 assets) public view virtual override returns (uint256) {
-        uint256 supply = stETH().totalSupply();
+        uint256 supply = totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
 
-        return supply == 0 ? assets : assets.mulDivUp(stETH().getTotalShares(), supply);
+        return supply == 0 ? assets : assets.mulDivUp(supply, totalAssets());
     }
 }
