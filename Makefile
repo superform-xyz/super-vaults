@@ -15,3 +15,4 @@ snapshot :; forge snapshot
 fmt    :; forge fmt && forge fmt test/
 test-aave :; forge test --fork-url $(FTM_MAINNET_RPC) --no-match-contract Alpaca\|Benqi*.*Test -vvv
 test-compound :; forge test --match-contract CompoundV2StrategyWrapperTest -vvv
+test-steth :; forge test --match-contract stEth.*Test -vvv

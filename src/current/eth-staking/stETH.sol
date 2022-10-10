@@ -27,9 +27,11 @@ interface wstETH {
 }
 
 interface IWETH {
-    function wrap(uint256) external payable returns (uint256);
+    function approve(address, uint256) external returns (bool);
 
-    function unwrap(uint256) external returns (uint256);
+    function deposit() external payable;
+
+    function withdraw(uint256) external;
 }
 
 /// @notice Modified yield-daddy version with wrapped stEth as underlying asset to avoid rebasing balance
@@ -69,6 +71,8 @@ contract StETHERC4626 is ERC4626 {
         stEth.approve(address(wstEth_), type(uint256).max);
     }
 
+    receive() external payable {}
+
     /*//////////////////////////////////////////////////////////////
                           INTERNAL HOOKS LOGIC
     //////////////////////////////////////////////////////////////*/
@@ -98,13 +102,13 @@ contract StETHERC4626 is ERC4626 {
 
         asset.safeTransferFrom(msg.sender, address(this), assets);
 
-        uint256 ethAmount = weth.unwrap(assets);
+        weth.withdraw(assets);
 
         _mint(receiver, shares);
 
         emit Deposit(msg.sender, receiver, assets, shares);
 
-        afterDeposit(ethAmount, shares);
+        afterDeposit(assets, shares);
     }
 
     /// Deposit function accepting ETH (Native) directly
@@ -129,13 +133,13 @@ contract StETHERC4626 is ERC4626 {
 
         asset.safeTransferFrom(msg.sender, address(this), assets);
 
-        uint256 ethAmount = weth.unwrap(assets);
+        weth.withdraw(assets);
 
         _mint(receiver, shares);
 
         emit Deposit(msg.sender, receiver, assets, shares);
 
-        afterDeposit(ethAmount, shares);
+        afterDeposit(assets, shares);
     }
 
     /// @dev payable mint() is difficult to implement, probably should be dropped fully
