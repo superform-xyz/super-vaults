@@ -2,6 +2,7 @@
 pragma solidity 0.8.14;
 
 import "forge-std/Test.sol";
+import "forge-std/console.sol";
 import {StETHERC4626} from "../eth-staking/stETH.sol";
 
 interface IStETH {
@@ -39,6 +40,7 @@ interface IWETH {
 contract stEthTest is Test {
     uint256 public ethFork;
     uint256 public immutable ONE_THOUSAND_E18 = 1000 ether;
+    uint256 public immutable HUNDRED_E18 = 100 ether;
 
     string ETH_RPC_URL = vm.envString("ETH_MAINNET_RPC");
 
@@ -48,6 +50,9 @@ contract stEthTest is Test {
     address public stEth = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
     address public wstEth = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
 
+    address public alice;
+    address public manager;
+
     IWETH public _weth = IWETH(weth);
     IStETH public _stEth = IStETH(stEth);
     wstETH public _wstEth = wstETH(wstEth);
@@ -56,34 +61,38 @@ contract stEthTest is Test {
         ethFork = vm.createFork(ETH_RPC_URL);
         vm.selectFork(ethFork);
         vault = new StETHERC4626(weth, stEth, wstEth);
+        alice = address(0x1);
+        manager = msg.sender;
+
+        /// Seed Vault with init deposit() to hack around rebasing stEth <> wstEth underlying
+        /// wstEth balance on first deposit() is zero, user gets 100 shares, equal 1:1 with underlying
+        deal(weth, alice, ONE_THOUSAND_E18);
+        deal(weth, manager, ONE_THOUSAND_E18);
+
+        vm.prank(manager);
+        _weth.approve(address(vault), HUNDRED_E18);
+        
+        vm.prank(manager);
+        vault.deposit(HUNDRED_E18, manager);
     }
 
     function testDepositWithdraw() public {
-        uint256 ethAmount = 100 ether;
-        address alice = address(0x1);
-
-        uint256 aliceUnderlyingAmount = ethAmount;
-        deal(weth, alice, ONE_THOUSAND_E18);
+        uint256 aliceUnderlyingAmount = HUNDRED_E18;
 
         vm.prank(alice);
         _weth.approve(address(vault), aliceUnderlyingAmount);
         assertEq(_weth.allowance(alice, address(vault)), aliceUnderlyingAmount);
-
-        uint256 alicePreDepositBal = _weth.balanceOf(alice);
         
         vm.prank(alice);
         uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
+        console.log("aliceShareAmount", aliceShareAmount);
+        uint256 aliceAssetsFromShares = vault.convertToAssets(aliceShareAmount);
+        console.log("aliceAssetsFromShares", aliceAssetsFromShares);
 
         vm.prank(alice);
-        _weth.approve(address(vault), aliceUnderlyingAmount);
-
-        vm.prank(alice);
-        vault.deposit(aliceUnderlyingAmount, alice);
-
-        vm.prank(alice);
-        vault.withdraw(aliceUnderlyingAmount, alice, alice);
+        /// This returns 99.06 from 100 eth deposited
+        vault.withdraw(aliceAssetsFromShares, alice, alice);
 
     }
 
-    function testMintRedeem() public {}
 }

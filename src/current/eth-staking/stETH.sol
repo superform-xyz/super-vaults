@@ -30,6 +30,8 @@ interface wstETH {
 }
 
 interface IWETH {
+    function balanceOf(address) external view returns (uint256);
+
     function approve(address, uint256) external returns (bool);
 
     function deposit() external payable;
@@ -91,30 +93,23 @@ contract StETHERC4626 is ERC4626 {
 
     receive() external payable {}
 
-    function setRoute(
-        address pool,
-        address token0,
-        address token1
-    ) external {
-        // require(msg.sender == manager, "onlyOwner");
-        curvePool = ICurve(pool);
-    }
-
     /*//////////////////////////////////////////////////////////////
                           INTERNAL HOOKS LOGIC
     //////////////////////////////////////////////////////////////*/
 
     function beforeWithdraw(uint256 assets, uint256 shares) internal override {
         uint256 stEthAmount = wstEth.unwrap(assets);
-        /// U can't! Hence the stETH/ETH poolz
+        console.log("stEthAmount bW", stEthAmount);
+        /// U can't burnShares directly on lido! Hence the stETH/ETH poolz
         /// https://etherscan.io/address/0xDC24316b9AE028F1497c275EB9192a3Ea0f67022
-        // stEth.burnShares(address(this), stEthAmount);
         uint256 amount = curvePool.exchange(1, 0, stEthAmount, 1);
         console.log("amount", amount);
     }
 
     function afterDeposit(uint256 ethAmount, uint256) internal override {
+        console.log("ethAmount aD", ethAmount);
         uint256 stEthAmount = stEth.submit{value: ethAmount}(address(this)); /// Lido's submit() accepts only native ETH
+        console.log("stEthAmount aD", stEthAmount);
         wstEth.wrap(stEthAmount);
     }
 
@@ -130,10 +125,11 @@ contract StETHERC4626 is ERC4626 {
         returns (uint256 shares)
     {
         require((shares = previewDeposit(assets)) != 0, "ZERO_SHARES");
-
+        console.log("deposit shares", shares);
         asset.safeTransferFrom(msg.sender, address(this), assets);
 
         weth.withdraw(assets);
+        console.log("eth balance", address(this).balance);
 
         _mint(receiver, shares);
 
@@ -179,6 +175,7 @@ contract StETHERC4626 is ERC4626 {
         address owner
     ) public override returns (uint256 shares) {
         shares = previewWithdraw(assets);
+        console.log("shares", shares);
 
         if (msg.sender != owner) {
             uint256 allowed = allowance[owner][msg.sender];
