@@ -6,6 +6,9 @@ import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
+import "forge-std/console.sol";
+
+
 interface IStETH {
     function getTotalShares() external view returns (uint256);
 
@@ -34,13 +37,26 @@ interface IWETH {
     function withdraw(uint256) external;
 }
 
+interface ICurve {
+    function exchange(
+        int128,
+        int128,
+        uint256,
+        uint256
+    ) external returns (uint256);
+}
+
 /// @notice Modified yield-daddy version with wrapped stEth as underlying asset to avoid rebasing balance
 /// @author ZeroPoint Labs
 contract StETHERC4626 is ERC4626 {
     IStETH public stEth;
     wstETH public wstEth;
     IWETH public weth;
+    ICurve public curvePool;
+
     address public immutable ZERO_ADDRESS = address(0);
+    // address public immutable ETH = 0;
+    // address public immutable STETH = 0;
 
     /// -----------------------------------------------------------------------
     /// Libraries usage
@@ -68,22 +84,37 @@ contract StETHERC4626 is ERC4626 {
         stEth = IStETH(stEth_);
         wstEth = wstETH(wstEth_);
         weth = IWETH(weth_);
+        curvePool = ICurve(0xDC24316b9AE028F1497c275EB9192a3Ea0f67022);
+        stEth.approve(address(curvePool), type(uint256).max);
         stEth.approve(address(wstEth_), type(uint256).max);
     }
 
     receive() external payable {}
 
+    function setRoute(
+        address pool,
+        address token0,
+        address token1
+    ) external {
+        // require(msg.sender == manager, "onlyOwner");
+        curvePool = ICurve(pool);
+    }
+
     /*//////////////////////////////////////////////////////////////
                           INTERNAL HOOKS LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function beforeWithdraw(uint256 assets, uint256) internal override {
+    function beforeWithdraw(uint256 assets, uint256 shares) internal override {
         uint256 stEthAmount = wstEth.unwrap(assets);
-        stEth.burnShares(address(this), stEthAmount);
+        /// U can't! Hence the stETH/ETH poolz
+        /// https://etherscan.io/address/0xDC24316b9AE028F1497c275EB9192a3Ea0f67022
+        // stEth.burnShares(address(this), stEthAmount);
+        uint256 amount = curvePool.exchange(1, 0, stEthAmount, 1);
+        console.log("amount", amount);
     }
 
     function afterDeposit(uint256 ethAmount, uint256) internal override {
-        uint256 stEthAmount = stEth.submit{value: ethAmount}(ZERO_ADDRESS); /// Lido's submit() accepts only native ETH
+        uint256 stEthAmount = stEth.submit{value: ethAmount}(address(this)); /// Lido's submit() accepts only native ETH
         wstEth.wrap(stEthAmount);
     }
 
@@ -142,15 +173,6 @@ contract StETHERC4626 is ERC4626 {
         afterDeposit(assets, shares);
     }
 
-    /// @dev payable mint() is difficult to implement, probably should be dropped fully
-    /// we can live with mint() being only available through weth
-    // function mint(uint256 shares, address receiver, bool isPayable) public payable returns (uint256 assets) {
-    //     require((ethAmount = previewMint(shares)) == msg.value, "NOT_ENOUGH");
-    //     _mint(receiver, shares);
-    //     emit Deposit(msg.sender, receiver, ethAmount, shares);
-    //     afterDeposit(msg.value, shares);
-    // }
-
     function withdraw(
         uint256 assets,
         address receiver,
@@ -197,6 +219,15 @@ contract StETHERC4626 is ERC4626 {
 
         SafeTransferLib.safeTransferETH(receiver, assets);
     }
+
+    /// @dev payable mint() is difficult to implement, probably should be dropped fully
+    /// we can live with mint() being only available through weth
+    // function mint(uint256 shares, address receiver, bool isPayable) public payable returns (uint256 assets) {
+    //     require((ethAmount = previewMint(shares)) == msg.value, "NOT_ENOUGH");
+    //     _mint(receiver, shares);
+    //     emit Deposit(msg.sender, receiver, ethAmount, shares);
+    //     afterDeposit(msg.value, shares);
+    // }
 
     function totalAssets() public view virtual override returns (uint256) {
         return wstEth.balanceOf(address(this));

@@ -38,6 +38,7 @@ interface IWETH {
 
 contract stEthTest is Test {
     uint256 public ethFork;
+    uint256 public immutable ONE_THOUSAND_E18 = 1000 ether;
 
     string ETH_RPC_URL = vm.envString("ETH_MAINNET_RPC");
 
@@ -62,18 +63,26 @@ contract stEthTest is Test {
         address alice = address(0x1);
 
         uint256 aliceUnderlyingAmount = ethAmount;
-        deal(weth, alice, aliceUnderlyingAmount);
+        deal(weth, alice, ONE_THOUSAND_E18);
 
         vm.prank(alice);
         _weth.approve(address(vault), aliceUnderlyingAmount);
-        assertEq(
-            _weth.allowance(alice, address(vault)),
-            aliceUnderlyingAmount
-        );
+        assertEq(_weth.allowance(alice, address(vault)), aliceUnderlyingAmount);
 
         uint256 alicePreDepositBal = _weth.balanceOf(alice);
+        
         vm.prank(alice);
         uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
+
+        vm.prank(alice);
+        _weth.approve(address(vault), aliceUnderlyingAmount);
+
+        vm.prank(alice);
+        vault.deposit(aliceUnderlyingAmount, alice);
+
+        vm.prank(alice);
+        vault.withdraw(aliceUnderlyingAmount, alice, alice);
+
     }
 
     function testMintRedeem() public {}
