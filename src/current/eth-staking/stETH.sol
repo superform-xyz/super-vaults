@@ -129,7 +129,7 @@ contract StETHERC4626 is ERC4626 {
         asset.safeTransferFrom(msg.sender, address(this), assets);
 
         weth.withdraw(assets);
-        console.log("eth balance", address(this).balance);
+        console.log("eth balance deposit", address(this).balance);
 
         _mint(receiver, shares);
 
@@ -175,7 +175,7 @@ contract StETHERC4626 is ERC4626 {
         address owner
     ) public override returns (uint256 shares) {
         shares = previewWithdraw(assets);
-        console.log("shares", shares);
+        console.log("shares withdraw", shares);
 
         if (msg.sender != owner) {
             uint256 allowed = allowance[owner][msg.sender];
@@ -185,6 +185,7 @@ contract StETHERC4626 is ERC4626 {
         }
 
         beforeWithdraw(assets, shares);
+        console.log("eth balance withdraw", address(this).balance);
 
         _burn(owner, shares);
 

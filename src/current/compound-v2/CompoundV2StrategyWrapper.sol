@@ -7,7 +7,7 @@ import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 import {ICERC20} from "../utils/compound/ICERC20.sol";
-// import {LibCompound} from "./utils/compound/LibCompound.sol";
+import {LibCompound} from "../utils/compound/LibCompound.sol";
 import {IComptroller} from "../utils/compound/IComptroller.sol";
 
 import {DexSwap} from "../utils/swapUtils.sol";
@@ -20,7 +20,7 @@ contract CompoundV2StrategyWrapper is ERC4626 {
     /// Libraries usage
     /// -----------------------------------------------------------------------
 
-    // using LibCompound for ICERC20;
+    using LibCompound for ICERC20;
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
@@ -143,7 +143,7 @@ contract CompoundV2StrategyWrapper is ERC4626 {
     /// -----------------------------------------------------------------------
 
     function totalAssets() public view virtual override returns (uint256) {
-        return cToken.balanceOf(address(this)).mulWadDown(cToken.exchangeRateStored());
+        return cToken.viewUnderlyingBalanceOf(address(this));
     }
     
     function beforeWithdraw(
