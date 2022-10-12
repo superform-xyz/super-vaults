@@ -110,7 +110,8 @@ contract StETHERC4626 is ERC4626 {
         console.log("ethAmount aD", ethAmount);
         uint256 stEthAmount = stEth.submit{value: ethAmount}(address(this)); /// Lido's submit() accepts only native ETH
         console.log("stEthAmount aD", stEthAmount);
-        wstEth.wrap(stEthAmount);
+        uint256 wstEthAmount = wstEth.wrap(stEthAmount);
+        console.log("wstEthAmount aD", wstEthAmount);
     }
 
     /// -----------------------------------------------------------------------
