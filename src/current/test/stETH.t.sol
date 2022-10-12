@@ -88,54 +88,31 @@ contract stEthTest is Test {
         ethFork = vm.createFork(ETH_RPC_URL);
         vm.selectFork(ethFork);
 
-        vault = new StETHERC4626(weth, stEth, wstEth);
+        vault = new StETHERC4626(weth, stEth, wstEth, curvePool);
         alice = address(0x1);
         manager = msg.sender;
 
-        /// Seed Vault with init deposit() to hack around rebasing stEth <> wstEth underlying
-        /// wstEth balance on first deposit() is zero, user gets 100 shares, equal 1:1 with underlying
         deal(weth, alice, ONE_THOUSAND_E18);
         deal(weth, manager, ONE_THOUSAND_E18);
 
-        // vm.prank(manager);
-        // _weth.approve(address(vault), 1 ether);
-
-        // vm.prank(manager);
-        // vault.deposit(1 ether, manager);
     }
 
-    // function testDepositWithdraw() public {
-    //     uint256 aliceUnderlyingAmount = HUNDRED_E18;
+    function testDepositWithdraw() public {
+        uint256 aliceUnderlyingAmount = HUNDRED_E18;
 
-    //     vm.prank(alice);
-    //     _weth.approve(address(vault), aliceUnderlyingAmount);
-    //     assertEq(_weth.allowance(alice, address(vault)), aliceUnderlyingAmount);
+        vm.startPrank(alice);
+        _weth.approve(address(vault), aliceUnderlyingAmount);
+        assertEq(_weth.allowance(alice, address(vault)), aliceUnderlyingAmount);
 
-    //     vm.prank(alice);
-    //     uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
-    //     console.log("aliceShareAmount", aliceShareAmount);
-    //     uint256 aliceAssetsFromShares = vault.convertToAssets(aliceShareAmount);
-    //     console.log("aliceAssetsFromShares", aliceAssetsFromShares);
+        uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
+        console.log("aliceShareAmount", aliceShareAmount);
+        uint256 aliceAssetsFromShares = vault.convertToAssets(aliceShareAmount);
+        console.log("aliceAssetsFromShares", aliceAssetsFromShares);
 
-    //     vm.prank(alice);
-    //     // / This returns 99.06 from 100 eth deposited
-    //     vault.withdraw(aliceAssetsFromShares, alice, alice);
-    // }
+        vault.withdraw(aliceAssetsFromShares, alice, alice);
+    }
 
     function testPureSteth() public {
-        //   deposit shares 1000000000000000000
-        //   eth balance deposit 6656000000000000000
-        //   ethAmount aD 1000000000000000000
-        //   stEthAmount aD 917486753626076131
-        //   wstEthAmount aD 841781943079316122
-
-        //   deposit shares 118795610694844273761
-        //   eth balance deposit 105656000000000000000
-        //   ethAmount aD 100000000000000000000
-        //   stEthAmount aD 91748675362607613147
-        //   wstEthAmount aD 84178194307931612337
-        //   aliceShareAmount 118795610694844273761
-        //   aliceAssetsFromShares 84310267641840075158
 
         vm.startPrank(alice);
 
@@ -144,11 +121,10 @@ contract stEthTest is Test {
         uint256 ethFromStEth = _stEth.getPooledEthByShares(sharesOfAmt);
         uint256 balanceOfStEth = _stEth.balanceOf(alice);
 
-        /// Works! It's curve swap which needs solving... 
-
+        /// Lido operates with 1) stEth token (balanceOf) 2) stEth shares (getXPooledByX, base+yield, rebasing) 
         console.log("sharesOfAmt", sharesOfAmt); /// <= This equals SHARES, not amount of stETH (rebasing)
         console.log("ethFromStEth", ethFromStEth);
-        console.log("balanceOfStEth", balanceOfStEth); /// <= This is actual number of tokens held (and transferable)
+        console.log("balanceOfStEth", balanceOfStEth); /// <= This is actual number of tokens held (transferable)
 
         _stEth.approve(wstEth, stEthAmount);
         uint256 wstEthAmount = _wstEth.wrap(stEthAmount);
@@ -163,19 +139,10 @@ contract stEthTest is Test {
 
         uint256 min_dy = (_curvePool.get_dy(1, 0, balanceOfStEth) * 9900) / 10000; /// 1% slip
         console.log("min dy", min_dy);
+
         /// 1 = 0xEeE, 0 = stEth
         uint256 amount = _curvePool.exchange(1, 0, balanceOfStEth, min_dy);
         console.log("curve amount", amount);
 
-        //   shares withdraw 118795610694844273761
-        //   stEthAmount bW 91892626578673114639
-        //   amount 91423768717583208551
-        //   eth balance withdraw 97079768717583208551
-
-        //   deposit shares 1000000000000000000
-        //   eth balance deposit 6656000000000000000
-        //   ethAmount aD 1000000000000000000
-        //   stEthAmount aD 917486753626076131
-        //   wstEthAmount aD 841781943079316122
     }
 }

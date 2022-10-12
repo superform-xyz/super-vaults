@@ -17,6 +17,12 @@ interface IStETH {
     function burnShares(address, uint256) external returns (uint256);
 
     function approve(address, uint256) external returns (bool);
+
+    function sharesOf(address) external view returns (uint256);
+
+    function getPooledEthByShares(uint256) external view returns (uint256);
+
+    function balanceOf(address) external returns (uint256);
 }
 
 interface wstETH {
@@ -46,6 +52,12 @@ interface ICurve {
         uint256,
         uint256
     ) external returns (uint256);
+
+    function get_dy(
+        int128,
+        int128,
+        uint256
+    ) external view returns (uint256);
 }
 
 /// @notice Modified yield-daddy version with wrapped stEth as underlying asset to avoid rebasing balance
@@ -57,8 +69,8 @@ contract StETHERC4626 is ERC4626 {
     ICurve public curvePool;
 
     address public immutable ZERO_ADDRESS = address(0);
-    // address public immutable ETH = 0;
-    // address public immutable STETH = 0;
+    int128 public immutable index_eth = 0; /// ETH
+    int128 public immutable index_stEth = 1; /// stEth
 
     /// -----------------------------------------------------------------------
     /// Libraries usage
@@ -81,12 +93,13 @@ contract StETHERC4626 is ERC4626 {
     constructor(
         address weth_,
         address stEth_,
-        address wstEth_
+        address wstEth_,
+        address curvePool_
     ) ERC4626(ERC20(weth_), "ERC4626-Wrapped Lido stETH", "wlstETH") {
         stEth = IStETH(stEth_);
         wstEth = wstETH(wstEth_);
         weth = IWETH(weth_);
-        curvePool = ICurve(0xDC24316b9AE028F1497c275EB9192a3Ea0f67022);
+        curvePool = ICurve(curvePool_);
         stEth.approve(address(curvePool), type(uint256).max);
         stEth.approve(address(wstEth_), type(uint256).max);
     }
@@ -98,11 +111,10 @@ contract StETHERC4626 is ERC4626 {
     //////////////////////////////////////////////////////////////*/
 
     function beforeWithdraw(uint256 assets, uint256 shares) internal override {
-        uint256 stEthAmount = wstEth.unwrap(assets);
-        console.log("stEthAmount bW", stEthAmount);
-        /// U can't burnShares directly on lido! Hence the stETH/ETH poolz
-        /// https://etherscan.io/address/0xDC24316b9AE028F1497c275EB9192a3Ea0f67022
-        uint256 amount = curvePool.exchange(1, 0, stEthAmount, 1);
+        wstEth.unwrap(assets);
+        uint256 stEthBal = stEth.balanceOf(address(this));
+        uint256 min_dy = (curvePool.get_dy(index_stEth, index_eth, stEthBal) * 9900) / 10000; /// 1% slip
+        uint256 amount = curvePool.exchange(index_stEth, index_eth, stEthBal, min_dy);
         console.log("amount", amount);
     }
 
