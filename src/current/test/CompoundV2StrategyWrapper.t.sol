@@ -47,18 +47,13 @@ contract CompoundV2StrategyWrapperTest is Test {
 
         vm.prank(alice);
         uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
+        uint256 aliceAssetsToWithdraw = vault.convertToAssets(aliceShareAmount);
         assertEq(aliceUnderlyingAmount, aliceShareAmount);
         assertEq(vault.totalSupply(), aliceShareAmount);
         assertEq(vault.balanceOf(alice), aliceShareAmount);
 
-        // vm.prank(alice);
-        // vault.withdraw(aliceUnderlyingAmount, alice, alice);
-
-        // assertEq(vault.totalAssets(), 0);
-        // assertEq(vault.balanceOf(alice), 0);
-        // assertEq(vault.convertToAssets(vault.balanceOf(alice)), 0);
-        // assertEq(asset.balanceOf(alice), alicePreDepositBal);        
+        vm.prank(alice);
+        vault.withdraw(aliceAssetsToWithdraw, alice, alice);      
     }
 
-    function testMintRedeem() public {}
 }

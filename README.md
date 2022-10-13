@@ -12,6 +12,12 @@ Repository uses MakeFile to streamline testing operations. You can use `forge in
 
 `make test` for current implementation
 
+`make test-aave` for testing aave (forked FTM)
+
+`make test-compound` for testing compound (forked ETH)
+
+`make test-steth` for testing aave (forked ETH)
+
 `make test-old` for old implementation
 
 # To run OLD test:
