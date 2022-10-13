@@ -6,59 +6,10 @@ import "forge-std/console.sol";
 import {StETHERC4626} from "../eth-staking/stETH.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-interface IStETH {
-    function getTotalShares() external view returns (uint256);
-
-    function submit(address) external payable returns (uint256);
-
-    function burnShares(address, uint256) external returns (uint256);
-
-    function approve(address, uint256) external returns (bool);
-
-    function sharesOf(address) external view returns (uint256);
-
-    function getPooledEthByShares(uint256) external view returns (uint256);
-
-    function balanceOf(address) external returns (uint256);
-}
-
-interface wstETH {
-    function wrap(uint256) external returns (uint256);
-
-    function unwrap(uint256) external returns (uint256);
-
-    function getStETHByWstETH(uint256) external view returns (uint256);
-
-    function balanceOf(address) external view returns (uint256);
-}
-
-interface IWETH {
-    function approve(address, uint256) external returns (bool);
-
-    function balanceOf(address) external returns (uint256);
-
-    function allowance(address, address) external returns (uint256);
-
-    function wrap(uint256) external payable returns (uint256);
-
-    function unwrap(uint256) external returns (uint256);
-}
-
-interface ICurve {
-    function exchange(
-        int128,
-        int128,
-        uint256,
-        uint256
-    ) external returns (uint256);
-
-    function get_dy(
-        int128,
-        int128,
-        uint256
-    ) external view returns (uint256);
-}
-
+import {ICurve} from "../eth-staking/interfaces/ICurve.sol";
+import {IStETH} from "../eth-staking/interfaces/IStETH.sol";
+import {IWETH} from "../eth-staking/interfaces/IWETH.sol";
+import {wstETH} from "../eth-staking/interfaces/wstETH.sol";
 
 contract stEthTest is Test {
     uint256 public ethFork;
@@ -94,26 +45,26 @@ contract stEthTest is Test {
 
         deal(weth, alice, ONE_THOUSAND_E18);
         deal(weth, manager, ONE_THOUSAND_E18);
-
     }
 
     function testDepositWithdraw() public {
         uint256 aliceUnderlyingAmount = HUNDRED_E18;
 
         vm.startPrank(alice);
+
         _weth.approve(address(vault), aliceUnderlyingAmount);
         assertEq(_weth.allowance(alice, address(vault)), aliceUnderlyingAmount);
 
         uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
         console.log("aliceShareAmount", aliceShareAmount);
+
         uint256 aliceAssetsFromShares = vault.convertToAssets(aliceShareAmount);
         console.log("aliceAssetsFromShares", aliceAssetsFromShares);
 
-        vault.withdraw(aliceAssetsFromShares, alice, alice);
+        vault.withdraw(aliceShareAmount, alice, alice);
     }
 
     function testPureSteth() public {
-
         vm.startPrank(alice);
 
         uint256 stEthAmount = _stEth.submit{value: 1 ether}(alice);
@@ -121,9 +72,8 @@ contract stEthTest is Test {
         uint256 ethFromStEth = _stEth.getPooledEthByShares(sharesOfAmt);
         uint256 balanceOfStEth = _stEth.balanceOf(alice);
 
-        /// Lido operates with 1) stEth token (balanceOf) 2) stEth shares (getXPooledByX, base+yield, rebasing) 
         console.log("sharesOfAmt", sharesOfAmt); /// <= This equals SHARES, not amount of stETH (rebasing)
-        console.log("ethFromStEth", ethFromStEth);
+        console.log("ethFromStEth", ethFromStEth); /// <= This is amount of ETH from stETH shares if users would redeem in this block
         console.log("balanceOfStEth", balanceOfStEth); /// <= This is actual number of tokens held (transferable)
 
         _stEth.approve(wstEth, stEthAmount);
@@ -137,12 +87,12 @@ contract stEthTest is Test {
 
         _stEth.approve(address(curvePool), balanceOfStEth);
 
-        uint256 min_dy = (_curvePool.get_dy(1, 0, balanceOfStEth) * 9900) / 10000; /// 1% slip
+        uint256 min_dy = (_curvePool.get_dy(1, 0, balanceOfStEth) * 9900) /
+            10000; /// 1% slip
         console.log("min dy", min_dy);
 
         /// 1 = 0xEeE, 0 = stEth
         uint256 amount = _curvePool.exchange(1, 0, balanceOfStEth, min_dy);
         console.log("curve amount", amount);
-
     }
 }

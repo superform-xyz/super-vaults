@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: AGPL-3.0
+pragma solidity 0.8.14;
+
+interface ICurve {
+    function exchange(
+        int128,
+        int128,
+        uint256,
+        uint256
+    ) external returns (uint256);
+
+    function get_dy(
+        int128,
+        int128,
+        uint256
+    ) external view returns (uint256);
+}

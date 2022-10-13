@@ -6,71 +6,28 @@ import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
+import {ICurve} from "./interfaces/ICurve.sol";
+import {IStETH} from "./interfaces/IStETH.sol";
+import {IWETH} from "./interfaces/IWETH.sol";
+import {wstETH} from "./interfaces/wstETH.sol";
+
 import "forge-std/console.sol";
 
-
-interface IStETH {
-    function getTotalShares() external view returns (uint256);
-
-    function submit(address) external payable returns (uint256);
-
-    function burnShares(address, uint256) external returns (uint256);
-
-    function approve(address, uint256) external returns (bool);
-
-    function sharesOf(address) external view returns (uint256);
-
-    function getPooledEthByShares(uint256) external view returns (uint256);
-
-    function balanceOf(address) external returns (uint256);
-}
-
-interface wstETH {
-    function wrap(uint256) external returns (uint256);
-
-    function unwrap(uint256) external returns (uint256);
-
-    function getStETHByWstETH(uint256) external view returns (uint256);
-
-    function balanceOf(address) external view returns (uint256);
-}
-
-interface IWETH {
-    function balanceOf(address) external view returns (uint256);
-
-    function approve(address, uint256) external returns (bool);
-
-    function deposit() external payable;
-
-    function withdraw(uint256) external;
-}
-
-interface ICurve {
-    function exchange(
-        int128,
-        int128,
-        uint256,
-        uint256
-    ) external returns (uint256);
-
-    function get_dy(
-        int128,
-        int128,
-        uint256
-    ) external view returns (uint256);
-}
-
-/// @notice Modified yield-daddy version with wrapped stEth as underlying asset to avoid rebasing balance
+/// @notice Lido's stETH ERC4626 Wrapper
+/// Accepts WETH through ERC4626 interface, but can also accept ETH directly through other deposit() function.
+/// Returns assets as ETH for brevity (community-version should return stEth)
+/// Assets Under Managment (totalAssets()) operates on rebasing balance, re-calculated to the current value in ETH.
+/// Uses ETH/stETH CurvePool for a fast-exit with 1% slippage hardcoded.
 /// @author ZeroPoint Labs
 contract StETHERC4626 is ERC4626 {
+
     IStETH public stEth;
     wstETH public wstEth;
     IWETH public weth;
     ICurve public curvePool;
 
-    address public immutable ZERO_ADDRESS = address(0);
     int128 public immutable index_eth = 0; /// ETH
-    int128 public immutable index_stEth = 1; /// stEth
+    int128 public immutable index_stEth = 1; /// stETH
 
     /// -----------------------------------------------------------------------
     /// Libraries usage
@@ -85,17 +42,13 @@ contract StETHERC4626 is ERC4626 {
 
     /// @param weth_ weth address (Vault's underlying / deposit token)
     /// @param stEth_ stETH (Lido contract) address
-    /// @param wstEth_ wstETH contract addresss
-    /// @dev @notice Beware of proxy contracts!
-    /// Vault.balanceOf(asset) === wstETH
-    /// All calculations are on wstETH
-    /// Deposit needs to receive non-wrapped ETH to get stETH from Lido
+    /// @param wstEth_ wstETH contract addresss (Unused in this impl)
     constructor(
         address weth_,
         address stEth_,
         address wstEth_,
         address curvePool_
-    ) ERC4626(ERC20(weth_), "ERC4626-Wrapped Lido stETH", "wlstETH") {
+    ) ERC4626(ERC20(weth_), "ERC4626-Wrapped stETH", "wLstETH") {
         stEth = IStETH(stEth_);
         wstEth = wstETH(wstEth_);
         weth = IWETH(weth_);
@@ -110,11 +63,12 @@ contract StETHERC4626 is ERC4626 {
                           INTERNAL HOOKS LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function beforeWithdraw(uint256 assets, uint256 shares) internal override {
-        wstEth.unwrap(assets);
-        uint256 stEthBal = stEth.balanceOf(address(this));
-        uint256 min_dy = (curvePool.get_dy(index_stEth, index_eth, stEthBal) * 9900) / 10000; /// 1% slip
-        uint256 amount = curvePool.exchange(index_stEth, index_eth, stEthBal, min_dy);
+    function beforeWithdraw(uint256 assets, uint256) internal override {
+
+        /// NOTE: stEth is not bridgable, in our case withdrawing in stEth would mean additional swap at SuperForm lvl.
+        /// We can deploy other version which withdraw pure stEth, for community use
+        uint256 min_dy = (curvePool.get_dy(index_stEth, index_eth, assets) * 9900) / 10000; /// 1% slip
+        uint256 amount = curvePool.exchange(index_stEth, index_eth, assets, min_dy);
         console.log("amount", amount);
     }
 
@@ -122,8 +76,6 @@ contract StETHERC4626 is ERC4626 {
         console.log("ethAmount aD", ethAmount);
         uint256 stEthAmount = stEth.submit{value: ethAmount}(address(this)); /// Lido's submit() accepts only native ETH
         console.log("stEthAmount aD", stEthAmount);
-        uint256 wstEthAmount = wstEth.wrap(stEthAmount);
-        console.log("wstEthAmount aD", wstEthAmount);
     }
 
     /// -----------------------------------------------------------------------
@@ -138,10 +90,13 @@ contract StETHERC4626 is ERC4626 {
         returns (uint256 shares)
     {
         require((shares = previewDeposit(assets)) != 0, "ZERO_SHARES");
+        
         console.log("deposit shares", shares);
+
         asset.safeTransferFrom(msg.sender, address(this), assets);
 
         weth.withdraw(assets);
+        
         console.log("eth balance deposit", address(this).balance);
 
         _mint(receiver, shares);
@@ -188,6 +143,7 @@ contract StETHERC4626 is ERC4626 {
         address owner
     ) public override returns (uint256 shares) {
         shares = previewWithdraw(assets);
+
         console.log("shares withdraw", shares);
 
         if (msg.sender != owner) {
@@ -198,6 +154,7 @@ contract StETHERC4626 is ERC4626 {
         }
 
         beforeWithdraw(assets, shares);
+
         console.log("eth balance withdraw", address(this).balance);
 
         _burn(owner, shares);
@@ -213,13 +170,12 @@ contract StETHERC4626 is ERC4626 {
         address owner
     ) public override returns (uint256 assets) {
         if (msg.sender != owner) {
-            uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
+            uint256 allowed = allowance[owner][msg.sender];
 
             if (allowed != type(uint256).max)
                 allowance[owner][msg.sender] = allowed - shares;
         }
 
-        // Check for rounding error since we round down in previewRedeem.
         require((assets = previewRedeem(shares)) != 0, "ZERO_ASSETS");
 
         beforeWithdraw(assets, shares);
@@ -233,6 +189,7 @@ contract StETHERC4626 is ERC4626 {
 
     /// @dev payable mint() is difficult to implement, probably should be dropped fully
     /// we can live with mint() being only available through weth
+
     // function mint(uint256 shares, address receiver, bool isPayable) public payable returns (uint256 assets) {
     //     require((ethAmount = previewMint(shares)) == msg.value, "NOT_ENOUGH");
     //     _mint(receiver, shares);
@@ -240,8 +197,9 @@ contract StETHERC4626 is ERC4626 {
     //     afterDeposit(msg.value, shares);
     // }
 
+    /// Pure/Native ETH as AUM. Rebasing! We can make wstEth as underlying a separate implementation
     function totalAssets() public view virtual override returns (uint256) {
-        return wstEth.balanceOf(address(this));
+        return stEth.getPooledEthByShares(stEth.balanceOf(address(this)));
     }
 
     function convertToShares(uint256 assets)

@@ -16,3 +16,6 @@
 [submodule "lib/yield-daddy"]
 	path = lib/yield-daddy
 	url = https://github.com/timeless-fi/yield-daddy
+[submodule "lib/superform-contracts"]
+	path = lib/superform-contracts
+	url = https://github.com/superform-xyz/superform-contracts
