@@ -58,7 +58,8 @@ contract StETHERC4626NoSwap is ERC4626 {
 
     function afterDeposit(uint256 ethAmount, uint256) internal override {
         console.log("ethAmount aD", ethAmount);
-        uint256 stEthAmount = stEth.submit{value: ethAmount}(address(this)); /// Lido's submit() accepts only native ETH
+        /// Lido's submit() accepts only native ETH
+        uint256 stEthAmount = stEth.submit{value: ethAmount}(address(this));
         console.log("stEthAmount aD", stEthAmount);
     }
 
