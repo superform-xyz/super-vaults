@@ -6,17 +6,16 @@ import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
-import {ICurve} from "../interfaces/ICurve.sol";
 import {IStETH} from "../interfaces/IStETH.sol";
 import {IWETH} from "../interfaces/IWETH.sol";
-import {wstETH} from "../interfaces/wstETH.sol";
 
 import "forge-std/console.sol";
 
-/// @notice Lido's stETH ERC4626 Wrapper - NO_SWAP stETH version
-/// Accepts WETH through ERC4626 interface, but can also accept ETH directly through other deposit() function.
-/// Returns assets as stETH for outside-of-superform use
-/// Assets Under Managment (totalAssets()) operates on rebasing balance
+/// @notice Lido's stETH ERC4626 Wrapper - stEth as Vault's underlying token (and token received after withdraw).
+/// Accepts WETH through ERC4626 interface, but can also accept ETH directly through different deposit() function signature.
+/// Vault balance holds stEth. Value is updated for each accounting call.
+/// Assets Under Managment (totalAssets()) operates on rebasing balance.
+/// This stEth ERC4626 wrapper is prefered way to deal with stEth wrapping over other solutions.
 /// @author ZeroPoint Labs
 contract StETHERC4626NoSwap is ERC4626 {
 
@@ -173,7 +172,7 @@ contract StETHERC4626NoSwap is ERC4626 {
         stEthAsset.safeTransfer(receiver, assets);
     }
 
-    /// stETH as AUM. Rebasing! We can make wstEth as underlying a separate implementation
+    /// stETH as AUM. Rebasing!
     function totalAssets() public view virtual override returns (uint256) {
         return stEth.balanceOf(address(this));
     }

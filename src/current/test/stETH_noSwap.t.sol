@@ -60,4 +60,34 @@ contract stEthNoSwapTest is Test {
         vault.withdraw(aliceAssetsFromShares, alice, alice);
     }
 
+    function testMintRedeem() public {
+        uint256 aliceSharesMint = HUNDRED_E18;
+
+        vm.startPrank(alice);
+
+        uint256 expectedAssetFromShares = vault.convertToAssets(
+            aliceSharesMint
+        );
+        _weth.approve(address(vault), expectedAssetFromShares);
+
+        uint256 aliceAssetAmount = vault.mint(aliceSharesMint, alice);
+        assertEq(expectedAssetFromShares, aliceAssetAmount);
+
+        uint256 aliceSharesAmount = vault.balanceOf(alice);
+        assertEq(aliceSharesAmount, aliceSharesMint);
+
+        vault.redeem(aliceSharesAmount, alice, alice);
+    }
+
+    function testDepositETH() public {
+        uint256 aliceEth = HUNDRED_E18;
+
+        startHoax(alice, aliceEth + 1 ether);
+
+        uint256 expectedSharesFromAsset = vault.convertToShares(aliceEth);
+        uint256 aliceShareAmount = vault.deposit{value: aliceEth}(alice);
+        assertEq(expectedSharesFromAsset, aliceShareAmount);
+
+    }
+
 }
