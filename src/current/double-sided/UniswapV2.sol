@@ -8,6 +8,7 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 import {IUniswapV2ERC20} from "./interfaces/IUniswapV2ERC20.sol";
 import {IUniswapV2Pair} from "./interfaces/IUniswapV2Pair.sol";
+import {IUniswapV2Router} from "./interfaces/IUniswapV2Router.sol";
 import {UniswapV2Library} from "./utils/UniswapV2Library.sol";
 
 // Vault (ERC4626) - totalAssets() == lpToken of Uniswap Pool
@@ -16,26 +17,6 @@ import {UniswapV2Library} from "./utils/UniswapV2Library.sol";
 // - deposit() safeTransfersFrom A,B
 // - checks are run against expected lpTokens amounts from Uniswap && || lpTokens already at balance
 // withdraw() -> withdraws both A,B in accrued X+n,Y+n amounts
-
-interface IUniswapV2Router {
-
-    function addLiquidity(
-        address tokenA,
-        address tokenB,
-        uint256 amountADesired,
-        uint256 amountBDesired,
-        uint256 amountAMin,
-        uint256 amountBMin,
-        address to,
-        uint256 deadline
-    )
-        external
-        returns (
-            uint256 amountA,
-            uint256 amountB,
-            uint256 liquidity
-        );
-}
 
 /// https://v2.info.uniswap.org/pair/0xae461ca67b15dc8dc81ce7615e0320da1a9ab8d5 (DAI-USDC LP/PAIR on ETH)
 contract UniswapV2WrapperERC4626 is ERC4626 {
@@ -76,6 +57,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         override
         returns (uint256 shares)
     {
+        /// From 100 uniLP msg.sender gets N shares (of this Vault)
         require((shares = previewDeposit(assets)) != 0, "ZERO_SHARES");
 
         /// Ideally, msg.sender should call this function beforehand to get correct "assets" amount
@@ -118,12 +100,12 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         address receiver,
         address owner
     ) public override returns (uint256 shares) {
-        shares = previewWithdraw(assets); // No need to check for rounding error, previewWithdraw rounds up.
+        shares = previewWithdraw(assets);
 
         (uint256 assets0, uint256 assets1) = getTokensToDeposit(assets);
 
         if (msg.sender != owner) {
-            uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
+            uint256 allowed = allowance[owner][msg.sender];
 
             if (allowed != type(uint256).max)
                 allowance[owner][msg.sender] = allowed - shares;
