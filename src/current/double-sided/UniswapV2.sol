@@ -7,6 +7,7 @@ import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 import {IUniswapV2ERC20} from "./interfaces/IUniswapV2ERC20.sol";
+import {IUniswapV2Pair} from "./interfaces/IUniswapV2Pair.sol";
 import {UniswapV2Library} from "./utils/UniswapV2Library.sol";
 
 // Vault (ERC4626) - totalAssets() == lpToken of Uniswap Pool
@@ -16,15 +17,7 @@ import {UniswapV2Library} from "./utils/UniswapV2Library.sol";
 // - checks are run against expected lpTokens amounts from Uniswap && || lpTokens already at balance
 // withdraw() -> withdraws both A,B in accrued X+n,Y+n amounts
 
-interface IPairV2 {}
-
-interface IFactoryV2 {}
-
-interface IRouterV2 {
-    function getAmountsIn(uint256 amountOut, address[] memory path)
-        external
-        view
-        returns (uint256[] memory amounts);
+interface IUniswapV2Router {
 
     function addLiquidity(
         address tokenA,
@@ -50,21 +43,22 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
     using FixedPointMathLib for uint256;
 
     address public immutable manager;
-    IPairV2 public immutable pair; /// pair address?
-    IRouterV2 public immutable router;
 
-    // ERC20 public tokenLp;
+    IUniswapV2Pair public immutable pair;
+    IUniswapV2Router public immutable router;
+
+    /// For simplicity, we use solmate's ERC20 interface
     ERC20 public token0;
     ERC20 public token1;
 
     constructor(
-        ERC20 asset_,
-        ERC20 token0_,
-        ERC20 token1_,
         string memory name_,
         string memory symbol_,
-        IRouterV2 router_,
-        IPairV2 pair_
+        ERC20 asset_, /// Pair address
+        ERC20 token0_,
+        ERC20 token1_,
+        IUniswapV2Router router_,
+        IUniswapV2Pair pair_ /// Pair address
     ) ERC4626(asset_, name_, symbol_) {
         manager = msg.sender;
         pair = pair_;
@@ -74,6 +68,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
     }
 
     /// User wants to get 100 UniLP (underlying)
+    /// REQUIREMENT: Calculate amount of assets and have enough of assets0/1 to cover this amount for LP requested (slippage!)
     /// @param assets == Assume caller called previewDeposit() first for calc on amount of assets to give approve to
     /// assets value == amount of lpToken to mint (asset) from token0 & token1 input (function has no knowledge of inputs)
     function deposit(uint256 assets, address receiver)
@@ -83,6 +78,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
     {
         require((shares = previewDeposit(assets)) != 0, "ZERO_SHARES");
 
+        /// Ideally, msg.sender should call this function beforehand to get correct "assets" amount
         (uint256 assets0, uint256 assets1) = getTokensToDeposit(assets);
 
         token0.safeTransferFrom(msg.sender, address(this), assets0);
@@ -161,21 +157,21 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         view
         returns (uint256 assets0, uint256 assets1)
     {
-        /// calc xy=k here, where x=a0,y=a1
+    
+        /// get xy=k here, where x=ra0,y=ra1
         (uint256 reserveA, uint256 reserveB) = UniswapV2Library.getReserves(
             address(pair),
             address(token0),
             address(token1)
         );
-        // tokenABalance = reserveA
-        // tokenBBalance = reserveB
-        // totalSupply = pairTotalSupply()
-        // amountA = (poolLpAmount / totalSupply) * reserveA
-        // amountB = (poolLpAmount / totalSupply) * reserveB
-        // amountB = amountA.mul(reserveB) / reserveA;
-        // amountA = amountB.mul(reserveA) / reserveB;
 
-        // UniswapV2Library.quote(amountA, reserveA, reserveB);
+        /// shares of uni pair contract
+        uint256 pairSupply = pair.totalSupply();
+        /// amount of token0 to provide to receive poolLpAmount
+        assets0 = (poolLpAmount / pairSupply) * reserveA;
+        /// amount of token1 to provide to receive poolLpAmount
+        assets1 = (poolLpAmount / pairSupply) * reserveB;
+    
     }
 
     /// Pool's LP token on contract balance

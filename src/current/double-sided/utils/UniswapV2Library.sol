@@ -33,6 +33,7 @@ library UniswapV2Library {
     }
 
     // fetches and sorts the reserves for a pair
+    /// NOTE: Original lib implementation changed to accept pair address directly, TODO: revert change
     function getReserves(
         address pair,
         address tokenA,
