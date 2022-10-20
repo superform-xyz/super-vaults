@@ -16,9 +16,7 @@ import {UniswapV2Library} from "./utils/UniswapV2Library.sol";
 // - checks are run against expected lpTokens amounts from Uniswap && || lpTokens already at balance
 // withdraw() -> withdraws both A,B in accrued X+n,Y+n amounts
 
-interface IPairV2 {
-
-}
+interface IPairV2 {}
 
 interface IFactoryV2 {}
 
@@ -75,6 +73,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         token1 = token1_;
     }
 
+    /// User wants to get 100 UniLP (underlying)
     /// @param assets == Assume caller called previewDeposit() first for calc on amount of assets to give approve to
     /// assets value == amount of lpToken to mint (asset) from token0 & token1 input (function has no knowledge of inputs)
     function deposit(uint256 assets, address receiver)
@@ -97,6 +96,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         afterDeposit(assets, shares);
     }
 
+    /// User want to get 100 VaultLP (vault's token) worth N UniLP
     /// shares value == amount of Vault token (shares) to mint from requested lpToken
     function mint(uint256 shares, address receiver)
         public
@@ -116,8 +116,9 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         afterDeposit(assets, shares);
     }
 
+    /// User wants to burn 100 UniLP (underlying) for N worth of token0/1
     function withdraw(
-        uint256 assets,
+        uint256 assets, // amount of underlying asset (pool Lp) to withdraw
         address receiver,
         address owner
     ) public override returns (uint256 shares) {
@@ -128,7 +129,8 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         if (msg.sender != owner) {
             uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
 
-            if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
+            if (allowed != type(uint256).max)
+                allowance[owner][msg.sender] = allowed - shares;
         }
 
         beforeWithdraw(assets, shares);
@@ -138,11 +140,22 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
         token0.safeTransfer(receiver, assets0);
-        
+
         token1.safeTransfer(receiver, assets1);
     }
 
-    /// For requested 100 assets (pair LP), how much tok0/1 we need to give?
+    /// User wants to burn 100 VaultLp (vault's token) for N worth of token0/1
+    function redeem(
+        uint256 shares,
+        address receiver,
+        address owner
+    ) public override returns (uint256 assets) {
+        /// NOTE: To implement
+        return super.redeem(shares, receiver, owner);
+    }
+
+    /// For requested 100 UniLp tokens, how much tok0/1 we need to give?
+    /// (100 × 24689440) ÷ 24696974 == (amountA * reserveB) / reserveA = 
     function getTokensToDeposit(uint256 poolLpAmount)
         public
         view
@@ -154,6 +167,13 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
             address(token0),
             address(token1)
         );
+        // tokenABalance = reserveA
+        // tokenBBalance = reserveB
+        // totalSupply = pairTotalSupply()
+        // amountA = (poolLpAmount / totalSupply) * reserveA
+        // amountB = (poolLpAmount / totalSupply) * reserveB
+        // amountB = amountA.mul(reserveB) / reserveA;
+        // amountA = amountB.mul(reserveA) / reserveB;
 
         // UniswapV2Library.quote(amountA, reserveA, reserveB);
     }

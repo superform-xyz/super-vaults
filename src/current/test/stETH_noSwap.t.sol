@@ -3,13 +3,13 @@ pragma solidity 0.8.14;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-import {StETHERC4626NoSwap} from "../eth-staking/lido/stETH_noSwap.sol";
+import {StETHERC4626NoSwap} from "../token-staking/lido/stETH_noSwap.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-import {ICurve} from "../eth-staking/interfaces/ICurve.sol";
-import {IStETH} from "../eth-staking/interfaces/IStETH.sol";
-import {IWETH} from "../eth-staking/interfaces/IWETH.sol";
-import {wstETH} from "../eth-staking/interfaces/wstETH.sol";
+import {ICurve} from "../token-staking/interfaces/ICurve.sol";
+import {IStETH} from "../token-staking/interfaces/IStETH.sol";
+import {IWETH} from "../token-staking/interfaces/IWETH.sol";
+import {wstETH} from "../token-staking/interfaces/wstETH.sol";
 
 contract stEthNoSwapTest is Test {
     uint256 public ethFork;
@@ -51,7 +51,9 @@ contract stEthNoSwapTest is Test {
         _weth.approve(address(vault), aliceUnderlyingAmount);
         assertEq(_weth.allowance(alice, address(vault)), aliceUnderlyingAmount);
 
+        uint256 expectedSharesFromAssets = vault.convertToShares(aliceUnderlyingAmount);
         uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
+        assertEq(expectedSharesFromAssets, aliceShareAmount);
         console.log("aliceShareAmount", aliceShareAmount);
 
         uint256 aliceAssetsFromShares = vault.convertToAssets(aliceShareAmount);

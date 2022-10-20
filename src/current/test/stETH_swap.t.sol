@@ -3,13 +3,13 @@ pragma solidity 0.8.14;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-import {StETHERC4626} from "../eth-staking/lido/stETH_swap.sol";
+import {StETHERC4626} from "../token-staking/lido/stETH_swap.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-import {ICurve} from "../eth-staking/interfaces/ICurve.sol";
-import {IStETH} from "../eth-staking/interfaces/IStETH.sol";
-import {IWETH} from "../eth-staking/interfaces/IWETH.sol";
-import {wstETH} from "../eth-staking/interfaces/wstETH.sol";
+import {ICurve} from "../token-staking/interfaces/ICurve.sol";
+import {IStETH} from "../token-staking/interfaces/IStETH.sol";
+import {IWETH} from "../token-staking/interfaces/IWETH.sol";
+import {wstETH} from "../token-staking/interfaces/wstETH.sol";
 
 contract stEthTest is Test {
     uint256 public ethFork;
