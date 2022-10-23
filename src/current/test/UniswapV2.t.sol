@@ -14,6 +14,7 @@ contract UniswapV2Test is Test {
     uint256 public ethFork;
     uint256 public immutable ONE_THOUSAND_E18 = 1000 ether;
     uint256 public immutable HUNDRED_E18 = 100 ether;
+    uint256 public immutable ONE_E18 = 1 ether;
 
     using FixedPointMathLib for uint256;
 
@@ -41,46 +42,33 @@ contract UniswapV2Test is Test {
         manager = msg.sender;
 
         deal(address(dai), alice, ONE_THOUSAND_E18);
-        deal(address(usdc), alice, ONE_THOUSAND_E18);
+        deal(address(usdc), alice, 1000e6);
 
     }
 
-    // function testDepositWithdraw() public {
-    //     uint256 aliceUnderlyingAmount = HUNDRED_E18;
+    function testDepositWithdraw() public {
+        uint256 uniLpRequested = 1000000000; // 886625547612323
+                                             // 2735732499
+        vm.startPrank(alice);
 
-    //     vm.startPrank(alice);
+        /// Should calc underlying amount beforehand
+        uint256 poolAmount = vault.getLiquidityAmountOutFor(ONE_THOUSAND_E18, 1000e6);
+        (uint256 assets0, uint256 assets1) = vault.getTokensToDeposit(poolAmount);
+        console.log("assets0", assets0, "assets1", assets1);
+        console.log("liq0", poolAmount);
+        
+        dai.approve(address(vault), assets0);
+        usdc.approve(address(vault), assets1);
+        
+        uint256 expectedSharesFromUniLP = vault.convertToShares(poolAmount);
+        uint256 aliceShareAmount = vault.deposit(poolAmount, alice);
+        
+        assertEq(expectedSharesFromUniLP, aliceShareAmount);
+        console.log("aliceShareAmount", aliceShareAmount);
 
-    //     _weth.approve(address(vault), aliceUnderlyingAmount);
-    //     assertEq(_weth.allowance(alice, address(vault)), aliceUnderlyingAmount);
-
-    //     uint256 expectedSharesFromAssets = vault.convertToShares(aliceUnderlyingAmount);
-    //     uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
-    //     assertEq(expectedSharesFromAssets, aliceShareAmount);
-    //     console.log("aliceShareAmount", aliceShareAmount);
-
-    //     uint256 aliceAssetsFromShares = vault.convertToAssets(aliceShareAmount);
-    //     console.log("aliceAssetsFromShares", aliceAssetsFromShares);
-
-    //     vault.withdraw(aliceAssetsFromShares, alice, alice);
-    // }
-
-    // function testMintRedeem() public {
-    //     uint256 aliceSharesMint = HUNDRED_E18;
-
-    //     vm.startPrank(alice);
-
-    //     uint256 expectedAssetFromShares = vault.convertToAssets(
-    //         aliceSharesMint
-    //     );
-    //     _weth.approve(address(vault), expectedAssetFromShares);
-
-    //     uint256 aliceAssetAmount = vault.mint(aliceSharesMint, alice);
-    //     assertEq(expectedAssetFromShares, aliceAssetAmount);
-
-    //     uint256 aliceSharesAmount = vault.balanceOf(alice);
-    //     assertEq(aliceSharesAmount, aliceSharesMint);
-
-    //     vault.redeem(aliceSharesAmount, alice, alice);
-    // }
+        // uint256 aliceAssetsFromShares = vault.convertToAssets(aliceShareAmount);
+        // console.log("aliceAssetsFromShares", aliceAssetsFromShares);
+        // vault.withdraw(aliceAssetsFromShares, alice, alice);
+    }
 
 }

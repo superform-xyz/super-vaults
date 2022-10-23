@@ -17,3 +17,4 @@ test-aave :; forge test --fork-url $(FTM_MAINNET_RPC) --match-contract AaveV2* -
 test-compound :; forge test --match-contract CompoundV2StrategyWrapperTest -vvv
 test-steth :; forge test --match-contract stEth.*Test -vvv
 test-steth2 :; forge test --match-contract stEthNoSwap.*Test -vvv
+test-uniswapV2 :; forge test --match-contract UniswapV2Test -vvv
