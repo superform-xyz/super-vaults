@@ -184,7 +184,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         );
         /// shares of uni pair contract
         uint256 pairSupply = pair.totalSupply();
-        /// amount of token1 to provide to receive poolLpAmount
+        /// amount of token0 to provide to receive poolLpAmount
         assets0 = (reserveA * poolLpAmount) / pairSupply;
         /// amount of token1 to provide to receive poolLpAmount
         assets1 = (reserveB * poolLpAmount) / pairSupply;
