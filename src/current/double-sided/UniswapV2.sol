@@ -50,12 +50,26 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         token1 = token1_;
         token0.approve(address(router), type(uint256).max);
         token1.approve(address(router), type(uint256).max);
+        asset.approve(address(router), type(uint256).max);
     }
 
-    function beforeWithdraw(uint256 assets, uint256 shares) internal override {}
+    function beforeWithdraw(uint256 assets, uint256 shares) internal override {
+        (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets);
+
+        /// temp implementation, we should call directly on a pair
+        router.removeLiquidity(
+            address(token0),
+            address(token1),
+            assets,
+            assets0 - 1000,
+            assets1 - 1000,
+            address(this),
+            block.timestamp + 100
+        );
+    }
 
     function afterDeposit(uint256 assets, uint256 shares) internal override {
-        (uint256 assets0, uint256 assets1) = getTokensToDeposit(assets);
+        (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets);
 
         /// temp implementation, we should call directly on a pair
         router.addLiquidity(
@@ -83,7 +97,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         require((shares = previewDeposit(assets)) != 0, "ZERO_SHARES");
 
         /// Ideally, msg.sender should call this function beforehand to get correct "assets" amount
-        (uint256 assets0, uint256 assets1) = getTokensToDeposit(assets);
+        (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets);
 
         token0.safeTransferFrom(msg.sender, address(this), assets0);
 
@@ -103,7 +117,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         override
         returns (uint256 assets)
     {
-        (uint256 assets0, uint256 assets1) = getTokensToDeposit(assets);
+        (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets);
 
         token0.safeTransferFrom(msg.sender, address(this), assets0);
 
@@ -123,8 +137,10 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         address owner
     ) public override returns (uint256 shares) {
         shares = previewWithdraw(assets);
+        console.log("shares", shares);
 
-        (uint256 assets0, uint256 assets1) = getTokensToDeposit(assets);
+        (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets);
+        console.log("a0", assets0, "a1", assets1);
 
         if (msg.sender != owner) {
             uint256 allowed = allowance[owner][msg.sender];
@@ -155,7 +171,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
     }
 
     /// For requested 100 UniLp tokens, how much tok0/1 we need to give?
-    function getTokensToDeposit(uint256 poolLpAmount)
+    function getAssetsAmounts(uint256 poolLpAmount)
         public
         view
         returns (uint256 assets0, uint256 assets1)
@@ -191,34 +207,12 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         );
     }
 
-    function min(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        z = x < y ? x : y;
-    }
-
     /// Pool's LP token on contract balance
     function totalAssets() public view override returns (uint256) {
         return asset.balanceOf(address(this));
     }
 
-    ///
-    function convertToShares(uint256 assets)
-        public
-        view
-        override
-        returns (uint256)
-    {
-        uint256 supply = totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
-
-        return supply == 0 ? assets : assets.mulDivDown(supply, totalAssets());
-    }
-
-    /// How much of SHARES of this VAULT user gets for ASSETS
-    function previewDeposit(uint256 assets)
-        public
-        view
-        override
-        returns (uint256)
-    {
-        return convertToShares(assets);
+    function min(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        z = x < y ? x : y;
     }
 }

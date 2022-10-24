@@ -43,17 +43,18 @@ contract UniswapV2Test is Test {
 
         deal(address(dai), alice, ONE_THOUSAND_E18);
         deal(address(usdc), alice, 1000e6);
-
+        // 887227704489874
     }
 
     function testDepositWithdraw() public {
-        uint256 uniLpRequested = 1000000000; // 886625547612323
+        // uint256 uniLpRequested = 1000000000; // 886625547612323
                                              // 2735732499
         vm.startPrank(alice);
 
-        /// Should calc underlying amount beforehand
+        /// Calculate amount of UniV2LP to get from tokens sent (DAI/USDC)
+        /// NOTE: We should provide helper function to get optimal amounts here
         uint256 poolAmount = vault.getLiquidityAmountOutFor(ONE_THOUSAND_E18, 1000e6);
-        (uint256 assets0, uint256 assets1) = vault.getTokensToDeposit(poolAmount);
+        (uint256 assets0, uint256 assets1) = vault.getAssetsAmounts(poolAmount);
         console.log("assets0", assets0, "assets1", assets1);
         console.log("liq0", poolAmount);
         
@@ -66,9 +67,11 @@ contract UniswapV2Test is Test {
         assertEq(expectedSharesFromUniLP, aliceShareAmount);
         console.log("aliceShareAmount", aliceShareAmount);
 
-        // uint256 aliceAssetsFromShares = vault.convertToAssets(aliceShareAmount);
-        // console.log("aliceAssetsFromShares", aliceAssetsFromShares);
-        // vault.withdraw(aliceAssetsFromShares, alice, alice);
+        uint256 expectedUniLpFromVaultLP = vault.convertToAssets(aliceShareAmount);
+        console.log("expectedUniLpFromVaultLP", expectedUniLpFromVaultLP);
+        uint256 sharesBurned = vault.withdraw(expectedUniLpFromVaultLP, alice, alice);
+        console.log("sharesBurned", sharesBurned);
+        console.log("aliceBalance", vault.balanceOf(alice));
     }
 
 }
