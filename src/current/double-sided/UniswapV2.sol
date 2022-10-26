@@ -99,6 +99,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         /// Ideally, msg.sender should call this function beforehand to get correct "assets" amount
         (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets);
 
+        /// Best if we approve exact amounts, but because of UniV2 min() we can sometimes approve to much/to little
         token0.safeTransferFrom(msg.sender, address(this), assets0);
 
         token1.safeTransferFrom(msg.sender, address(this), assets1);
@@ -137,6 +138,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         address owner
     ) public override returns (uint256 shares) {
         shares = previewWithdraw(assets);
+
         console.log("shares", shares);
 
         (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets);
@@ -166,8 +168,29 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         address receiver,
         address owner
     ) public override returns (uint256 assets) {
-        /// NOTE: To implement
-        return super.redeem(shares, receiver, owner);
+        if (msg.sender != owner) {
+            uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
+
+            if (allowed != type(uint256).max)
+                allowance[owner][msg.sender] = allowed - shares;
+        }
+
+        // Check for rounding error since we round down in previewRedeem.
+        require((assets = previewRedeem(shares)) != 0, "ZERO_ASSETS");
+
+        (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets);
+
+        console.log("a0", assets0, "a1", assets1);
+
+        beforeWithdraw(assets, shares);
+
+        _burn(owner, shares);
+
+        emit Withdraw(msg.sender, receiver, owner, assets, shares);
+
+        token0.safeTransfer(receiver, assets0);
+
+        token1.safeTransfer(receiver, assets1);
     }
 
     /// For requested 100 UniLp tokens, how much tok0/1 we need to give?

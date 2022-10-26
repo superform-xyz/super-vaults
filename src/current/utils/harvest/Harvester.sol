@@ -6,6 +6,7 @@ import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
 import {DexSwap} from "../swapUtils.sol";
+import "forge-std/console.sol";
 
 contract Harvester {
     address public  manager;
@@ -27,8 +28,8 @@ contract Harvester {
         address pair2;
     }
 
-    constructor() {
-        manager = msg.sender;
+    constructor(address manager_) {
+        manager = manager_;
     }
 
     function setVault(
@@ -49,16 +50,17 @@ contract Harvester {
     ) external {
         require(msg.sender == manager, "onlyOwner");
         SwapInfo = swapInfo(token, pair1, pair2);
-        rewardToken.approve(SwapInfo.pair1, type(uint256).max); /// max approves address
+        ERC20(rewardTokenAddr).approve(SwapInfo.pair1, type(uint256).max); /// max approves address
         ERC20(SwapInfo.token).approve(SwapInfo.pair2, type(uint256).max); /// max approves address
     }
+
 
     function harvest() external {
 
         /// Implement rewards distributor contract directly in the wrapper harvest()
 
         uint256 earned = ERC20(rewardToken).balanceOf(address(vault));
-
+        console.log("earned", earned);
         /// If one swap needed (high liquidity pair) - set swapInfo.token0/token/pair2 to 0x
         if (SwapInfo.token == address(underlying)) {
             DexSwap.swap(
@@ -69,13 +71,14 @@ contract Harvester {
             );
             /// If two swaps needed
         } else {
+            console.log("here");
             uint256 swapTokenAmount = DexSwap.swap(
                 earned,
                 rewardTokenAddr, // from AAVE-Fork
                 SwapInfo.token, /// to intermediary token with high liquidity (no direct pools)
                 SwapInfo.pair1 /// pairToken (pool)
             );
-
+            console.log("swapTokekAmount", swapTokenAmount);
             swapTokenAmount = DexSwap.swap(
                 swapTokenAmount,
                 SwapInfo.token, // from received token
@@ -84,8 +87,9 @@ contract Harvester {
             );
         }
 
+        console.log("underlying", underlying.balanceOf(address(this)));
         /// reinvest() without minting (no asset.totalSupply() increase == profit)
         /// afterDeposit just makes totalAssets() aToken's balance growth (to be distributed back to share owners)
-        rewardToken.transfer(address(vault), underlying.balanceOf(address(this)));
+        underlying.transfer(address(vault), underlying.balanceOf(address(this)));
     }
 }

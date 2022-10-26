@@ -25,7 +25,7 @@ contract MockHarvestVault is ERC4626 {
 
     function enableHarvest() external {
         require(msg.sender == manager, "onlyOwner");
-        harvester = new Harvester();
+        harvester = new Harvester(manager);
         ERC20(rewardToken).approve(address(harvester), type(uint256).max);
     }
 
