@@ -7,19 +7,19 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
 import {IStMATIC} from "../interfaces/IStMATIC.sol";
+import {IMATIC} from "../interfaces/IMatic.sol";
 
 import "forge-std/console.sol";
 
 /// @notice Lido's stMATIC ERC4626 Wrapper - stMatic as Vault's underlying token (and token received after withdraw).
-/// Accepts MATIC through ERC4626 interface, but can also accept MATIC directly through different deposit() function signature.
+/// Accepts MATIC through ERC4626 interface
 /// Vault balance holds stMatic. Value is updated for each accounting call.
-/// Assets Under Managment (totalAssets()) operates on rebasing balance.
-/// This stMatic ERC4626 wrapper is prefered way to deal with stMatic wrapping over other solutions.
 /// @author ZeroPoint Labs
 contract StMATIC4626 is ERC4626 {
 
     IStMATIC public stMatic;
     ERC20 public stMaticAsset;
+    ERC20 public matic;
 
     /// -----------------------------------------------------------------------
     /// Libraries usage
@@ -40,14 +40,18 @@ contract StMATIC4626 is ERC4626 {
     ) ERC4626(ERC20(matic_), "ERC4626-Wrapped stMatic", "wLstMatic") {
         stMatic = IStMATIC(stMatic_);
         stMaticAsset = ERC20(stMatic_);
+        matic = ERC20(matic_);
+        matic.approve(address(stMatic), type(uint256).max);
     }
+
+    receive() external payable {}
 
     /*//////////////////////////////////////////////////////////////
                           INTERNAL HOOKS LOGIC
     //////////////////////////////////////////////////////////////*/
 
     function beforeWithdraw(uint256 assets, uint256) internal override {
-        /// NOTE: Empty. We withdraw stMatic from contract balance
+        /// NOTE: Empty. We withdraw stMatic from the contract balance
     }
 
     function afterDeposit(uint256 assets, uint256) internal override {
@@ -62,7 +66,7 @@ contract StMATIC4626 is ERC4626 {
     /// -----------------------------------------------------------------------
 
     /// Standard ERC4626 deposit can only accept ERC20
-    /// Vault's underlying is WETH (ERC20), Lido expects ETH (Native), we make wraperooo magic
+    /// Vault's underlying is MATIC (ERC20)
     function deposit(uint256 assets, address receiver)
         public
         override
@@ -73,8 +77,6 @@ contract StMATIC4626 is ERC4626 {
         console.log("deposit shares", shares);
 
         asset.safeTransferFrom(msg.sender, address(this), assets);
-        
-        console.log("eth balance deposit", address(this).balance);
 
         _mint(receiver, shares);
 
