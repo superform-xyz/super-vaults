@@ -27,6 +27,8 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
 
     address public immutable manager;
 
+    uint256 public slippage;
+
     IUniswapV2Pair public immutable pair;
     IUniswapV2Router public immutable router;
 
@@ -41,13 +43,15 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         ERC20 token0_,
         ERC20 token1_,
         IUniswapV2Router router_,
-        IUniswapV2Pair pair_ /// Pair address
+        IUniswapV2Pair pair_, /// Pair address
+        uint256 slippage_
     ) ERC4626(asset_, name_, symbol_) {
         manager = msg.sender;
         pair = pair_;
         router = router_;
         token0 = token0_;
         token1 = token1_;
+        slippage = slippage_;
         token0.approve(address(router), type(uint256).max);
         token1.approve(address(router), type(uint256).max);
         asset.approve(address(router), type(uint256).max);
@@ -61,7 +65,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
             address(token0),
             address(token1),
             assets,
-            assets0 - 1000,
+            assets0 - 1000, /// temp slippage
             assets1 - 1000,
             address(this),
             block.timestamp + 100
@@ -77,7 +81,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
             address(token1),
             assets0,
             assets1,
-            assets0 - 1,
+            assets0 - 1, /// temp slippage
             assets1 - 1,
             address(this),
             block.timestamp + 100
@@ -118,6 +122,8 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         override
         returns (uint256 assets)
     {
+        assets = previewMint(shares);
+        
         (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets);
 
         token0.safeTransferFrom(msg.sender, address(this), assets0);

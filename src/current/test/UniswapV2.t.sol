@@ -35,6 +35,8 @@ contract UniswapV2Test is Test {
     address public alice;
     address public manager;
 
+    uint256 public slippage = 30;
+
     function setUp() public {
         ethFork = vm.createFork(ETH_RPC_URL);
         vm.selectFork(ethFork);
@@ -46,7 +48,8 @@ contract UniswapV2Test is Test {
             dai,
             usdc,
             router,
-            pair
+            pair,
+            slippage
         );
         alice = address(0x1);
         manager = msg.sender;
@@ -110,7 +113,7 @@ contract UniswapV2Test is Test {
     }
 
     /// DepositWithdraw flow where user is using assets0/assets1 to calculate LP amount
-    function testDepositWithdraw() public {
+    function testDepositWithdraw1() public {
         vm.startPrank(alice);
 
         /// Calculate amount of UniV2LP to get from tokens sent (DAI/USDC)
@@ -120,10 +123,13 @@ contract UniswapV2Test is Test {
             ONE_THOUSAND_E18,
             1000e6
         );
+
+        /// Passing expected poolAmount from tokens user wants to supply
         (uint256 assets0, uint256 assets1) = vault.getAssetsAmounts(poolAmount);
         console.log("assets0", assets0, "assets1", assets1);
         console.log("liq0", poolAmount);
 
+        /// Pre-approving correct amounts to receive poolAmount from addLiquidity
         dai.approve(address(vault), assets0);
         usdc.approve(address(vault), assets1);
 
