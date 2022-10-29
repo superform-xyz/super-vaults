@@ -19,3 +19,4 @@ test-steth :; forge test --match-contract stEth.*Test -vvv
 test-steth2 :; forge test --match-contract stEthNoSwap.*Test -vvv
 test-wmatic :; forge test --match-contract stMatic.*Test -vvv
 test-uniswapV2 :; forge test --match-contract UniswapV2Test -vvv
+test-reth :; forge test --match-contract rEthTest -vvv

@@ -14,7 +14,7 @@ import "forge-std/console.sol";
 
 /// @notice RocketPool's rETH ERC4626 Wrapper
 /// @author ZeroPoint Labs
-contract StMATIC4626 is ERC4626 {
+contract rEthERC4626 is ERC4626 {
 
     IWETH public weth;
     IRETH public rEth;
@@ -33,16 +33,21 @@ contract StMATIC4626 is ERC4626 {
     /// -----------------------------------------------------------------------
 
     /// @param weth_ weth address (Vault's underlying / deposit token)
-    /// @param rEth_ rEth address
+    /// @param rStorage_ rocketPool Storage contract address to read current implementation details
     constructor(
         address weth_,
-        address rEth_,
         address rStorage_
     ) ERC4626(ERC20(weth_), "ERC4626-Wrapped rEth", "wLstReth") {
         rStorage = IRSTORAGE(rStorage_);
-        rEth = IRETH(rEth_);
-        rEthAsset = ERC20(rEth_);
         weth = IWETH(weth_);
+
+        /// Get address of Deposit pool from address of rStorage on deployment
+        address rocketDepositPoolAddress = rStorage.getAddress(keccak256(abi.encodePacked("contract.address", "rocketDepositPool")));
+        rEth = IRETH(rocketDepositPoolAddress);
+        rEthAsset = ERC20(rocketDepositPoolAddress);
+        /// Get address of rETH token (staked rocket pool eth)
+        // address rocketTokenRETHAddress = rStorage.getAddress(keccak256(abi.encodePacked("contract.address", "rocketTokenRETH")));
+        // rEthToken = IRETH(rocketTokenRETHAddress);
     }
 
     receive() external payable {}
