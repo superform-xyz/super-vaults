@@ -44,10 +44,10 @@ contract rEthERC4626 is ERC4626 {
         /// Get address of Deposit pool from address of rStorage on deployment
         address rocketDepositPoolAddress = rStorage.getAddress(keccak256(abi.encodePacked("contract.address", "rocketDepositPool")));
         rEth = IRETH(rocketDepositPoolAddress);
-        rEthAsset = ERC20(rocketDepositPoolAddress);
-        /// Get address of rETH token (staked rocket pool eth)
-        // address rocketTokenRETHAddress = rStorage.getAddress(keccak256(abi.encodePacked("contract.address", "rocketTokenRETH")));
-        // rEthToken = IRETH(rocketTokenRETHAddress);
+
+        /// Get address of rETH ERC20 token
+        address rocketTokenRETHAddress = rStorage.getAddress(keccak256(abi.encodePacked("contract.address", "rocketTokenRETH")));
+        rEthAsset = ERC20(rocketTokenRETHAddress);
     }
 
     receive() external payable {}
@@ -62,7 +62,6 @@ contract rEthERC4626 is ERC4626 {
 
     function afterDeposit(uint256 assets, uint256) internal override {
         console.log("ethAmount aD", assets);
-        /// Lido's stMatic pool submit() isn't payable, MATIC is ERC20 compatible
         rEth.deposit{value: assets}();
     }
 
@@ -100,6 +99,8 @@ contract rEthERC4626 is ERC4626 {
         assets = previewMint(shares);
 
         asset.safeTransferFrom(msg.sender, address(this), assets);
+
+        weth.withdraw(assets);
 
         _mint(receiver, shares);
 

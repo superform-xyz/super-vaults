@@ -52,7 +52,7 @@ contract rEthTest is Test {
     }
 
     function testDepositWithdraw() public {
-        uint256 aliceUnderlyingAmount = 1 ether;
+        uint256 aliceUnderlyingAmount = 10000000000000000;
 
         vm.startPrank(alice);
         console.log("alice bal matic", _weth.balanceOf(alice));
@@ -77,7 +77,7 @@ contract rEthTest is Test {
     }
 
     function testMintRedeem() public {
-        uint256 aliceSharesMint = HUNDRED_E18;
+        uint256 aliceSharesMint = 10000000000000000;
 
         vm.startPrank(alice);
 
