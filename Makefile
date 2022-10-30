@@ -8,7 +8,7 @@ update:; forge update
 
 # Build & test
 build  :; forge build
-test   :; forge test --no-match-contract Alpaca\|Benqi*.*Test -vv
+test   :; forge test --no-match-contract rEthTest\|Alpaca\|Benqi*.*Test -vv
 test-old :; forge test --match-contract Alpaca\|Benqi.*Test
 clean  :; forge clean
 snapshot :; forge snapshot

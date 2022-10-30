@@ -51,11 +51,13 @@ contract rEthTest is Test {
 
     }
 
+    /// Expect Error: The deposit pool size after depositing exceeds the maximum size
+    /// That's because RocketPool only allows staking if slots are free.
     function testDepositWithdraw() public {
         uint256 aliceUnderlyingAmount = 10000000000000000;
 
         vm.startPrank(alice);
-        console.log("alice bal matic", _weth.balanceOf(alice));
+        console.log("alice bal weth", _weth.balanceOf(alice));
 
         _weth.approve(address(vault), aliceUnderlyingAmount);
         assertEq(
@@ -76,6 +78,8 @@ contract rEthTest is Test {
         vault.withdraw(aliceAssetsFromShares, alice, alice);
     }
 
+    /// Expect Error: The deposit pool size after depositing exceeds the maximum size
+    /// That's because RocketPool only allows staking if slots are free.
     function testMintRedeem() public {
         uint256 aliceSharesMint = 10000000000000000;
 

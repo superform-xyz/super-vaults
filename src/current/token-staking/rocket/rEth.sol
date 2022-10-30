@@ -127,7 +127,7 @@ contract rEthERC4626 is ERC4626 {
 
         beforeWithdraw(assets, shares);
 
-        console.log("stMatic balance withdraw", rEthAsset.balanceOf(address(this)));
+        console.log("rEth balance withdraw", rEthAsset.balanceOf(address(this)));
 
         _burn(owner, shares);
 
@@ -160,7 +160,7 @@ contract rEthERC4626 is ERC4626 {
         rEthAsset.safeTransfer(receiver, assets);
     }
 
-    /// stMatic as AUM. Non-rebasing!
+    /// rEth as AUM. Non-rebasing!
     function totalAssets() public view virtual override returns (uint256) {
         return rEth.balanceOf(address(this));
     }
