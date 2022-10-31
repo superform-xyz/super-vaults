@@ -13,12 +13,15 @@ import {UniswapV2Library} from "./utils/UniswapV2Library.sol";
 
 import "forge-std/console.sol";
 
+/// @notice Custom ERC4626 Wrapper for UniV2 Pools without swapping, accepting token0/token1 transfers
+/// @dev WARNING: Change your assumption about asset/share in context of deposit/mint/redeem/withdraw
+
 // Vault (ERC4626) - totalAssets() == lpToken of Uniswap Pool
-// deposit(assets) -> assets could be lpToken number? then we make previews clever
-// - user needs to approve both A,B tokens in X,Y amounts
-// - deposit() safeTransfersFrom A,B
-// - checks are run against expected lpTokens amounts from Uniswap && || lpTokens already at balance
-// withdraw() -> withdraws both A,B in accrued X+n,Y+n amounts
+// deposit(assets) -> assets == lpToken amount to receive
+// - user needs to approve both A,B tokens in X,Y amounts (see getLiquidityAmounts / getAssetsAmounts functions)
+// - check is run if A,B covers requested Z amount of UniLP
+// - deposit() safeTransfersFrom A,B to min Z amount of UniLP
+// withdraw() -> withdraws both A,B in accrued X+n,Y+n amounts, burns Z amount of UniLP (or Vault's LP, those are 1:1)
 
 /// https://v2.info.uniswap.org/pair/0xae461ca67b15dc8dc81ce7615e0320da1a9ab8d5 (DAI-USDC LP/PAIR on ETH)
 contract UniswapV2WrapperERC4626 is ERC4626 {
@@ -28,6 +31,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
     address public immutable manager;
 
     uint256 public slippage;
+    uint256 public  immutable slippageFloat = 10000;
 
     IUniswapV2Pair public immutable pair;
     IUniswapV2Router public immutable router;
@@ -39,11 +43,11 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
     constructor(
         string memory name_,
         string memory symbol_,
-        ERC20 asset_, /// Pair address
+        ERC20 asset_, /// Pair address (to opti)
         ERC20 token0_,
         ERC20 token1_,
         IUniswapV2Router router_,
-        IUniswapV2Pair pair_, /// Pair address
+        IUniswapV2Pair pair_, /// Pair address (to opti)
         uint256 slippage_
     ) ERC4626(asset_, name_, symbol_) {
         manager = msg.sender;
@@ -51,13 +55,27 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         router = router_;
         token0 = token0_;
         token1 = token1_;
+
+        /// Slippage management TODO
         slippage = slippage_;
+        
+        /// Approve management TODO
         token0.approve(address(router), type(uint256).max);
         token1.approve(address(router), type(uint256).max);
         asset.approve(address(router), type(uint256).max);
     }
 
-    function beforeWithdraw(uint256 assets, uint256 shares) internal override {
+    function setSlippage(uint256 amount) external {
+        require(msg.sender == manager, "owner");
+        require(amount < 10000 && amount > 9000); /// 10% max slippage
+        slippage = amount;
+    }
+
+    function getSlippage(uint256 amount) public view returns (uint256) {
+        return (amount * slippage) / slippageFloat;
+    }
+
+    function beforeWithdraw(uint256 assets, uint256) internal override {
         (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets);
 
         /// temp implementation, we should call directly on a pair
@@ -72,7 +90,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         );
     }
 
-    function afterDeposit(uint256 assets, uint256 shares) internal override {
+    function afterDeposit(uint256 assets, uint256) internal override {
         (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets);
 
         /// temp implementation, we should call directly on a pair
@@ -110,6 +128,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
 
         _mint(receiver, shares);
 
+        /// Custom assumption about assets changes assumptions about this event
         emit Deposit(msg.sender, receiver, assets, shares);
 
         afterDeposit(assets, shares);
@@ -132,6 +151,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
 
         _mint(receiver, shares);
 
+        /// Custom assumption about assets changes assumptions about this event
         emit Deposit(msg.sender, receiver, assets, shares);
 
         afterDeposit(assets, shares);
@@ -161,6 +181,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
 
         _burn(owner, shares);
 
+        /// Custom assumption about assets changes assumptions about this event
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
         token0.safeTransfer(receiver, assets0);
