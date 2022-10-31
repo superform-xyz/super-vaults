@@ -56,7 +56,6 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         token0 = token0_;
         token1 = token1_;
 
-        /// Slippage management TODO
         slippage = slippage_;
         
         /// Approve management TODO
@@ -71,7 +70,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         slippage = amount;
     }
 
-    function getSlippage(uint256 amount) public view returns (uint256) {
+    function getSlippage(uint256 amount) internal view returns (uint256) {
         return (amount * slippage) / slippageFloat;
     }
 
@@ -83,8 +82,8 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
             address(token0),
             address(token1),
             assets,
-            assets0 - 1000, /// temp slippage
-            assets1 - 1000,
+            getSlippage(assets0),
+            getSlippage(assets1),
             address(this),
             block.timestamp + 100
         );
@@ -99,8 +98,8 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
             address(token1),
             assets0,
             assets1,
-            assets0 - 1, /// temp slippage
-            assets1 - 1,
+            getSlippage(assets0),
+            getSlippage(assets1),
             address(this),
             block.timestamp + 100
         );

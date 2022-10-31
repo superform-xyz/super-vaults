@@ -56,19 +56,11 @@ contract UniswapV2Test is Test {
 
         deal(address(dai), alice, ONE_THOUSAND_E18 * 2);
         deal(address(usdc), alice, 1000e6 * 2);
-        // 887227704489874
-    }
-
-    function testSlippage() public {
-        uint256 amount = 1 ether;
-        uint256 slipMaxAmount = vault.getSlippage(amount);
-        uint256 allowedSlip = amount - slipMaxAmount;
-        console.log("allowedSlip", allowedSlip);
     }
 
     function testDepositMath() public {
+        /// We use this odd number because UniLP amounts are oddly-small too
         uint256 uniLpRequest = 887226683879712;
-        // 887226683865896
 
         vm.startPrank(alice);
 
@@ -85,6 +77,7 @@ contract UniswapV2Test is Test {
 
     /// DepositWithdraw flow where user is using LP amount to calculate assets0/assets1
     function testDepositWithdraw0() public {
+        /// We use this odd number because UniLP amounts are oddly-small too
         uint256 uniLpRequest = 887226683879712;
 
         vm.startPrank(alice);
@@ -121,6 +114,7 @@ contract UniswapV2Test is Test {
         /// Calculate amount of UniV2LP to get from tokens sent (DAI/USDC)
         /// NOTE: We should provide helper function to get optimal amounts here
         /// As is, user needs to know "optimal amounts" beforehand
+        /// Here, we can use 1:1 because its stablecoin pool (still, not perfect)
         uint256 poolAmount = vault.getLiquidityAmountOutFor(
             ONE_THOUSAND_E18,
             1000e6
@@ -172,6 +166,7 @@ contract UniswapV2Test is Test {
     }
 
     function testMintRedeem() public {
+        /// We use this odd number because UniLP amounts are oddly-small too
         uint256 uniLpRequest = 887226683879712;
 
         vm.startPrank(alice);
