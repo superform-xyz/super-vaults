@@ -19,3 +19,5 @@
 [submodule "lib/superform-contracts"]
 	path = lib/superform-contracts
 	url = https://github.com/superform-xyz/superform-contracts
+[submodule "/home/user/Github/SuperForm/super-vaults/lib/superform-contracts"]
+	branch = develop

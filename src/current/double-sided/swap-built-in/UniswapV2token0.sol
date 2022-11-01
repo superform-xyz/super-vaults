@@ -6,22 +6,13 @@ import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-import {IUniswapV2Pair} from "./interfaces/IUniswapV2Pair.sol";
-import {IUniswapV2Router} from "./interfaces/IUniswapV2Router.sol";
-import {UniswapV2Library} from "./utils/UniswapV2Library.sol";
+import {IUniswapV2Pair} from "../interfaces/IUniswapV2Pair.sol";
+import {IUniswapV2Router} from "../interfaces/IUniswapV2Router.sol";
+import {UniswapV2Library} from "../utils/UniswapV2Library.sol";
 
 import "forge-std/console.sol";
 
-/// @notice Custom ERC4626 Wrapper for UniV2 Pools without swapping, accepting token0/token1 transfers
-/// @dev WARNING: Change your assumption about asset/share in context of deposit/mint/redeem/withdraw
-
-// Vault (ERC4626) - totalAssets() == lpToken of Uniswap Pool
-// deposit(assets) -> assets == lpToken amount to receive
-// - user needs to approve both A,B tokens in X,Y amounts (see getLiquidityAmounts / getAssetsAmounts functions)
-// - check is run if A,B covers requested Z amount of UniLP
-// - deposit() safeTransfersFrom A,B to min Z amount of UniLP
-// withdraw() -> withdraws both A,B in accrued X+n,Y+n amounts, burns Z amount of UniLP (or Vault's LP, those are 1:1)
-
+/// @notice Custom ERC4626 Wrapper for UniV2 Pools with built-in swap
 /// https://v2.info.uniswap.org/pair/0xae461ca67b15dc8dc81ce7615e0320da1a9ab8d5 (DAI-USDC LP/PAIR on ETH)
 contract UniswapV2WrapperERC4626 is ERC4626 {
     using SafeTransferLib for ERC20;
@@ -30,7 +21,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
     address public immutable manager;
 
     uint256 public slippage;
-    uint256 public  immutable slippageFloat = 10000;
+    uint256 public immutable slippageFloat = 10000;
 
     IUniswapV2Pair public immutable pair;
     IUniswapV2Router public immutable router;
@@ -39,38 +30,29 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
     ERC20 public token0;
     ERC20 public token1;
 
+    /// Act like this Vault's underlying is DAI (token0)
     constructor(
         string memory name_,
         string memory symbol_,
-        ERC20 asset_, /// Pair address (to opti)
-        ERC20 token0_,
-        ERC20 token1_,
+        ERC20 asset_, /// token0 address (Vault's underlying)
         IUniswapV2Router router_,
-        IUniswapV2Pair pair_, /// Pair address (to opti)
+        IUniswapV2Pair pair_, /// Pair address
         uint256 slippage_
     ) ERC4626(asset_, name_, symbol_) {
         manager = msg.sender;
+
         pair = pair_;
         router = router_;
-        token0 = token0_;
-        token1 = token1_;
+
+        token0 = ERC20(pair.token0());
+        token1 = ERC20(pair.token1());
 
         slippage = slippage_;
-        
+
         /// Approve management TODO
         token0.approve(address(router), type(uint256).max);
         token1.approve(address(router), type(uint256).max);
         asset.approve(address(router), type(uint256).max);
-    }
-
-    function setSlippage(uint256 amount) external {
-        require(msg.sender == manager, "owner");
-        require(amount < 10000 && amount > 9000); /// 10% max slippage
-        slippage = amount;
-    }
-
-    function getSlippage(uint256 amount) internal view returns (uint256) {
-        return (amount * slippage) / slippageFloat;
     }
 
     function beforeWithdraw(uint256 assets, uint256) internal override {
@@ -104,25 +86,19 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         );
     }
 
-    /// User wants to get 100 UniLP (underlying)
-    /// REQUIREMENT: Calculate amount of assets and have enough of assets0/1 to cover this amount for LP requested (slippage!)
-    /// @param assets == Assume caller called previewDeposit() first for calc on amount of assets to give approve to
-    /// assets value == amount of lpToken to mint (asset) from token0 & token1 input (function has no knowledge of inputs)
+    /// User gives N amount of assets of ANY token
     function deposit(uint256 assets, address receiver)
         public
         override
         returns (uint256 shares)
     {
+        /// Assume that it's either DAI or USDC.
+        asset.safeTransferFrom(msg.sender, address(this), assets);
+
+        (uint256 assets0, uint256 assets1) = swap(assets);
+
         /// From 100 uniLP msg.sender gets N shares (of this Vault)
         require((shares = previewDeposit(assets)) != 0, "ZERO_SHARES");
-
-        /// Ideally, msg.sender should call this function beforehand to get correct "assets" amount
-        (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets);
-
-        /// Best if we approve exact amounts, but because of UniV2 min() we can sometimes approve to much/to little
-        token0.safeTransferFrom(msg.sender, address(this), assets0);
-
-        token1.safeTransferFrom(msg.sender, address(this), assets1);
 
         _mint(receiver, shares);
 
@@ -130,6 +106,16 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         emit Deposit(msg.sender, receiver, assets, shares);
 
         afterDeposit(assets, shares);
+    }
+
+    function swap(uint256 assets) internal returns (uint256 a0, uint256 a1) {
+        // (a0, a1) = router.swapTokensForExactTokens(
+        //     amountOut,
+        //     amountInMax,
+        //     path,
+        //     to,
+        //     deadline
+        // );
     }
 
     /// User want to get 100 VaultLP (vault's token) worth N UniLP
@@ -140,7 +126,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         returns (uint256 assets)
     {
         assets = previewMint(shares);
-        
+
         (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets);
 
         token0.safeTransferFrom(msg.sender, address(this), assets0);
@@ -258,6 +244,16 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
     /// Pool's LP token on contract balance
     function totalAssets() public view override returns (uint256) {
         return asset.balanceOf(address(this));
+    }
+
+    function setSlippage(uint256 amount) external {
+        require(msg.sender == manager, "owner");
+        require(amount < 10000 && amount > 9000); /// 10% max slippage
+        slippage = amount;
+    }
+
+    function getSlippage(uint256 amount) internal view returns (uint256) {
+        return (amount * slippage) / slippageFloat;
     }
 
     function min(uint256 x, uint256 y) internal pure returns (uint256 z) {

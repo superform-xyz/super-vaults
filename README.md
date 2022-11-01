@@ -18,6 +18,8 @@ Repository uses MakeFile to streamline testing operations. You can use `forge in
 
 `make test-steth` for testing aave (forked ETH)
 
+... (check the Makefile for more)
+
 `make test-old` for old implementation
 
 # To run OLD test:

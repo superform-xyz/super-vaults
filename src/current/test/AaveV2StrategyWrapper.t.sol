@@ -31,6 +31,8 @@ contract AaveV2StrategyWrapperTest is Test {
         ILendingPool(0x9FAD24f572045c7869117160A571B2e50b10d068);
     address rewardToken = 0xd8321AA83Fb0a4ECd6348D4577431310A6E0814d;
 
+    address public alice; 
+
     function setUp() public {
         ftmFork = vm.createFork(FTM_RPC_URL);
         address manager = msg.sender;
@@ -54,7 +56,9 @@ contract AaveV2StrategyWrapperTest is Test {
         vault.setRoute(swapToken, swapPair1, swapPair2);
 
         /// Simulate rewards accrued to the vault contract
+        alice = address(0x1);
         deal(rewardToken, address(vault), 1000 ether);
+        deal(address(underlying), alice, 10000 ether);
     }
 
     function setUpWithHarvester() public {
@@ -93,7 +97,6 @@ contract AaveV2StrategyWrapperTest is Test {
     }
 
     function makeDeposit() public returns (uint256 shares) {
-        address alice = address(0x1cA60862a771f1F47d94F87bebE4226141b19C9c);
         vm.startPrank(alice);
         uint256 amount = 100 ether;
 
@@ -110,7 +113,6 @@ contract AaveV2StrategyWrapperTest is Test {
     }
 
     function testSingleDepositWithdraw() public {
-        address alice = address(0x1cA60862a771f1F47d94F87bebE4226141b19C9c);
         vm.startPrank(alice);
 
         uint256 amount = 100 ether;
@@ -154,7 +156,6 @@ contract AaveV2StrategyWrapperTest is Test {
     }
 
     function testSingleMintRedeem() public {
-        address alice = address(0x1cA60862a771f1F47d94F87bebE4226141b19C9c);
         vm.startPrank(alice);
 
         uint256 amount = 100 ether;
