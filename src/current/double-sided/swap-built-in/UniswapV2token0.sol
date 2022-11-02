@@ -10,6 +10,8 @@ import {IUniswapV2Pair} from "../interfaces/IUniswapV2Pair.sol";
 import {IUniswapV2Router} from "../interfaces/IUniswapV2Router.sol";
 import {UniswapV2Library} from "../utils/UniswapV2Library.sol";
 
+import {DexSwap} from "../../utils/swapUtils.sol";
+
 import "forge-std/console.sol";
 
 /// @notice Custom ERC4626 Wrapper for UniV2 Pools with built-in swap
@@ -86,18 +88,17 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         );
     }
 
-    /// User gives N amount of assets of ANY token
+    /// User gives N amount of an underlying asset (DAI)
     function deposit(uint256 assets, address receiver)
         public
         override
         returns (uint256 shares)
     {
-        /// Assume that it's either DAI or USDC.
+        /// Assume that it's token0 (DAI).
         asset.safeTransferFrom(msg.sender, address(this), assets);
 
-        (uint256 assets0, uint256 assets1) = swap(assets);
+        swap(assets);
 
-        /// From 100 uniLP msg.sender gets N shares (of this Vault)
         require((shares = previewDeposit(assets)) != 0, "ZERO_SHARES");
 
         _mint(receiver, shares);
@@ -108,14 +109,31 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         afterDeposit(assets, shares);
     }
 
-    function swap(uint256 assets) internal returns (uint256 a0, uint256 a1) {
-        // (a0, a1) = router.swapTokensForExactTokens(
-        //     amountOut,
-        //     amountInMax,
-        //     path,
-        //     to,
-        //     deadline
-        // );
+    function swap(uint256 assets) internal {
+        (uint256 resA, uint256 resB) = UniswapV2Library.getReserves(
+            address(pair),
+            pair.token0(),
+            pair.token1()
+        );
+
+        uint256 swapAmt = UniswapV2Library.getSwapAmt(assets, resA);
+
+        DexSwap.swap(
+            /// amt to swap
+            swapAmt,
+            /// from asset (DAI)
+            pair.token0(),
+            /// to target asset (USDC)
+            pair.token1(),
+            /// compute pair address
+            address(pair)
+        );
+    }
+
+    function getAssetBalance() internal view returns (uint256 a0, uint256 a1) {
+        /// Doesn't account for leftover!
+        a0 = token0.balanceOf(address(this));
+        a1 = token1.balanceOf(address(this));
     }
 
     /// User want to get 100 VaultLP (vault's token) worth N UniLP
