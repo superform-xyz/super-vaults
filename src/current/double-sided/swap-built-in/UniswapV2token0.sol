@@ -61,7 +61,7 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
     }
 
     function beforeWithdraw(uint256 assets, uint256) internal override {
-        (uint256 assets0, uint256 assets1) = getAssetBalance();
+        (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets);
 
         /// temp implementation, we should call directly on a pair
         router.removeLiquidity(
@@ -114,11 +114,11 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
     function swap(uint256 assets) internal {
         (uint256 resA, uint256 resB) = UniswapV2Library.getReserves(
             address(pair),
-            pair.token0(),
-            pair.token1()
+            address(token0),
+            address(token1)
         );
 
-        uint256 swapAmt = UniswapV2Library.getSwapAmt(assets, resA);
+        uint256 swapAmt = UniswapV2Library.getSwapAmount(resA, assets);
 
         console.log("swapAmt", swapAmt);
 
@@ -138,6 +138,26 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         /// Doesn't account for a leftover!
         a0 = token0.balanceOf(address(this));
         a1 = token1.balanceOf(address(this));
+    }
+
+    function getAssetsAmounts(uint256 poolLpAmount)
+        public
+        view
+        returns (uint256 assets0, uint256 assets1)
+    {
+        /// get xy=k here, where x=ra0,y=ra1
+        (uint256 reserveA, uint256 reserveB) = UniswapV2Library.getReserves(
+            address(pair),
+            address(token0),
+            address(token1)
+        );
+
+        /// shares of uni pair contract
+        uint256 pairSupply = pair.totalSupply();
+        /// amount of token0 to provide to receive poolLpAmount
+        assets0 = (reserveA * poolLpAmount) / pairSupply;
+        /// amount of token1 to provide to receive poolLpAmount
+        assets1 = (reserveB * poolLpAmount) / pairSupply;
     }
 
     function mint(uint256 shares, address receiver)
