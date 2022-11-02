@@ -32,6 +32,8 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
     ERC20 public token0;
     ERC20 public token1;
 
+    ERC20 public uniswapLpToken;
+
     /// Act like this Vault's underlying is DAI (token0)
     constructor(
         string memory name_,
@@ -48,6 +50,7 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
 
         token0 = ERC20(pair.token0());
         token1 = ERC20(pair.token1());
+        uniswapLpToken = ERC20(address(pair));
 
         slippage = slippage_;
 
@@ -58,7 +61,7 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
     }
 
     function beforeWithdraw(uint256 assets, uint256) internal override {
-        (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets);
+        (uint256 assets0, uint256 assets1) = getAssetBalance();
 
         /// temp implementation, we should call directly on a pair
         router.removeLiquidity(
@@ -103,7 +106,6 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
 
         _mint(receiver, shares);
 
-        /// Custom assumption about assets changes assumptions about this event
         emit Deposit(msg.sender, receiver, assets, shares);
 
         afterDeposit(assets, shares);
@@ -117,8 +119,9 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         );
 
         uint256 swapAmt = UniswapV2Library.getSwapAmt(assets, resA);
+
         console.log("swapAmt", swapAmt);
-        
+
         DexSwap.swap(
             /// amt to swap
             swapAmt,
@@ -132,13 +135,11 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
     }
 
     function getAssetBalance() internal view returns (uint256 a0, uint256 a1) {
-        /// Doesn't account for leftover!
+        /// Doesn't account for a leftover!
         a0 = token0.balanceOf(address(this));
         a1 = token1.balanceOf(address(this));
     }
 
-    /// User want to get 100 VaultLP (vault's token) worth N UniLP
-    /// shares value == amount of Vault token (shares) to mint from requested lpToken
     function mint(uint256 shares, address receiver)
         public
         override
@@ -146,32 +147,24 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
     {
         assets = previewMint(shares);
 
-        (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets);
+        /// Assume that it's token0 (DAI).
+        asset.safeTransferFrom(msg.sender, address(this), assets);
 
-        token0.safeTransferFrom(msg.sender, address(this), assets0);
-
-        token1.safeTransferFrom(msg.sender, address(this), assets1);
+        swap(assets);
 
         _mint(receiver, shares);
 
-        /// Custom assumption about assets changes assumptions about this event
         emit Deposit(msg.sender, receiver, assets, shares);
 
         afterDeposit(assets, shares);
     }
 
-    /// User wants to burn 100 UniLP (underlying) for N worth of token0/1
     function withdraw(
-        uint256 assets, // amount of underlying asset (pool Lp) to withdraw
+        uint256 assets,
         address receiver,
         address owner
     ) public override returns (uint256 shares) {
         shares = previewWithdraw(assets);
-
-        console.log("shares", shares);
-
-        (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets);
-        console.log("a0", assets0, "a1", assets1);
 
         if (msg.sender != owner) {
             uint256 allowed = allowance[owner][msg.sender];
@@ -184,15 +177,12 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
 
         _burn(owner, shares);
 
-        /// Custom assumption about assets changes assumptions about this event
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
-        token0.safeTransfer(receiver, assets0);
+        asset.safeTransfer(receiver, assets);
 
-        token1.safeTransfer(receiver, assets1);
     }
 
-    /// User wants to burn 100 VaultLp (vault's token) for N worth of token0/1
     function redeem(
         uint256 shares,
         address receiver,
@@ -208,61 +198,19 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         // Check for rounding error since we round down in previewRedeem.
         require((assets = previewRedeem(shares)) != 0, "ZERO_ASSETS");
 
-        (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets);
-
-        console.log("a0", assets0, "a1", assets1);
-
         beforeWithdraw(assets, shares);
 
         _burn(owner, shares);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
-        token0.safeTransfer(receiver, assets0);
+        asset.safeTransfer(receiver, assets);
 
-        token1.safeTransfer(receiver, assets1);
-    }
-
-    /// For requested 100 UniLp tokens, how much tok0/1 we need to give?
-    function getAssetsAmounts(uint256 poolLpAmount)
-        public
-        view
-        returns (uint256 assets0, uint256 assets1)
-    {
-        /// get xy=k here, where x=ra0,y=ra1
-        (uint256 reserveA, uint256 reserveB) = UniswapV2Library.getReserves(
-            address(pair),
-            address(token0),
-            address(token1)
-        );
-        /// shares of uni pair contract
-        uint256 pairSupply = pair.totalSupply();
-        /// amount of token0 to provide to receive poolLpAmount
-        assets0 = (reserveA * poolLpAmount) / pairSupply;
-        /// amount of token1 to provide to receive poolLpAmount
-        assets1 = (reserveB * poolLpAmount) / pairSupply;
-    }
-
-    /// For requested N assets0 & N assets1, how much UniV2 LP do we get?
-    function getLiquidityAmountOutFor(uint256 assets0, uint256 assets1)
-        public
-        view
-        returns (uint256 poolLpAmount)
-    {
-        (uint256 reserveA, uint256 reserveB) = UniswapV2Library.getReserves(
-            address(pair),
-            address(token0),
-            address(token1)
-        );
-        poolLpAmount = min(
-            ((assets0 * pair.totalSupply()) / reserveA),
-            (assets1 * pair.totalSupply()) / reserveB
-        );
     }
 
     /// Pool's LP token on contract balance
     function totalAssets() public view override returns (uint256) {
-        return asset.balanceOf(address(this));
+        return uniswapLpToken.balanceOf(address(this));
     }
 
     function setSlippage(uint256 amount) external {
@@ -275,7 +223,4 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         return (amount * slippage) / slippageFloat;
     }
 
-    function min(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        z = x < y ? x : y;
-    }
 }

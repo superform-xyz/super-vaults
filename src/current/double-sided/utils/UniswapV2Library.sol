@@ -21,7 +21,7 @@ library UniswapV2Library {
 
     function getSwapAmt(uint256 amtA, uint256 resA) internal pure returns (uint256) {
         return
-            sqrt(amtA.mul(resA.mul(3988000) + amtA.mul(3988009))).sub(amtA.mul(1997) / 1994);
+            sqrt(amtA.mul(resA.mul(3988000) + amtA.mul(3988009))).sub(amtA.mul(1997)) / 1994;
     }
 
     function min(uint x, uint y) internal pure returns (uint z) {
