@@ -4,7 +4,7 @@ pragma solidity 0.8.14;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
-import {UniswapV2WrapperERC4626} from "../double-sided/UniswapV2.sol";
+import {UniswapV2WrapperERC4626} from "../double-sided/no-swap/UniswapV2.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 import {IUniswapV2Pair} from "../double-sided/interfaces/IUniswapV2Pair.sol";

@@ -6,9 +6,9 @@ import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-import {IUniswapV2Pair} from "./interfaces/IUniswapV2Pair.sol";
-import {IUniswapV2Router} from "./interfaces/IUniswapV2Router.sol";
-import {UniswapV2Library} from "./utils/UniswapV2Library.sol";
+import {IUniswapV2Pair} from "../interfaces/IUniswapV2Pair.sol";
+import {IUniswapV2Router} from "../interfaces/IUniswapV2Router.sol";
+import {UniswapV2Library} from "../utils/UniswapV2Library.sol";
 
 import "forge-std/console.sol";
 

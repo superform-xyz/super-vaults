@@ -16,7 +16,7 @@ import "forge-std/console.sol";
 
 /// @notice Custom ERC4626 Wrapper for UniV2 Pools with built-in swap
 /// https://v2.info.uniswap.org/pair/0xae461ca67b15dc8dc81ce7615e0320da1a9ab8d5 (DAI-USDC LP/PAIR on ETH)
-contract UniswapV2WrapperERC4626 is ERC4626 {
+contract UniswapV2WrapperERC4626Swap is ERC4626 {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
@@ -72,8 +72,8 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         );
     }
 
-    function afterDeposit(uint256 assets, uint256) internal override {
-        (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets);
+    function afterDeposit(uint256, uint256) internal override {
+        (uint256 assets0, uint256 assets1) = getAssetBalance();
 
         /// temp implementation, we should call directly on a pair
         router.addLiquidity(
@@ -117,15 +117,16 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         );
 
         uint256 swapAmt = UniswapV2Library.getSwapAmt(assets, resA);
-
+        console.log("swapAmt", swapAmt);
+        
         DexSwap.swap(
             /// amt to swap
             swapAmt,
             /// from asset (DAI)
             pair.token0(),
-            /// to target asset (USDC)
+            /// to asset (USDC)
             pair.token1(),
-            /// compute pair address
+            /// pair address
             address(pair)
         );
     }
