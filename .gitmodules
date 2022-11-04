@@ -21,3 +21,6 @@
 	url = https://github.com/superform-xyz/superform-contracts
 [submodule "/home/user/Github/SuperForm/super-vaults/lib/superform-contracts"]
 	branch = develop
+[submodule "lib/v3-core"]
+	path = lib/v3-core
+	url = https://github.com/Uniswap/v3-core

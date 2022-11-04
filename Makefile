@@ -21,3 +21,4 @@ test-wmatic :; forge test --match-contract stMatic.*Test -vvv
 test-uniswapV2 :; forge test --match-contract UniswapV2Test -vvv
 test-uniswapV2swap :; forge test --match-contract UniswapV2TestSwap -vvv
 test-reth :; forge test --match-contract rEthTest -vvv
+test-arrakis :; forge test --match-contract Arrakis_LP_Test -vvv
