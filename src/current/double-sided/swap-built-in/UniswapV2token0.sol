@@ -31,18 +31,16 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
     /// For simplicity, we use solmate's ERC20 interface
     ERC20 public token0;
     ERC20 public token1;
-
-    ERC20 public uniswapLpToken;
+    ERC20 public poolToken;
 
     /// Act like this Vault's underlying is DAI (token0)
     constructor(
         string memory name_,
         string memory symbol_,
-        ERC20 asset_, /// token0 address (Vault's underlying)
         IUniswapV2Router router_,
         IUniswapV2Pair pair_, /// Pair address
         uint256 slippage_
-    ) ERC4626(asset_, name_, symbol_) {
+    ) ERC4626(ERC20(pair_.token0()), name_, symbol_) {
         manager = msg.sender;
 
         pair = pair_;
@@ -50,7 +48,7 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
 
         token0 = ERC20(pair.token0());
         token1 = ERC20(pair.token1());
-        uniswapLpToken = ERC20(address(pair));
+        poolToken = ERC20(address(pair));
 
         slippage = slippage_;
 
@@ -62,7 +60,7 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
 
     function beforeWithdraw(uint256 assets, uint256 shares) internal override {
         (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets);
-        console.log("lpBalance", uniswapLpToken.balanceOf(address(this)));
+        console.log("lpBalance", asset.balanceOf(address(this)));
         console.log("totalAssets", totalAssets());
         console.log("withdraw shares", shares);
         console.log("withdraw a0", assets0, "a1", assets1);
@@ -70,7 +68,7 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         router.removeLiquidity(
             address(token0),
             address(token1),
-            shares,
+            shares, /// THIS NEEDS TO BE EQUAL TO UNISWAP SHARES, NOT VAULT SHARES!
             getSlippage(assets0),
             getSlippage(assets1),
             address(this),
@@ -100,8 +98,8 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         override
         returns (uint256 shares)
     {
-        /// Assume that it's token0 (DAI).
-        asset.safeTransferFrom(msg.sender, address(this), assets);
+        /// Transfer token0 to deposit into pool
+        token0.safeTransferFrom(msg.sender, address(this), assets);
 
         swap(assets);
 
@@ -114,6 +112,12 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         emit Deposit(msg.sender, receiver, assets, shares);
 
         afterDeposit(assets, shares);
+    }
+
+    function convertToShares(uint256 assets) public view override returns (uint256) {
+        uint256 supply = totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
+
+        return supply == 0 ? assets : assets.mulDivDown(supply, totalAssets());
     }
 
     function swap(uint256 assets) internal {
@@ -152,8 +156,8 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
     {
         assets = previewMint(shares);
 
-        /// Assume that it's token0 (DAI).
-        asset.safeTransferFrom(msg.sender, address(this), assets);
+        /// Transfer token0 to deposit into pool
+        token0.safeTransferFrom(msg.sender, address(this), assets);
 
         swap(assets);
 
@@ -184,8 +188,17 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
-        asset.safeTransfer(receiver, assets);
+        token0.safeTransfer(receiver, assets);
 
+    }
+
+    function previewWithdraw(uint256 assets) public view override returns (uint256) {
+        /// convert Vault shares (claim to DAI from UNI-LP) to UNI-LP number
+        /// User has 100e18 DAI shares, how much of UNI-LP we need to burn for that?
+        /// Take no of shares > get amount of DAI from it > 
+        uint256 supply = totalSupply;
+
+        return supply == 0 ? assets : assets.mulDivUp(supply, totalAssets());
     }
 
     function redeem(
@@ -209,15 +222,15 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
-        asset.safeTransfer(receiver, assets);
+        token0.safeTransfer(receiver, assets);
 
     }
 
-    /// Pool's LP token on contract balance
-    /// Needs to be converted to DAI balance!
+    /// Calculate total amount of token0 under managment from balance of lpToken on this address
+    /// Vault assets (DAI, USDC or USDT) -> Meta Vault assets (3Crv) -> Meta Vault shares -> this vault's shares 
     function totalAssets() public view override returns (uint256) {
         
-        (uint256 a0, uint256 a1) = getAssetsAmounts(uniswapLpToken.balanceOf(address(this)));
+        (uint256 a0, uint256 a1) = getAssetsAmounts(poolToken.balanceOf(address(this)));
 
         if (a1 == 0) return 0;
         
@@ -227,22 +240,10 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
             address(token1)
         );
 
-        // console.log("a0/dai amt", a0);
-        // console.log("a1/usdc amt", a1); /// just swap this to dai (getAmountOut)
-
-        // uint a1toa0 = UniswapV2Library.getAmountOut(a1, resB, resA);
-
-        // console.log("sum a0+a1", a0 + UniswapV2Library.getAmountOut(a1, resB, resA));
-
-        /// Okay, this gets rekt because you can influence pool liquidity for a block!
-        /// 1) Withdraw should be available in the next block
-        /// 2) What if we change asset (transfered from) to be different than underlying (lp-token)
-        ///    all happens within one block anyways
-        // return a0 + UniswapV2Library.getSwapAmount(resA, a0);
         return a0 + UniswapV2Library.getAmountOut(a1, resB, resA);
     }
 
-        /// For requested 100 UniLp tokens, how much tok0/1 we need to give?
+    /// For requested 100 UniLp tokens, how much tok0/1 we need to give?
     function getAssetsAmounts(uint256 amount)
         public
         view
@@ -262,17 +263,21 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         assets1 = (reserveB * amount) / pairSupply;
     }
 
-
-    function convertToShares(uint256 assets) public view override returns (uint256) {
-        uint256 supply = totalSupply; // Problem is that this is e18, but uni returns smaller amt
-
-        return supply == 0 ? assets : assets.mulDivDown(supply, totalAssets());
+    function getLiquidityAmountOutFor(uint256 assets0, uint256 assets1)
+        public
+        view
+        returns (uint256 poolLpAmount)
+    {
+        (uint256 reserveA, uint256 reserveB) = UniswapV2Library.getReserves(
+            address(pair),
+            address(token0),
+            address(token1)
+        );
+        poolLpAmount = UniswapV2Library.min(
+            ((assets0 * pair.totalSupply()) / reserveA),
+            (assets1 * pair.totalSupply()) / reserveB
+        );
     }
-
-    function previewDeposit(uint256 assets) public view override returns (uint256) {
-        return convertToShares(assets);
-    }
-
 
     function setSlippage(uint256 amount) external {
         require(msg.sender == manager, "owner");
