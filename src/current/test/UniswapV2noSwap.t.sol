@@ -36,6 +36,7 @@ contract UniswapV2TestSwap is Test {
         IUniswapV2Router(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
 
     address public alice;
+    address public bob;
     address public manager;
 
     uint256 public slippage = 30; /// 0.3
@@ -53,9 +54,11 @@ contract UniswapV2TestSwap is Test {
             slippage
         );
         alice = address(0x1);
+        bob = address(0x2);
         manager = msg.sender;
 
         deal(address(dai), alice, ONE_THOUSAND_E18 * 2);
+        deal(address(dai), bob, ONE_THOUSAND_E18 * 2);
         deal(address(usdc), alice, 1000e6 * 2);
     }
 
@@ -68,8 +71,19 @@ contract UniswapV2TestSwap is Test {
 
         uint256 aliceShareAmount = vault.deposit(amount, alice);
 
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+
+        dai.approve(address(vault), amount);
+
+        uint256 bobShareAmount = vault.deposit(amount, bob);
+
+        console.log("alice", aliceShareAmount);
+        console.log("bob", bobShareAmount);
+
         /// TODO fix!
-        // vault.withdraw(aliceShareAmount, alice, alice);
+        vault.withdraw(bobShareAmount, bob, bob);
     }
 
 }

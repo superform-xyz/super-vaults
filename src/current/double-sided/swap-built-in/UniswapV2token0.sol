@@ -60,14 +60,17 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         asset.approve(address(router), type(uint256).max);
     }
 
-    function beforeWithdraw(uint256 assets, uint256) internal override {
+    function beforeWithdraw(uint256 assets, uint256 shares) internal override {
         (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets);
-
+        console.log("lpBalance", uniswapLpToken.balanceOf(address(this)));
+        console.log("totalAssets", totalAssets());
+        console.log("withdraw shares", shares);
+        console.log("withdraw a0", assets0, "a1", assets1);
         /// temp implementation, we should call directly on a pair
         router.removeLiquidity(
             address(token0),
             address(token1),
-            assets,
+            shares,
             getSlippage(assets0),
             getSlippage(assets1),
             address(this),
@@ -104,6 +107,8 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
 
         require((shares = previewDeposit(assets)) != 0, "ZERO_SHARES");
 
+        // console.log("totalAssets", totalAssets());`
+
         _mint(receiver, shares);
 
         emit Deposit(msg.sender, receiver, assets, shares);
@@ -120,7 +125,7 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
 
         uint256 swapAmt = UniswapV2Library.getSwapAmount(resA, assets);
 
-        console.log("swapAmt", swapAmt);
+        // console.log("swapAmt", swapAmt);
 
         DexSwap.swap(
             /// amt to swap
@@ -138,26 +143,6 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         /// Doesn't account for a leftover!
         a0 = token0.balanceOf(address(this));
         a1 = token1.balanceOf(address(this));
-    }
-
-    function getAssetsAmounts(uint256 poolLpAmount)
-        public
-        view
-        returns (uint256 assets0, uint256 assets1)
-    {
-        /// get xy=k here, where x=ra0,y=ra1
-        (uint256 reserveA, uint256 reserveB) = UniswapV2Library.getReserves(
-            address(pair),
-            address(token0),
-            address(token1)
-        );
-
-        /// shares of uni pair contract
-        uint256 pairSupply = pair.totalSupply();
-        /// amount of token0 to provide to receive poolLpAmount
-        assets0 = (reserveA * poolLpAmount) / pairSupply;
-        /// amount of token1 to provide to receive poolLpAmount
-        assets1 = (reserveB * poolLpAmount) / pairSupply;
     }
 
     function mint(uint256 shares, address receiver)
@@ -229,9 +214,65 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
     }
 
     /// Pool's LP token on contract balance
+    /// Needs to be converted to DAI balance!
     function totalAssets() public view override returns (uint256) {
-        return uniswapLpToken.balanceOf(address(this));
+        
+        (uint256 a0, uint256 a1) = getAssetsAmounts(uniswapLpToken.balanceOf(address(this)));
+
+        if (a1 == 0) return 0;
+        
+        (uint256 resA, uint256 resB) = UniswapV2Library.getReserves(
+            address(pair),
+            address(token0),
+            address(token1)
+        );
+
+        // console.log("a0/dai amt", a0);
+        // console.log("a1/usdc amt", a1); /// just swap this to dai (getAmountOut)
+
+        // uint a1toa0 = UniswapV2Library.getAmountOut(a1, resB, resA);
+
+        // console.log("sum a0+a1", a0 + UniswapV2Library.getAmountOut(a1, resB, resA));
+
+        /// Okay, this gets rekt because you can influence pool liquidity for a block!
+        /// 1) Withdraw should be available in the next block
+        /// 2) What if we change asset (transfered from) to be different than underlying (lp-token)
+        ///    all happens within one block anyways
+        // return a0 + UniswapV2Library.getSwapAmount(resA, a0);
+        return a0 + UniswapV2Library.getAmountOut(a1, resB, resA);
     }
+
+        /// For requested 100 UniLp tokens, how much tok0/1 we need to give?
+    function getAssetsAmounts(uint256 amount)
+        public
+        view
+        returns (uint256 assets0, uint256 assets1)
+    {
+        /// get xy=k here, where x=ra0,y=ra1
+        (uint256 reserveA, uint256 reserveB) = UniswapV2Library.getReserves(
+            address(pair),
+            address(token0),
+            address(token1)
+        );
+        /// shares of uni pair contract
+        uint256 pairSupply = pair.totalSupply();
+        /// amount of token0 to provide to receive poolLpAmount
+        assets0 = (reserveA * amount) / pairSupply;
+        /// amount of token1 to provide to receive poolLpAmount
+        assets1 = (reserveB * amount) / pairSupply;
+    }
+
+
+    function convertToShares(uint256 assets) public view override returns (uint256) {
+        uint256 supply = totalSupply; // Problem is that this is e18, but uni returns smaller amt
+
+        return supply == 0 ? assets : assets.mulDivDown(supply, totalAssets());
+    }
+
+    function previewDeposit(uint256 assets) public view override returns (uint256) {
+        return convertToShares(assets);
+    }
+
 
     function setSlippage(uint256 amount) external {
         require(msg.sender == manager, "owner");
