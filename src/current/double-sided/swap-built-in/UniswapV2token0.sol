@@ -61,14 +61,18 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         console.log("totalAssets", totalAssets());
         console.log("withdraw shares", shares);
         console.log("withdraw a0", assets0, "a1", assets1);
+        uint slip1 = getSlippage(assets0);
+        uint slip2 = getSlippage(assets1);
+
+        console.log("s1", slip1, "s2", slip2);
 
         /// temp implementation, we should call directly on a pair
         router.removeLiquidity(
             address(token0),
             address(token1),
             shares,
-            0,
-            0,
+            0, /// TODO: getSlippage
+            0, /// TODO: getSlippage
             address(this),
             block.timestamp + 100
         );
@@ -96,7 +100,7 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         override
         returns (uint256 shares)
     {
-        /// Transfer token0 to deposit into pool
+
         token0.safeTransferFrom(msg.sender, address(this), assets);
 
         swap(assets);
@@ -115,7 +119,6 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
     {
         assets = previewMint(shares);
 
-        /// Transfer token0 to deposit into pool
         token0.safeTransferFrom(msg.sender, address(this), assets);
 
         swap(assets);

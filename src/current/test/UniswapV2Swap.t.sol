@@ -48,7 +48,6 @@ contract UniswapV2TestSwap is Test {
         vault = new UniswapV2WrapperERC4626Swap(
             name,
             symbol,
-            // dai,
             router,
             pair,
             slippage
@@ -62,7 +61,7 @@ contract UniswapV2TestSwap is Test {
         deal(address(usdc), alice, 1000e6 * 2);
     }
 
-    function testDepositWithdraw0() public {
+    function testDepositWithdraw() public {
         uint256 amount = 100 ether;
 
         vm.startPrank(alice);
@@ -70,20 +69,37 @@ contract UniswapV2TestSwap is Test {
         dai.approve(address(vault), amount);
 
         uint256 aliceShareAmount = vault.deposit(amount, alice);
-
-        vm.stopPrank();
-
-        vm.startPrank(bob);
-
-        dai.approve(address(vault), amount);
-
-        uint256 bobShareAmount = vault.deposit(amount, bob);
-
         console.log("alice", aliceShareAmount);
-        console.log("bob", bobShareAmount);
 
-        /// TODO fix!
-        vault.withdraw(bobShareAmount, bob, bob);
+        uint256 sharesBurned = vault.withdraw(aliceShareAmount, alice, alice);
+
+        assertEq(aliceShareAmount, sharesBurned);
+        assertEq(vault.balanceOf(alice), 0);
+
+    }
+
+    function testMintRedeem() public {
+        uint256 amountOfSharesToMint = 44380991714899;
+
+        vm.startPrank(alice);
+
+        uint256 assetsToApprove = vault.previewMint(amountOfSharesToMint);
+
+        dai.approve(address(vault), assetsToApprove);
+
+        uint256 aliceAssetsMinted = vault.mint(amountOfSharesToMint, alice);
+        console.log("alice", aliceAssetsMinted);
+
+        uint256 aliceBalanceOfShares = vault.balanceOf(alice);
+        console.log("aliceBalanceOfShares", aliceBalanceOfShares);
+        uint256 alicePreviewRedeem = vault.previewRedeem(aliceBalanceOfShares);
+        console.log("alicePreviewRedeem", alicePreviewRedeem);
+
+        /// TODO: Redeem Fix
+        // uint256 sharesBurned = vault.redeem(aliceBalanceOfShares, alice, alice);
+
+        // assertEq(aliceBalanceOfShares, sharesBurned);
+        // assertEq(vault.balanceOf(alice), 0);
     }
 
 }
