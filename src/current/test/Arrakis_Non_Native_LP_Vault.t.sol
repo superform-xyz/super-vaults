@@ -122,7 +122,7 @@ contract Arrakis_LP_Test is Test {
 
         emit log_named_decimal_uint(
             "amount gained through out the duration in the form of deposited Asset",
-            returnAssets - amt,
+            returnAssets,
             18
         );
     }

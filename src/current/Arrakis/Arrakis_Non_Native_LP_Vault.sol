@@ -103,7 +103,7 @@ contract ArrakisNonNativeVault is ERC4626 {
 
     ERC20 non_asset;
 
-    address private owner;
+    address private manager;
 
     struct swapParams {
         address receiver;
@@ -115,12 +115,12 @@ contract ArrakisNonNativeVault is ERC4626 {
 
     /// @notice ArrakisUniV3ERC4626 constructor
     /// @param _gUniPool Compound cToken to wrap
-    /// @param name ERC20 name of the vault shares token
-    /// @param symbol ERC20 symbol of the vault shares token
+    /// @param _name ERC20 name of the vault shares token
+    /// @param _symbol ERC20 symbol of the vault shares token
     constructor(
         address _gUniPool,
-        string memory name,
-        string memory symbol,
+        string memory _name,
+        string memory _symbol,
         bool isToken0, //if true, token0 in the pool is the asset, else token1 is the asset
         address _arrakisRouter,
         address _gauge,  // the contract which gives staking Rewards
@@ -132,8 +132,8 @@ contract ArrakisNonNativeVault is ERC4626 {
                     ? address(IGUniPool(_gUniPool).token0())
                     : address(IGUniPool(_gUniPool).token1())
             ),
-            name,
-            symbol
+            _name,
+            _symbol
         )
     {
         arrakisVault = IGUniPool(_gUniPool);
@@ -148,7 +148,7 @@ contract ArrakisNonNativeVault is ERC4626 {
         _approveTokenIfNeeded(address(non_asset), address(arrakisRouter));
         _approveTokenIfNeeded(address(non_asset), address(arrakisVault.pool()));
         // Used in testing
-        owner = msg.sender;
+        manager = msg.sender;
     }
 
     function beforeWithdraw(uint256 underlyingLiquidity, uint256)
@@ -513,7 +513,7 @@ contract ArrakisNonNativeVault is ERC4626 {
     }
 
     function emergencyWithdrawAssets() external {
-        require(msg.sender == owner, "Please be an Owner!");
+        require(msg.sender == manager, "Please be an Owner!");
         asset.safeTransfer(msg.sender, asset.balanceOf(address(this)));
     }
 }
