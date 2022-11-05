@@ -8,7 +8,7 @@ import {IGUniPool} from "../utils/arrakis/IGUniPool.sol";
 import "forge-std/console.sol";
 import {IUniswapV3Pool} from "v3-core/interfaces/IUniswapV3Pool.sol";
 import {TickMath} from "./utils/TickMath.sol";
-import {LiquidityAmounts} from "./utils/LiquidityAmounts.sol";
+import {LiquidityAmounts, FullMath} from "./utils/LiquidityAmounts.sol";
 
 
 interface IGauge {
@@ -196,61 +196,36 @@ contract ArrakisNonNativeVault is ERC4626 {
     }
 
     function afterDeposit(uint256 underlyingAmount, uint256) internal override {
-        // should be moved to new place later!
         IUniswapV3Pool uniPool = arrakisVault.pool();
-        (uint160 sqrtPriceX96, , , , , , ) = uniPool.slot0();
-        uint160 twoPercentSqrtPrice = sqrtPriceX96 / slippage;
-        uint160 lowerLimit = sqrtPriceX96 - (twoPercentSqrtPrice);
-        uint160 upperLimit = sqrtPriceX96 + (twoPercentSqrtPrice);
+        ERC20 token0 = arrakisVault.token0();
+        ERC20 token1 = arrakisVault.token1();
+        (uint160 sqrtRatioX96, , , , , , ) = arrakisVault.pool().slot0();
+         uint256 priceDecimals = (1 ether *
+            ((sqrtRatioX96 * sqrtRatioX96) / X96)) / X96;
 
-        // the swap is always done for a 50:50 amount lets say the current tick, escaping /2 would mean the pool ticks range beyond 52% < and 48% > 
-        uint256 swapAmount = underlyingAmount / 2; // initial swap to start calculating expected mint amounts according to the sqrtPrice of arrakisVault
+        // multiplying the price decimals by 1e12 as the price you get from sqrtRationX96 is 6 decimals but need 18 decimal value for this method
+        (bool trial,uint256 finaling) = getRebalanceParams(arrakisVault, zeroForOne ? underlyingAmount: 0, !zeroForOne ? underlyingAmount: 0, 
+        priceDecimals * 1e12);
+        
+        uint160 twoPercentSqrtPrice = sqrtRatioX96 / slippage;
+        uint160 lowerLimit = sqrtRatioX96 - (twoPercentSqrtPrice);
+        uint160 upperLimit = sqrtRatioX96 + (twoPercentSqrtPrice);
+
         swapParams memory params = swapParams({
             receiver: address(this),
-            direction: zeroForOne,
-            amount: int256(swapAmount),
+            direction: trial,
+            amount: int256(finaling),
             sqrtPrice: zeroForOne ? lowerLimit : upperLimit,
             data: ""
         });
 
         //escaping stack too deep error
         _paramSwap(params);
-        ERC20 token0 = arrakisVault.token0();
-        ERC20 token1 = arrakisVault.token1();
 
-        // calculating amount of asset token that needs to be swapped to non-asset lp token with best liquidity fitting in the arrakis LP
-        uint256 amountAssetToNonAsset = (token0.balanceOf(address(this)) *
-            ((sqrtPriceX96 * sqrtPriceX96) / X96)) / X96;
-
-        uint256 bps = (amountAssetToNonAsset * 1 ether) /
-            (token1.balanceOf(address(this)) + amountAssetToNonAsset);
-        (uint256 amount0Used, uint256 amount1Used, ) = arrakisVault
-            .getMintAmounts(
-                token0.balanceOf(address(this)),
-                token1.balanceOf(address(this))
-            );
-        uint256 token0Left = token0.balanceOf(address(this)) -
-            amount0Used;
-        uint256 token1Left = token1.balanceOf(address(this)) -
-            amount1Used;
-            
-        // direction of the swap needed for reaching optimal liquidity amounts
-        bool direction;
-        if (token0Left > token1Left) {
-            direction = true;
-            swapAmount = (token0Left * (1 ether - bps)) / 1 ether;
-        } else if (token1Left > token0Left) {
-            swapAmount = (token1Left * bps) / 1 ether;
-        }
-        params.direction = direction;
-        params.sqrtPrice = direction ? lowerLimit : upperLimit;
-        params.amount = int256(swapAmount);
-        _paramSwap(params);
-        
         // we need a final swap to put the remaining amount of tokens into liquidity as before swap might have moved the liquidity positions needed.
         uint256 token0Bal = token0.balanceOf(address(this));
         uint256 token1Bal = token1.balanceOf(address(this));
-        (amount0Used, amount1Used, ) = arrakisVault.getMintAmounts(
+        (uint256 amount0Used,uint256 amount1Used, ) = arrakisVault.getMintAmounts(
             token0Bal,
             token1Bal
         );
@@ -266,8 +241,8 @@ contract ArrakisNonNativeVault is ERC4626 {
 
         // dust measure 
         console.log("Amounts used", amount0Used, amount1Used);
-        console.log("balance of non_asset", non_asset.balanceOf(address(this)));
-        console.log("balance of asset", asset.balanceOf(address(this)));
+        console.log("balance of non_asset",non_asset.name(), non_asset.balanceOf(address(this)));
+        console.log("balance of asset",asset.name(), asset.balanceOf(address(this)));
     }
 
     function redeem(
@@ -355,6 +330,83 @@ contract ArrakisNonNativeVault is ERC4626 {
     function _approveTokenIfNeeded(address token, address spender) private {
         if (ERC20(token).allowance(address(this), spender) == 0) {
             ERC20(token).safeApprove(spender, type(uint256).max);
+        }
+    }
+
+    /// -----------------------------------------------------------------------
+    /// view methods to calculate price for the swapAmounts
+    /// -----------------------------------------------------------------------
+
+    function getRebalanceParams(
+        IGUniPool pool,
+        uint256 amount0In,
+        uint256 amount1In,
+        uint256 price18Decimals
+    ) public view returns (bool zeroForOn_e, uint256 swapAmount) {
+        uint256 amount0Left;
+        uint256 amount1Left;
+        try pool.getMintAmounts(amount0In, amount1In) returns (
+            uint256 amount0,
+            uint256 amount1,
+            uint256
+        ) {
+            amount0Left = amount0In - amount0;
+            amount1Left = amount1In - amount1;
+        } catch {
+            amount0Left = amount0In;
+            amount1Left = amount1In;
+        }
+
+        (uint256 gross0, uint256 gross1) = _getUnderlyingOrLiquidity(pool);
+
+        if (gross1 == 0) {
+            return (false, amount1Left);
+        }
+
+        if (gross0 == 0) {
+            return (true, amount0Left);
+        }
+
+        uint256 factor0 =
+            10**(18 - ERC20(address(pool.token0())).decimals());
+        uint256 factor1 =
+            10**(18 - ERC20(address(pool.token1())).decimals());
+        uint256 weightX18 =
+            FullMath.mulDiv(gross0 * factor0, 1 ether, gross1 * factor1);
+        uint256 proportionX18 =
+            FullMath.mulDiv(weightX18, price18Decimals, 1 ether);
+        uint256 factorX18 =
+            FullMath.mulDiv(proportionX18, 1 ether, proportionX18 + 1 ether);
+
+        if (amount0Left > amount1Left) {
+            zeroForOn_e = true;
+            swapAmount = FullMath.mulDiv(
+                amount0Left,
+                1 ether - factorX18,
+                1 ether
+            );
+        } else if (amount1Left > amount0Left) {
+            swapAmount = FullMath.mulDiv(amount1Left, factorX18, 1 ether);
+        }
+    }
+
+    function _getUnderlyingOrLiquidity(IGUniPool pool)
+        internal
+        view
+        returns (uint256 gross0, uint256 gross1)
+    {
+        (gross0, gross1) = pool.getUnderlyingBalances();
+        if (gross0 == 0 && gross1 == 0) {
+            IUniswapV3Pool uniPool = pool.pool();
+            (uint160 sqrtPriceX96, , , , , , ) = uniPool.slot0();
+            uint160 lowerSqrtPrice = pool.lowerTick().getSqrtRatioAtTick();
+            uint160 upperSqrtPrice = pool.upperTick().getSqrtRatioAtTick();
+            (gross0, gross1) = LiquidityAmounts.getAmountsForLiquidity(
+                sqrtPriceX96,
+                lowerSqrtPrice,
+                upperSqrtPrice,
+                1 ether
+            );
         }
     }
 
