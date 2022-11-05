@@ -196,7 +196,6 @@ contract ArrakisNonNativeVault is ERC4626 {
     }
 
     function afterDeposit(uint256 underlyingAmount, uint256) internal override {
-        IUniswapV3Pool uniPool = arrakisVault.pool();
         ERC20 token0 = arrakisVault.token0();
         ERC20 token1 = arrakisVault.token1();
         (uint160 sqrtRatioX96, , , , , , ) = arrakisVault.pool().slot0();
@@ -204,7 +203,7 @@ contract ArrakisNonNativeVault is ERC4626 {
             ((sqrtRatioX96 * sqrtRatioX96) / X96)) / X96;
 
         // multiplying the price decimals by 1e12 as the price you get from sqrtRationX96 is 6 decimals but need 18 decimal value for this method
-        (bool trial,uint256 finaling) = getRebalanceParams(arrakisVault, zeroForOne ? underlyingAmount: 0, !zeroForOne ? underlyingAmount: 0, 
+        (bool _direction,uint256 swapAmount) = getRebalanceParams(arrakisVault, zeroForOne ? underlyingAmount: 0, !zeroForOne ? underlyingAmount: 0, 
         priceDecimals * 1e12);
         
         uint160 twoPercentSqrtPrice = sqrtRatioX96 / slippage;
@@ -213,8 +212,8 @@ contract ArrakisNonNativeVault is ERC4626 {
 
         swapParams memory params = swapParams({
             receiver: address(this),
-            direction: trial,
-            amount: int256(finaling),
+            direction: _direction,
+            amount: int256(swapAmount),
             sqrtPrice: zeroForOne ? lowerLimit : upperLimit,
             data: ""
         });
