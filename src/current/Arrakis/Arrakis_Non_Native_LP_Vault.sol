@@ -202,6 +202,7 @@ contract ArrakisNonNativeVault is ERC4626 {
         uint160 twoPercentSqrtPrice = sqrtPriceX96 / slippage;
         uint160 lowerLimit = sqrtPriceX96 - (twoPercentSqrtPrice);
         uint160 upperLimit = sqrtPriceX96 + (twoPercentSqrtPrice);
+
         // the swap is always done for a 50:50 amount lets say the current tick, escaping /2 would mean the pool ticks range beyond 52% < and 48% > 
         uint256 swapAmount = underlyingAmount / 2; // initial swap to start calculating expected mint amounts according to the sqrtPrice of arrakisVault
         swapParams memory params = swapParams({
@@ -211,10 +212,12 @@ contract ArrakisNonNativeVault is ERC4626 {
             sqrtPrice: zeroForOne ? lowerLimit : upperLimit,
             data: ""
         });
+
         //escaping stack too deep error
         _paramSwap(params);
         ERC20 token0 = arrakisVault.token0();
         ERC20 token1 = arrakisVault.token1();
+
         // calculating amount of asset token that needs to be swapped to non-asset lp token with best liquidity fitting in the arrakis LP
         uint256 amountAssetToNonAsset = (token0.balanceOf(address(this)) *
             ((sqrtPriceX96 * sqrtPriceX96) / X96)) / X96;
@@ -230,7 +233,8 @@ contract ArrakisNonNativeVault is ERC4626 {
             amount0Used;
         uint256 token1Left = token1.balanceOf(address(this)) -
             amount1Used;
-            // direction of the swap needed for reaching optimal liquidity amounts
+            
+        // direction of the swap needed for reaching optimal liquidity amounts
         bool direction;
         if (token0Left > token1Left) {
             direction = true;
@@ -242,6 +246,7 @@ contract ArrakisNonNativeVault is ERC4626 {
         params.sqrtPrice = direction ? lowerLimit : upperLimit;
         params.amount = int256(swapAmount);
         _paramSwap(params);
+        
         // we need a final swap to put the remaining amount of tokens into liquidity as before swap might have moved the liquidity positions needed.
         uint256 token0Bal = token0.balanceOf(address(this));
         uint256 token1Bal = token1.balanceOf(address(this));
