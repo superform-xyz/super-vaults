@@ -44,6 +44,7 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         pair = pair_;
         router = router_;
 
+        /// TODO: Factory deployment + init pattern to cover token0/token1 instantly
         token0 = ERC20(pair.token0());
         token1 = ERC20(pair.token1());
 
@@ -63,19 +64,20 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         console.log("withdraw a0", assets0, "a1", assets1);
         uint slip1 = getSlippage(assets0);
         uint slip2 = getSlippage(assets1);
-
         console.log("s1", slip1, "s2", slip2);
 
         /// temp implementation, we should call directly on a pair
-        router.removeLiquidity(
+        (uint256 aA, uint256 aB) = router.removeLiquidity(
             address(token0),
             address(token1),
             shares,
-            0, /// TODO: getSlippage
-            0, /// TODO: getSlippage
+            assets0 - getSlippage(assets0),
+            assets1 - getSlippage(assets1),
             address(this),
             block.timestamp + 100
         );
+
+        console.log("aA", aA, "aB", aB);
     }
 
     function liquidityDeposit() internal returns (uint256 li) {
@@ -87,8 +89,8 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
             address(token1),
             assets0,
             assets1,
-            getSlippage(assets0),
-            getSlippage(assets1),
+            assets0 - getSlippage(assets0),
+            assets1 - getSlippage(assets1),
             address(this),
             block.timestamp + 100
         );
@@ -168,6 +170,8 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         // Check for rounding error since we round down in previewRedeem.
         require((assets = previewRedeem(shares)) != 0, "ZERO_ASSETS");
 
+        console.log("redeem assets", assets);
+
         beforeWithdraw(assets, shares);
 
         _burn(owner, shares);
@@ -177,8 +181,9 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         token0.safeTransfer(receiver, assets);
     }
 
-    /// Calculate total amount of token0 under managment from balance of lpToken on this address
+    /// Use Uniswap LP-TOKEN amount as AUM of this Vault
     function totalAssets() public view override returns (uint256) {
+        // console.log("called totalAssets()", asset.balanceOf(address(this)));
         return asset.balanceOf(address(this));
     }
 
