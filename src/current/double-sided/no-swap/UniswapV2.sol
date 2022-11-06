@@ -81,8 +81,8 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
             address(token0),
             address(token1),
             assets,
-            getSlippage(assets0),
-            getSlippage(assets1),
+            assets0 - getSlippage(assets0),
+            assets1 - getSlippage(assets1),
             address(this),
             block.timestamp + 100
         );
@@ -97,8 +97,8 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
             address(token1),
             assets0,
             assets1,
-            getSlippage(assets0),
-            getSlippage(assets1),
+            assets0 - getSlippage(assets0),
+            assets1 - getSlippage(assets1),
             address(this),
             block.timestamp + 100
         );
@@ -106,18 +106,19 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
 
     /// User wants to get 100 UniLP (underlying)
     /// REQUIREMENT: Calculate amount of assets and have enough of assets0/1 to cover this amount for LP requested (slippage!)
-    /// @param assets == Assume caller called previewDeposit() first for calc on amount of assets to give approve to
-    /// assets value == amount of lpToken to mint (asset) from token0 & token1 input (function has no knowledge of inputs)
-    function deposit(uint256 assets, address receiver)
+    /// @param getUniLpFromAssets == Assume caller called getAssetsAmounts() first for calc on amount of assets to give approve to
+    /// getAssetsAmounts value == amount of lpToken to mint (asset) from token0 & token1 input (this function has no knowledge of inputs)
+    /// @return shares - Of this Vault (Standard ERC4626)
+    function deposit(uint256 getUniLpFromAssets, address receiver)
         public
         override
         returns (uint256 shares)
     {
         /// From 100 uniLP msg.sender gets N shares (of this Vault)
-        require((shares = previewDeposit(assets)) != 0, "ZERO_SHARES");
+        require((shares = previewDeposit(getUniLpFromAssets)) != 0, "ZERO_SHARES");
 
         /// Ideally, msg.sender should call this function beforehand to get correct "assets" amount
-        (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets);
+        (uint256 assets0, uint256 assets1) = getAssetsAmounts(getUniLpFromAssets);
 
         /// Best if we approve exact amounts, but because of UniV2 min() we can sometimes approve to much/to little
         token0.safeTransferFrom(msg.sender, address(this), assets0);
@@ -127,19 +128,21 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         _mint(receiver, shares);
 
         /// Custom assumption about assets changes assumptions about this event
-        emit Deposit(msg.sender, receiver, assets, shares);
+        emit Deposit(msg.sender, receiver, getUniLpFromAssets, shares);
 
-        afterDeposit(assets, shares);
+        afterDeposit(getUniLpFromAssets, shares);
     }
 
-    /// User want to get 100 VaultLP (vault's token) worth N UniLP
-    /// shares value == amount of Vault token (shares) to mint from requested lpToken
-    function mint(uint256 shares, address receiver)
+    /// User want to get 100 VaultLP (vault's token) worth N UniLP (Standard ERC4626 behavior, 'get me N amount of shares of this Vault')
+    /// @param sharesOfThisVault shares value == amount of Vault token (shares) to mint from requested lpToken, but...
+    ///        because this is 1:1 with LPTOKEN amount on this balance, function behaves like deposit() anyways
+    /// @return assets == amount of LPTOKEN minted (1:1 with sharesOfThisVault input)
+    function mint(uint256 sharesOfThisVault, address receiver)
         public
         override
         returns (uint256 assets)
     {
-        assets = previewMint(shares);
+        assets = previewMint(sharesOfThisVault);
         
         (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets);
 
@@ -147,12 +150,12 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
 
         token1.safeTransferFrom(msg.sender, address(this), assets1);
 
-        _mint(receiver, shares);
+        _mint(receiver, sharesOfThisVault);
 
         /// Custom assumption about assets changes assumptions about this event
-        emit Deposit(msg.sender, receiver, assets, shares);
+        emit Deposit(msg.sender, receiver, assets, sharesOfThisVault);
 
-        afterDeposit(assets, shares);
+        afterDeposit(assets, sharesOfThisVault);
     }
 
     /// User wants to burn 100 UniLP (underlying) for N worth of token0/1
