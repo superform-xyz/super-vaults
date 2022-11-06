@@ -6,6 +6,8 @@ ERC4626 different wrappers for SuperForm Vault system
 
 Repository uses MakeFile to streamline testing operations. You can use `forge install` and other forge naitive commands, but expected execution is achived with `make`.
 
+Create `.env` file with RPC_URLs, otherwise tests will fail!
+
 `make install`
 
 `make build`
@@ -20,7 +22,7 @@ Repository uses MakeFile to streamline testing operations. You can use `forge in
 
 ... (check the Makefile for more)
 
-`make test-old` for old implementation
+`make test-old` for old implementation (not used!)
 
 # To run OLD test:
 
