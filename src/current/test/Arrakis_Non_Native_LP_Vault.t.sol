@@ -5,7 +5,7 @@ import {Utilities} from "./utils/Utilities.sol";
 // import {console} from "./utils/Console.sol";
 import "forge-std/Vm.sol";
 import "forge-std/Test.sol";
-import {ArrakisNonNativeVault, IArrakisRouter, IUniswapV3Pool, LiquidityAmounts, IGUniPool, TickMath, SafeTransferLib} from "../Arrakis/Arrakis_Non_Native_LP_Vault.sol";
+import {ArrakisNonNativeVault, IArrakisRouter, IUniswapV3Pool, LiquidityAmounts, IGUniPool, TickMath, SafeTransferLib} from "../arrakis/Arrakis_Non_Native_LP_Vault.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {IWETH} from "../token-staking/interfaces/IWETH.sol";
 interface UniRouter {
