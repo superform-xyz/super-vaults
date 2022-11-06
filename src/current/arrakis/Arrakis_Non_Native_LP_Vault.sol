@@ -131,13 +131,27 @@ contract ArrakisNonNativeVault is ERC4626 {
         _swap(params);
     }
 
-    /// what is the underlying balance of the liquidity does this contract hold
+    /// Underlying balance of the assets (notional value in terms of asset) this contract holds.
     function viewUnderlyingBalanceOf() internal view returns (uint256) {
-        (uint128 liquidity_, , , , ) = arrakisVault.pool().positions(
-            arrakisVault.getPositionID()
-        );
-        uint256 liquidity = (gauge.balanceOf(address(this)) * liquidity_) /
-            arrakisVault.totalSupply();
+        (uint256 gross0,uint256 gross1) = _getUnderlyingOrLiquidity(arrakisVault);
+        console.log(gross0, gross1);
+        (uint160 sqrtRatioX96, , , , , , ) = arrakisVault.pool().slot0();
+         uint256 priceDecimals;
+        uint256 liquidity;
+        uint256 grossLiquidity;
+        // calculating non_asset price in terms on asset price to find virtual total assets in terms of deposit asset
+        if(zeroForOne){
+            priceDecimals = ((10**non_asset.decimals()) *
+            X96 / ((sqrtRatioX96 * sqrtRatioX96) / X96));
+            grossLiquidity = (((priceDecimals)*(gross1 * (10**asset.decimals())/(10**non_asset.decimals())) /(10**asset.decimals())) + gross0);
+            liquidity = grossLiquidity * gauge.balanceOf(address(this))/arrakisVault.totalSupply();
+        }
+        else {
+            priceDecimals = ((10**non_asset.decimals()) *
+            ((sqrtRatioX96 * sqrtRatioX96) / X96)) / X96;
+            grossLiquidity = (((priceDecimals)*(gross0 * (10**asset.decimals())/(10**non_asset.decimals()))) /(10**asset.decimals()) + gross1);
+            liquidity = grossLiquidity * gauge.balanceOf(address(this)) / arrakisVault.totalSupply();
+        }
         return liquidity;
     }
 
@@ -187,6 +201,7 @@ contract ArrakisNonNativeVault is ERC4626 {
         console.log("balance of asset",asset.name(), asset.balanceOf(address(this)));
     }
 
+
     function redeem(
         uint256 shares,
         address receiver,
@@ -209,11 +224,61 @@ contract ArrakisNonNativeVault is ERC4626 {
         asset.safeTransfer(receiver, assets);
     }
 
+    function withdraw(
+        uint256 assets,
+        address receiver,
+        address owner
+    ) public override returns (uint256 shares) {
+        uint256 liquidity = previewWithdraw(assets); // No need to check for rounding error, previewWithdraw rounds up.
+
+        if (msg.sender != owner) {
+            uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
+
+            if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
+        }
+        shares = liquidity.mulDivDown(totalSupply, totalLiquidity());
+        beforeWithdraw(liquidity, shares);
+
+        _burn(owner, shares);
+
+        assets = asset.balanceOf(address(this));
+        emit Withdraw(msg.sender, receiver, owner, assets, shares);
+
+        asset.safeTransfer(receiver, assets);
+    }
+
+    function totalLiquidity() public view returns (uint256) {
+        (uint128 liquidity_, , , , ) = arrakisVault.pool().positions(
+            arrakisVault.getPositionID()
+        );
+        uint256 liquidity = (gauge.balanceOf(address(this)) * liquidity_) /
+            arrakisVault.totalSupply();
+        return liquidity;
+    }
+
+    /// @notice returns the liquidity on uniswap that can be redeemable
+    function previewRedeem(uint256 shares) public view override returns (uint256) {
+        uint256 supply = totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
+
+        return supply == 0 ? shares : shares.mulDivDown(totalLiquidity(), supply);
+    }
+
+    /// @notice returns the liquidity on uniswap thats withdrawn to get desired assets
+    function previewWithdraw(uint256 assets) public view override returns (uint256) {
+        uint256 supply = totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
+
+        return supply == 0 ? assets : assets.mulDivUp(totalLiquidity(), totalAssets());
+    }
+
     /// @notice Total amount of the underlying asset that
     /// is "managed" by Vault.
     function totalAssets() public view override returns (uint256) {
         return viewUnderlyingBalanceOf();
     }
+
+    /*//////////////////////////////////////////////////////////////
+                            LIMITS
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice maximum amount of assets that can be deposited.
     function maxDeposit(address) public view override returns (uint256) {
@@ -241,6 +306,10 @@ contract ArrakisNonNativeVault is ERC4626 {
     }
 
     receive() external payable {}
+
+    /*//////////////////////////////////////////////////////////////
+                            UTILITIES METHODS
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Uniswap v3 callback fn, called back on pool.swap
     function uniswapV3SwapCallback(
@@ -275,9 +344,9 @@ contract ArrakisNonNativeVault is ERC4626 {
         }
     }
 
-    /// -----------------------------------------------------------------------
-    /// view methods to calculate price for the swapAmounts
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                            SWAP LOGIC HELPERS
+    //////////////////////////////////////////////////////////////*/
 
     function getRebalanceParams(
         IGUniPool pool,
