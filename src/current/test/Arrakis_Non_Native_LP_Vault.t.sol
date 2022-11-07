@@ -249,7 +249,7 @@ contract Arrakis_LP_Test is Test {
             amt,
             address(this)
         );
-
+        console.log("Underlying balance :", vault.totalAssets());
         console.log("Starting swap simulation on uniswap....");
         uint256 countLoop = 2;
         ERC20(address(WMATIC)).transfer(
@@ -268,7 +268,50 @@ contract Arrakis_LP_Test is Test {
             address(this),
             address(this)
         );
+        console.log("Underlying balance :", vault.totalAssets());
+        emit log_named_decimal_uint(
+            "amount gained through out the duration in the form of deposited Asset",
+            returnAssets,
+            18
+        );
+    }
 
+    function testMintWithToken0AsAssetSuccess() public {
+        vault = arrakisNonNativeVault;
+        blah = true;
+        uint256 amt = 300000e18;
+        getWMATIC(amt);
+        amt = 2000e18;
+
+        ERC20(address(WMATIC)).approve(address(arrakisNonNativeVault), type(uint256).max);
+        this.computeFeesAccrued();
+        emit log_named_uint("deposited amount:", 2000e18);
+
+        uint256 sharesReceived = arrakisNonNativeVault.mint(
+            amt,
+            address(this)
+        );
+        console.log("Shares Received :", sharesReceived);
+        console.log("Underlying balance :", vault.totalAssets());
+        console.log("Starting swap simulation on uniswap....");
+        uint256 countLoop = 2;
+        ERC20(address(WMATIC)).transfer(
+            address(this),
+            298000e18
+        );
+        while (countLoop > 0) {
+            this.paramswap();
+            countLoop--;
+        }
+        console.log("swap simulation on uniswap stopped!");
+
+        this.computeFeesAccrued();
+        uint256 returnAssets = arrakisNonNativeVault.withdraw(
+            vault.totalAssets()-1e19,
+            address(this),
+            address(this)
+        );
+        console.log("Underlying balance :", vault.totalAssets());
         emit log_named_decimal_uint(
             "amount gained through out the duration in the form of deposited Asset",
             returnAssets,
@@ -298,7 +341,8 @@ contract Arrakis_LP_Test is Test {
             2000 * (10**6),
             address(this)
         );
-
+        console.log("Underlying balance :", vault.totalAssets());
+        console.log("Shares received:", sharesReceived);
         console.log("Starting swap simulation on uniswap....");
         uint256 countLoop = 2;
         ERC20(address(USDC)).transfer(
@@ -317,7 +361,7 @@ contract Arrakis_LP_Test is Test {
             address(this),
             address(this)
         );
-
+        console.log("Underlying balance :", vault.totalAssets());
         emit log_named_decimal_uint(
             "amount gained through out the duration in the form of deposited Asset",
             returnAssets,
