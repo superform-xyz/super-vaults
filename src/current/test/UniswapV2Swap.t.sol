@@ -40,7 +40,7 @@ contract UniswapV2TestSwap is Test {
     address public bob;
     address public manager;
 
-    uint256 public slippage = 300; /// 0.3
+    uint256 public slippage = 30; /// 0.3
 
     function setUp() public {
         ethFork = vm.createFork(ETH_RPC_URL);

@@ -4,7 +4,6 @@ pragma solidity 0.8.14;
 import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {AaveV2StrategyWrapperNoHarvester} from "../aave-v2/AaveV2StrategyWrapperNoHarvester.sol";
-import {AaveV2StrategyWrapperWithHarvester} from "../aave-v2/AaveV2StrategyWrapperWithHarvester.sol";
 import {IMultiFeeDistribution} from "../utils/aave/IMultiFeeDistribution.sol";
 import {ILendingPool} from "../utils/aave/ILendingPool.sol";
 
@@ -18,7 +17,6 @@ contract AaveV2StrategyWrapperTest is Test {
     string FTM_RPC_URL = vm.envString("FTM_MAINNET_RPC");
 
     AaveV2StrategyWrapperNoHarvester public vault;
-    AaveV2StrategyWrapperWithHarvester public vaultHarvester;
 
     Harvester public harvester;
 
@@ -59,41 +57,6 @@ contract AaveV2StrategyWrapperTest is Test {
         alice = address(0x1);
         deal(rewardToken, address(vault), 1000 ether);
         deal(address(underlying), alice, 10000 ether);
-    }
-
-    function setUpWithHarvester() public {
-        ftmFork = vm.createFork(FTM_RPC_URL);
-        address manager = msg.sender;
-        vm.selectFork(ftmFork);
-
-        vaultHarvester = new AaveV2StrategyWrapperWithHarvester(
-            underlying,
-            aToken,
-            rewards,
-            lendingPool,
-            rewardToken,
-            manager
-        );
-
-        harvester = new Harvester(
-            manager
-        );
-
-        vm.makePersistent(address(harvester));
-
-        vm.startPrank(manager);
-        vaultHarvester.enableHarvest(harvester);
-
-        address swapToken = 0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83; /// FTM
-        address swapPair1 = 0x668AE94D0870230AC007a01B471D02b2c94DDcB9; /// Geist - Ftm
-        address swapPair2 = 0xe120ffBDA0d14f3Bb6d6053E90E63c572A66a428; /// Ftm - Dai
-        
-        harvester.setVault(vaultHarvester, ERC20(rewardToken));
-        harvester.setRoute(swapToken, swapPair1, swapPair2);
-
-        vm.stopPrank();
-        /// Simulate rewards accrued to the vault contract
-        deal(rewardToken, address(vaultHarvester), 1000 ether);
     }
 
     function makeDeposit() public returns (uint256 shares) {
@@ -196,7 +159,7 @@ contract AaveV2StrategyWrapperTest is Test {
         assertEq(underlying.balanceOf(alice), alicePreDepositBal);
     }
 
-    function testWithoutHarvester() public {
+    function testHarvester() public {
         uint256 aliceShareAmount = makeDeposit();
 
         assertEq(vault.totalSupply(), aliceShareAmount);
