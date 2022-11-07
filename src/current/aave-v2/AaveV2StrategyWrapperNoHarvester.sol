@@ -13,7 +13,7 @@ import {DexSwap} from "../utils/swapUtils.sol";
 /// Rationale: Forked protocols often implement custom functions and modules on top of forked code.
 /// Example: Aave-forked protocol doesn't use AaveMining for rewards distribution but Curve's MultiFeeDistribution
 /// Example Two: Staking systems. Very common in DeFi. Re-investing/Re-Staking rewards on the Vault level can be included in permissionless way.
-contract AaveV2StrategyWrapper is ERC4626 {
+contract AaveV2StrategyWrapperNoHarvester is ERC4626 {
     address public immutable manager;
     address public immutable rewardToken;
     /// -----------------------------------------------------------------------

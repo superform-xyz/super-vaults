@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.14;
+pragma solidity ^0.8.10;
 
 import {IRewardsCore} from "../interfaces/IRewardsCore.sol";
 import {Ownable} from "openzeppelin-contracts/access/Ownable.sol";

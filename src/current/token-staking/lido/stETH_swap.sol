@@ -6,10 +6,10 @@ import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
-import {ICurve} from "./interfaces/ICurve.sol";
-import {IStETH} from "./interfaces/IStETH.sol";
-import {IWETH} from "./interfaces/IWETH.sol";
-import {wstETH} from "./interfaces/wstETH.sol";
+import {ICurve} from "../interfaces/ICurve.sol";
+import {IStETH} from "../interfaces/IStETH.sol";
+import {IWETH} from "../interfaces/IWETH.sol";
+import {wstETH} from "../interfaces/wstETH.sol";
 
 import "forge-std/console.sol";
 
