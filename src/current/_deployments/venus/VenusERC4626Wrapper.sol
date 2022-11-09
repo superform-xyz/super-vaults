@@ -109,6 +109,7 @@ contract VenusERC4626Wrapper is ERC4626 {
         address rewardToken = address(reward);
 
         /// If only one swap needed (high liquidity pair) - set swapInfo.token0/token/pair2 to 0x
+        /// XVS => WBNB => USDC
         if (SwapInfo.token == address(asset)) {
             DexSwap.swap(
                 earned, /// REWARDS amount to swap

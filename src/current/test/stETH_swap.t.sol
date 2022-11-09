@@ -61,7 +61,7 @@ contract stEthTest is Test {
         uint256 aliceAssetsFromShares = vault.convertToAssets(aliceShareAmount);
         console.log("aliceAssetsFromShares", aliceAssetsFromShares);
 
-        vault.withdraw(aliceShareAmount, alice, alice);
+        vault.withdraw(aliceAssetsFromShares, alice, alice);
     }
 
     function testPureSteth() public {

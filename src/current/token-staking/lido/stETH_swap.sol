@@ -199,7 +199,7 @@ contract StETHERC4626 is ERC4626 {
 
     /// Pure/Native ETH as AUM. Rebasing! We can make wstEth as underlying a separate implementation
     function totalAssets() public view virtual override returns (uint256) {
-        return stEth.getPooledEthByShares(stEth.balanceOf(address(this)));
+        return stEth.balanceOf(address(this));
     }
 
     function convertToShares(uint256 assets)
