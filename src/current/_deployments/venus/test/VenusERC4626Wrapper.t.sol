@@ -45,13 +45,13 @@ contract VenusERC4626WrapperTest is Test {
         // https://pancakeswap.finance/info/pools/0x7eb5d86fd78f3852a3e0e064f2842d45a3db6ea2
         /// HERE: XVS IS ONLY SWAPPABLE TO WBNB
         /// TWO SWAPS ARE ALWAYS NEEDED XVS>WBNB POOL > WBNB >asset POOL
-        address BUSD = address(0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56);
-        address PAIR1 = address(0x7752e1FA9F3a2e860856458517008558DEb989e3); // XVS/WBNB
-        address PAIR2 = address(0x2354ef4DF11afacb85a5C7f98B624072ECcddbB1); // WBNB/USDC
+        address WBNB = address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c); // WBNB
+        address PAIR1 = address(0x7EB5D86FD78f3852a3e0e064f2842d45a3dB6EA2); // XVS/WBNB
+        address PAIR2 = address(0xd99c7F6C65857AC913a8f880A4cb84032AB2FC5b); // WBNB/USDC
         
         vm.prank(manager);
         vault.setRoute(
-            BUSD, PAIR1, PAIR2
+            WBNB, PAIR1, PAIR2
         );
 
     }
