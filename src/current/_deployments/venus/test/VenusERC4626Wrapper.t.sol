@@ -14,60 +14,125 @@ contract VenusERC4626WrapperTest is Test {
 
     string BSC_RPC_URL = vm.envString("BSC_MAINNET_RPC");
 
-    VenusERC4626Wrapper public vault;
-
     address public manager;
     address public alice;
+    address public bob;
 
-    /// Change those to .env vars
-    ERC20 public usdc = ERC20(0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d);
-    ERC20 public reward = ERC20(0xcF6BB5389c92Bdda8a3747Ddb454cB7a64626C63);
-    ICERC20 public cToken = ICERC20(0xecA88125a5ADbe82614ffC12D0DB554E2e2867C8);
-    IComptroller public comptroller =
-        IComptroller(0xf6C14D4DFE45C132822Ce28c646753C54994E59C);
+    /// Venus protocol constants
+    address VENUS_COMPTROLLER = vm.envAddress("VENUS_COMPTROLLER");
+    address VENUS_REWARD_XVS = vm.envAddress("VENUS_REWARD_XVS");
 
-    function setUp() public {
+    /// Test USDC Vault
+    address VENUS_USDC_ASSET = vm.envAddress("VENUS_USDC_ASSET");
+    address VENUS_VUSDC_CTOKEN = vm.envAddress("VENUS_VUSDC_CTOKEN");
+    address VENUS_SWAPTOKEN_USDC = vm.envAddress("VENUS_SWAPTOKEN_USDC");
+    address VENUS_PAIR1_USDC = vm.envAddress("VENUS_PAIR1_USDC");
+    address VENUS_PAIR2_USDC = vm.envAddress("VENUS_PAIR2_USDC");
+
+    /// Write to storage for a duration of test
+    VenusERC4626Wrapper public vault;
+    ERC20 public asset;
+    ERC20 public reward;
+    ICERC20 public cToken;
+    IComptroller public comptroller;
+
+    constructor() {
         fork = vm.createFork(BSC_RPC_URL);
         vm.selectFork(fork);
-
         manager = msg.sender;
-        vault = new VenusERC4626Wrapper(
-            usdc,
-            reward,
-            cToken,
+        comptroller = IComptroller(VENUS_COMPTROLLER);
+
+        /// Set vault as fallback
+        setVault(
+            ERC20(vm.envAddress("VENUS_USDC_ASSET")),
+            ERC20(vm.envAddress("VENUS_REWARD_XVS")),
+            ICERC20(vm.envAddress("VENUS_VUSDC_CTOKEN")),
             comptroller,
+            "VENUS_SWAPTOKEN_USDC",
+            "VENUS_PAIR1_USDC",
+            "VENUS_PAIR2_USDC"
+        );
+
+        /// Init USDC vault always as fallback
+        asset = ERC20(VENUS_USDC_ASSET);
+        reward = ERC20(VENUS_REWARD_XVS);
+        cToken = ICERC20(VENUS_VUSDC_CTOKEN);
+    }
+
+    function setVault(
+        ERC20 underylyingAsset,
+        ERC20 reward_,
+        ICERC20 cToken_,
+        IComptroller comptroller_,
+        string memory swapToken,
+        string memory pair1,
+        string memory pair2
+    ) public {
+        vm.startPrank(manager);
+
+        asset = underylyingAsset;
+        reward = reward;
+        cToken = cToken_;
+
+        vault = new VenusERC4626Wrapper(
+            underylyingAsset,
+            reward_,
+            cToken_,
+            comptroller_,
+            vm.envAddress(swapToken),
+            vm.envAddress(pair1),
+            vm.envAddress(pair2),
             manager
         );
 
-        alice = address(0x1);
-        deal(address(usdc), alice, 1000 ether);
-        
-        // https://pancakeswap.finance/info/pools/0x7eb5d86fd78f3852a3e0e064f2842d45a3db6ea2
-        /// HERE: XVS IS ONLY SWAPPABLE TO WBNB
-        /// TWO SWAPS ARE ALWAYS NEEDED XVS>WBNB POOL > WBNB >asset POOL
-        address WBNB = address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c); // WBNB
-        address PAIR1 = address(0x7EB5D86FD78f3852a3e0e064f2842d45a3dB6EA2); // XVS/WBNB
-        address PAIR2 = address(0xd99c7F6C65857AC913a8f880A4cb84032AB2FC5b); // WBNB/USDC
-        
-        vm.prank(manager);
-        vault.setRoute(
-            WBNB, PAIR1, PAIR2
-        );
-
+        vm.stopPrank();
     }
 
-    function testDepositWithdraw() public {
+    function setUp() public {
+        alice = address(0x1);
+        bob = address(0x2);
+        deal(address(asset), alice, 1000 ether);
+        deal(address(asset), bob, 1000 ether);
+    }
+
+    function testDepositWithdrawUSDC() public {
         uint256 amount = 100 ether;
 
-        /// deal(here)
         vm.startPrank(alice);
 
         uint256 aliceUnderlyingAmount = amount;
 
-        usdc.approve(address(vault), aliceUnderlyingAmount);
-        assertEq(usdc.allowance(alice, address(vault)), aliceUnderlyingAmount);
+        asset.approve(address(vault), aliceUnderlyingAmount);
+        assertEq(asset.allowance(alice, address(vault)), aliceUnderlyingAmount);
 
-        uint256 alicePreDepositBal = usdc.balanceOf(alice);
+        uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
+        uint256 aliceAssetsToWithdraw = vault.convertToAssets(aliceShareAmount);
+        assertEq(aliceUnderlyingAmount, aliceShareAmount);
+        assertEq(vault.totalSupply(), aliceShareAmount);
+        assertEq(vault.balanceOf(alice), aliceShareAmount);
+
+        vault.withdraw(aliceAssetsToWithdraw, alice, alice);
+    }
+
+    function testDepositWithdrawBUSD() public {
+        setVault(
+            ERC20(vm.envAddress("VENUS_BUSD_ASSET")),
+            ERC20(vm.envAddress("VENUS_REWARD_XVS")),
+            ICERC20(vm.envAddress("VENUS_BUSD_CTOKEN")),
+            comptroller,
+            "VENUS_SWAPTOKEN_BUSD",
+            "VENUS_PAIR1_BUSD",
+            "VENUS_PAIR2_BUSD"
+        );
+
+        uint256 amount = 100 ether;
+
+        vm.startPrank(alice);
+
+        uint256 aliceUnderlyingAmount = amount;
+
+        asset.approve(address(vault), aliceUnderlyingAmount);
+        assertEq(asset.allowance(alice, address(vault)), aliceUnderlyingAmount);
 
         uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
         uint256 aliceAssetsToWithdraw = vault.convertToAssets(aliceShareAmount);
@@ -79,13 +144,23 @@ contract VenusERC4626WrapperTest is Test {
     }
 
     function testHarvest() public {
+        setVault(
+            ERC20(vm.envAddress("VENUS_USDC_ASSET")),
+            ERC20(vm.envAddress("VENUS_REWARD_XVS")),
+            ICERC20(vm.envAddress("VENUS_VUSDC_CTOKEN")),
+            comptroller,
+            "VENUS_SWAPTOKEN_USDC",
+            "VENUS_PAIR1_USDC",
+            "VENUS_PAIR2_USDC"
+        );
+
         uint256 amount = 100 ether;
 
         vm.startPrank(alice);
 
         uint256 aliceUnderlyingAmount = amount;
 
-        usdc.approve(address(vault), aliceUnderlyingAmount);
+        asset.approve(address(vault), aliceUnderlyingAmount);
         uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
 
         console.log("totalAssets before harvest", vault.totalAssets());
@@ -94,6 +169,7 @@ contract VenusERC4626WrapperTest is Test {
         assertEq(reward.balanceOf(address(vault)), 1000 ether);
         vault.harvest();
         assertEq(reward.balanceOf(address(vault)), 0);
+
         console.log("totalAssets after harvest", vault.totalAssets());
     }
 }

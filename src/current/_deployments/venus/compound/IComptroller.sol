@@ -4,7 +4,8 @@ pragma solidity ^0.8.14;
 import {ICERC20} from "./ICERC20.sol";
 
 interface IComptroller {
-    function getCompAddress() external view returns (address);
+
+    function getXVSAddress() external view returns (address);
 
     function getAllMarkets() external view returns (ICERC20[] memory);
 

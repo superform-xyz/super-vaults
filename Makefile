@@ -1,6 +1,7 @@
 # include .env file and export its env vars
 # (-include to ignore error if it does not exist)
 -include .env
+-include .env.addresses
 
 # deps
 install:; forge install
@@ -26,6 +27,7 @@ test-arrakis :; forge test --match-contract Arrakis_LP_Test -vvv
 # Test deployments
 
 test-venus :; forge test --match-contract VenusERC4626WrapperTest -vvv
+test-aave-reinvest :; forge test --match-contract AaveV2ERC4626ReinvestTest -vvv
 
 # Deploy forks BSC, AVAX, FTM, POLY, ARB, OPT
 # forge create --rpc-url <your_rpc_url> \

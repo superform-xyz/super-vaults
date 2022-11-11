@@ -69,16 +69,23 @@ contract VenusERC4626Wrapper is ERC4626 {
     /// -----------------------------------------------------------------------
 
     constructor(
-        ERC20 asset_, // underlying
-        ERC20 reward_, // comp token or other
-        ICERC20 cToken_, // compound concept of a share
+        ERC20 asset_,
+        ERC20 reward_,
+        ICERC20 cToken_,
         IComptroller comptroller_,
+        address token,
+        address pair1,
+        address pair2,
         address manager_
     ) ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_)) {
         reward = reward_;
         cToken = cToken_;
         comptroller = comptroller_;
         manager = manager_;
+
+        SwapInfo = swapInfo(token, pair1, pair2);
+        ERC20(reward).approve(SwapInfo.pair1, type(uint256).max); /// max approve
+        ERC20(SwapInfo.token).approve(SwapInfo.pair2, type(uint256).max); /// max approve
     }
 
     /// -----------------------------------------------------------------------
@@ -117,7 +124,7 @@ contract VenusERC4626Wrapper is ERC4626 {
                 address(asset), /// to target underlying of this Vault ie USDC
                 SwapInfo.pair1 /// pairToken (pool)
             );
-        /// If two swaps needed
+            /// If two swaps needed
         } else {
             uint256 swapTokenAmount = DexSwap.swap(
                 earned, /// REWARDS amount to swap
@@ -139,13 +146,12 @@ contract VenusERC4626Wrapper is ERC4626 {
 
     /// -----------------------------------------------------------------------
     /// ERC4626 overrides
-    /// We can't inherit directly from Yield-daddy because of rewardClaim lock
     /// -----------------------------------------------------------------------
 
     function totalAssets() public view virtual override returns (uint256) {
         return cToken.viewUnderlyingBalanceOf(address(this));
     }
-    
+
     function beforeWithdraw(
         uint256 assets,
         uint256 /*shares*/
