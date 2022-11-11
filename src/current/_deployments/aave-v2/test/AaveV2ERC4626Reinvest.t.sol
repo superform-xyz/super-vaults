@@ -14,31 +14,46 @@ import {DexSwap} from "../../../utils/swapUtils.sol";
 
 contract AaveV2ERC4626ReinvestTest is Test {
     address public manager;
+    address public alice;
+
     uint256 public ethFork;
     uint256 public ftmFork;
+    uint256 public avaxFork;
+    uint256 public polyFork;
 
     string ETH_RPC_URL = vm.envString("ETH_MAINNET_RPC");
     string FTM_RPC_URL = vm.envString("FTM_MAINNET_RPC");
+    string AVAX_RPC_URL = vm.envString("AVAX_MAINNET_RPC");
+    string POLYGON_MAINNET_RPC = vm.envString("POLYGON_MAINNET_RPC");
 
     AaveV2ERC4626Reinvest public vault;
     AaveV2ERC4626ReinvestFactory public factory;
 
-    /// Fantom's Geist Forked AAVE-V2 Protocol DAI Pool Config
-    ERC20 public underlying = ERC20(0x8D11eC38a3EB5E956B052f67Da8Bdc9bef8Abf3E); /// DAI
-    ERC20 public aToken = ERC20(0x07E6332dD090D287d3489245038daF987955DCFB); // gDAI
-    IAaveMining public rewards =
-        IAaveMining(0x49c93a95dbcc9A6A4D8f77E59c038ce5020e82f8);
-    ILendingPool public lendingPool =
-        ILendingPool(0x9FAD24f572045c7869117160A571B2e50b10d068);
-    address rewardToken = 0xd8321AA83Fb0a4ECd6348D4577431310A6E0814d;
+    ERC20 public asset;
+    ERC20 public aToken;
+    IAaveMining public rewards;
+    ILendingPool public lendingPool;
+    address public rewardToken;
 
-    address public alice;
+    constructor() {
 
-    function setUp() public {
-        ftmFork = vm.createFork(FTM_RPC_URL);
+        ethFork = vm.createFork(POLYGON_MAINNET_RPC); /// @dev No rewards on ETH mainnet
+        ftmFork = vm.createFork(POLYGON_MAINNET_RPC);  /// @dev No rewards on FTM
+        avaxFork = vm.createFork(POLYGON_MAINNET_RPC); /// @dev No rewards on Avax
+
+        /// @dev V2 makes sense only on Polygon (TVL)
+        polyFork = vm.createFork(POLYGON_MAINNET_RPC); /// @dev No rewards on Polygon
+
         manager = msg.sender;
-        console.log("manager", manager);
-        vm.selectFork(ftmFork);
+
+        vm.selectFork(polyFork);
+
+        /// @dev Original AAVE v2 reward mining is disabled on each network
+        /// @dev We can leave this set to whatever on V2, harvest() is just not used
+        rewards = IAaveMining(vm.envAddress("AAVEV2_POLYGON_REWARDS"));
+        rewardToken = vm.envAddress("AAVEV2_POLYGON_REWARDTOKEN");
+        
+        lendingPool = ILendingPool(vm.envAddress("AAVEV2_POLYGON_LENDINGPOOL"));
 
         factory = new AaveV2ERC4626ReinvestFactory(
             rewards,
@@ -47,26 +62,27 @@ contract AaveV2ERC4626ReinvestTest is Test {
             manager
         );
 
-        vault = new AaveV2ERC4626Reinvest(
-            underlying,
-            aToken,
-            rewards,
-            lendingPool,
-            rewardToken,
-            manager
+        (ERC4626 v, AaveV2ERC4626Reinvest v_) = setVault(
+            ERC20(vm.envAddress("AAVEV2_POLYGON_DAI"))
         );
+        vault = v_;
+    }
 
-        address swapToken = 0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83; /// FTM
-        address swapPair1 = 0x668AE94D0870230AC007a01B471D02b2c94DDcB9; /// Geist - Ftm
-        address swapPair2 = 0xe120ffBDA0d14f3Bb6d6053E90E63c572A66a428; /// Ftm - Dai
-        vm.prank(manager);
+    function setVault(
+        ERC20 _asset
+    ) public returns (ERC4626 vault_, AaveV2ERC4626Reinvest _vault_) {
+        asset = _asset;
 
-        vault.setRoute(swapToken, swapPair1, swapPair2);
+        /// @dev If we need strict ERC4626 interface
+        vault_ = factory.createERC4626(asset);
 
-        /// Simulate rewards accrued to the vault contract
+        /// @dev If we need to use the AaveV2ERC4626Reinvest interface with harvest
+        _vault_ = AaveV2ERC4626Reinvest(address(vault_));
+    }
+
+    function setUp() public {
         alice = address(0x1);
-        deal(rewardToken, address(vault), 1000 ether);
-        deal(address(underlying), alice, 10000 ether);
+        deal(address(asset), alice, 10000 ether);
     }
 
     function makeDeposit() public returns (uint256 shares) {
@@ -75,11 +91,8 @@ contract AaveV2ERC4626ReinvestTest is Test {
 
         uint256 aliceUnderlyingAmount = amount;
 
-        underlying.approve(address(vault), aliceUnderlyingAmount);
-        assertEq(
-            underlying.allowance(alice, address(vault)),
-            aliceUnderlyingAmount
-        );
+        asset.approve(address(vault), aliceUnderlyingAmount);
+        assertEq(asset.allowance(alice, address(vault)), aliceUnderlyingAmount);
 
         shares = vault.deposit(aliceUnderlyingAmount, alice);
         vm.stopPrank();
@@ -87,13 +100,19 @@ contract AaveV2ERC4626ReinvestTest is Test {
 
     function testFactoryDeploy() public {
         vm.startPrank(manager);
-        ERC4626 vault_ = factory.createERC4626(underlying);
+        
+        /// @dev We deploy with different asset than in constructor
+        ERC4626 vault_ = factory.createERC4626(ERC20(vm.envAddress("AAVEV2_POLYGON_WMATIC")));
+        ERC20 vaultAsset = vault_.asset();
+        
         vm.stopPrank();
         vm.startPrank(alice);
 
+        /// @dev Just check if we can deposit
         uint256 amount = 100 ether;
+        deal(address(vaultAsset), alice, 10000 ether);
         uint256 aliceUnderlyingAmount = amount;
-        underlying.approve(address(vault_), aliceUnderlyingAmount);
+        vaultAsset.approve(address(vault_), aliceUnderlyingAmount);
         uint256 aliceShareAmount = vault_.deposit(aliceUnderlyingAmount, alice);
     }
 
@@ -104,13 +123,10 @@ contract AaveV2ERC4626ReinvestTest is Test {
 
         uint256 aliceUnderlyingAmount = amount;
 
-        underlying.approve(address(vault), aliceUnderlyingAmount);
-        assertEq(
-            underlying.allowance(alice, address(vault)),
-            aliceUnderlyingAmount
-        );
+        asset.approve(address(vault), aliceUnderlyingAmount);
+        assertEq(asset.allowance(alice, address(vault)), aliceUnderlyingAmount);
 
-        uint256 alicePreDepositBal = underlying.balanceOf(alice);
+        uint256 alicePreDepositBal = asset.balanceOf(alice);
         uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
 
         // Expect exchange rate to be 1:1 on initial deposit.
@@ -128,7 +144,7 @@ contract AaveV2ERC4626ReinvestTest is Test {
             aliceUnderlyingAmount
         );
         assertEq(
-            underlying.balanceOf(alice),
+            asset.balanceOf(alice),
             alicePreDepositBal - aliceUnderlyingAmount
         );
 
@@ -137,7 +153,7 @@ contract AaveV2ERC4626ReinvestTest is Test {
         assertEq(vault.totalAssets(), 0);
         assertEq(vault.balanceOf(alice), 0);
         assertEq(vault.convertToAssets(vault.balanceOf(alice)), 0);
-        assertEq(underlying.balanceOf(alice), alicePreDepositBal);
+        assertEq(asset.balanceOf(alice), alicePreDepositBal);
     }
 
     function testSingleMintRedeem() public {
@@ -147,10 +163,10 @@ contract AaveV2ERC4626ReinvestTest is Test {
 
         uint256 aliceShareAmount = amount;
 
-        underlying.approve(address(vault), aliceShareAmount);
-        assertEq(underlying.allowance(alice, address(vault)), aliceShareAmount);
+        asset.approve(address(vault), aliceShareAmount);
+        assertEq(asset.allowance(alice, address(vault)), aliceShareAmount);
 
-        uint256 alicePreDepositBal = underlying.balanceOf(alice);
+        uint256 alicePreDepositBal = asset.balanceOf(alice);
 
         uint256 aliceUnderlyingAmount = vault.mint(aliceShareAmount, alice);
 
@@ -169,7 +185,7 @@ contract AaveV2ERC4626ReinvestTest is Test {
             aliceUnderlyingAmount
         );
         assertEq(
-            underlying.balanceOf(alice),
+            asset.balanceOf(alice),
             alicePreDepositBal - aliceUnderlyingAmount
         );
 
@@ -178,7 +194,7 @@ contract AaveV2ERC4626ReinvestTest is Test {
         assertEq(vault.totalAssets(), 0);
         assertEq(vault.balanceOf(alice), 0);
         assertEq(vault.convertToAssets(vault.balanceOf(alice)), 0);
-        assertEq(underlying.balanceOf(alice), alicePreDepositBal);
+        assertEq(asset.balanceOf(alice), alicePreDepositBal);
     }
 
     /// @dev WARN: Error here because we changed the implementation of harvest
