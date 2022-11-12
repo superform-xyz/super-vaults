@@ -52,7 +52,7 @@ contract AaveV2ERC4626ReinvestFactory {
         address manager_
     ) {
         /// @dev manager is only used for setting swap routes
-        /// TODO: Get rid of this / limit AC more
+        /// TODO: Redesign it / limit AC more
         manager = manager_;
 
         /// @dev in case any of those contracts changes, we need to redeploy factory

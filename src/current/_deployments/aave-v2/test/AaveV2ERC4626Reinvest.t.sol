@@ -41,7 +41,7 @@ contract AaveV2ERC4626ReinvestTest is Test {
         ftmFork = vm.createFork(POLYGON_MAINNET_RPC);  /// @dev No rewards on FTM
         avaxFork = vm.createFork(POLYGON_MAINNET_RPC); /// @dev No rewards on Avax
 
-        /// @dev V2 makes sense only on Polygon (TVL)
+        /// @dev Aave V2 makes sense only on Polygon (TVL)
         polyFork = vm.createFork(POLYGON_MAINNET_RPC); /// @dev No rewards on Polygon
 
         manager = msg.sender;
@@ -101,7 +101,7 @@ contract AaveV2ERC4626ReinvestTest is Test {
     function testFactoryDeploy() public {
         vm.startPrank(manager);
         
-        /// @dev We deploy with different asset than in constructor
+        /// @dev We deploy with different asset than at runtime (constructor)
         ERC4626 vault_ = factory.createERC4626(ERC20(vm.envAddress("AAVEV2_POLYGON_WMATIC")));
         ERC20 vaultAsset = vault_.asset();
         
@@ -198,7 +198,7 @@ contract AaveV2ERC4626ReinvestTest is Test {
     }
 
     /// @dev WARN: Error here because we changed the implementation of harvest
-    /// You can only test now with aave, not geist, which implements curve-style rewards
+    /// You can only test now with aave and AaveMining rewards contract
     // function testHarvester() public {
     //     uint256 aliceShareAmount = makeDeposit();
 
