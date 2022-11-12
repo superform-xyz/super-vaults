@@ -21,6 +21,8 @@ import {DexSwap} from "../../utils/swapUtils.sol";
 contract AaveV3ERC4626Reinvest is ERC4626 {
     address public manager;
 
+    bool public rewardsSet;
+
     /// -----------------------------------------------------------------------
     /// Libraries usage
     /// -----------------------------------------------------------------------
@@ -102,19 +104,16 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
         rewardRecipient = rewardRecipient_;
         rewardsController = rewardsController_;
         manager = manager_;
+
+        rewardsSet = false;
     }
 
     /// -----------------------------------------------------------------------
     /// Aave liquidity mining
     /// -----------------------------------------------------------------------
 
-    function setRoutes(
-        address token,
-        address pair1,
-        address pair2
-    ) external {
+    function setRewards() external {
         require(msg.sender == manager, "onlyOwner");
-
         address[] memory tokens = rewardsController.getRewardsByAsset(
             address(aToken)
         );
@@ -122,18 +121,30 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
         for (uint256 i = 0; i < tokens.length; i++) {
             rewardTokens.push(ERC20(tokens[i]));
         }
+
+        rewardsSet = true;
     }
 
-    function setRoute(
+    function setRoutes(
         ERC20 rewardToken,
         address token,
         address pair1,
         address pair2
     ) external {
         require(msg.sender == manager, "onlyOwner");
-        swapInfoMap[rewardToken] = swapInfo(token, pair1, pair2);
-        rewardToken.approve(SwapInfo.pair1, type(uint256).max); /// max approves address
-        ERC20(SwapInfo.token).approve(SwapInfo.pair2, type(uint256).max); /// max approves address
+        require(rewardsSet, "rewards not set");
+
+        for (uint256 i = 0; i < rewardTokens.length; i++) {
+            if (rewardTokens[i] == rewardToken) {
+                swapInfoMap[rewardToken] = swapInfo(token, pair1, pair2);
+
+                rewardToken.approve(SwapInfo.pair1, type(uint256).max); /// max approves address
+                ERC20(SwapInfo.token).approve(
+                    SwapInfo.pair2,
+                    type(uint256).max
+                );
+            }
+        }
     }
 
     /// @notice Claims liquidity mining rewards from Aave and sends it to rewardRecipient
@@ -158,6 +169,7 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
     }
 
     function swap(address rewardToken, uint256 earned) internal {
+        swapInfo memory swapMap = swapInfoMap[ERC20(rewardToken)];
         /// If one swap needed (high liquidity pair) - set swapInfo.token0/token/pair2 to 0x
         /// @dev Swap AAVE-Fork token for asset
         if (SwapInfo.token == address(asset)) {
@@ -165,22 +177,22 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
                 earned, /// REWARDS amount to swap
                 rewardToken, // from REWARD-TOKEN
                 address(asset), /// to target underlying of this Vault
-                SwapInfo.pair1 /// pairToken (pool)
+                swapMap.pair1 /// pairToken (pool)
             );
             /// If two swaps needed
         } else {
             uint256 swapTokenAmount = DexSwap.swap(
                 earned,
                 rewardToken, // from AAVE-Fork
-                SwapInfo.token, /// to intermediary token with high liquidity (no direct pools)
-                SwapInfo.pair1 /// pairToken (pool)
+                swapMap.token, /// to intermediary token with high liquidity (no direct pools)
+                swapMap.pair1 /// pairToken (pool)
             );
 
             swapTokenAmount = DexSwap.swap(
                 swapTokenAmount,
-                SwapInfo.token, // from received token
+                swapMap.token, // from received token
                 address(asset), /// to target underlying of this Vault
-                SwapInfo.pair2 /// pairToken (pool)
+                swapMap.pair2 /// pairToken (pool)
             );
         }
 

@@ -12,7 +12,7 @@ import {IPool} from "../external/IPool.sol";
 
 contract AaveV3ERC4626ReinvestTest is Test {
 
-    address public constant rewardRecipient = address(0x01);
+    address public constant rewardRecipient = address(0x011);
 
     ////////////////////////////////////////
 
@@ -47,12 +47,12 @@ contract AaveV3ERC4626ReinvestTest is Test {
         ftmFork = vm.createFork(POLYGON_MAINNET_RPC);  /// @dev No rewards on FTM
         polyFork = vm.createFork(POLYGON_MAINNET_RPC); /// @dev No rewards on Polygon
 
-        avaxFork = vm.createFork(POLYGON_MAINNET_RPC); /// @dev REWARDS on Avax
+        /// @dev REWARDS on Avax
+        avaxFork = vm.createFork(POLYGON_MAINNET_RPC);
 
         manager = msg.sender;
 
         vm.selectFork(avaxFork);
-
 
         rewards = IRewardsController(vm.envAddress("AAVEV2_POLYGON_REWARDS"));
         rewardToken = vm.envAddress("AAVEV2_POLYGON_REWARDTOKEN");

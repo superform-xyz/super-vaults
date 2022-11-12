@@ -85,19 +85,6 @@ contract AaveV2ERC4626ReinvestTest is Test {
         deal(address(asset), alice, 10000 ether);
     }
 
-    function makeDeposit() public returns (uint256 shares) {
-        vm.startPrank(alice);
-        uint256 amount = 100 ether;
-
-        uint256 aliceUnderlyingAmount = amount;
-
-        asset.approve(address(vault), aliceUnderlyingAmount);
-        assertEq(asset.allowance(alice, address(vault)), aliceUnderlyingAmount);
-
-        shares = vault.deposit(aliceUnderlyingAmount, alice);
-        vm.stopPrank();
-    }
-
     function testFactoryDeploy() public {
         vm.startPrank(manager);
         
@@ -197,18 +184,4 @@ contract AaveV2ERC4626ReinvestTest is Test {
         assertEq(asset.balanceOf(alice), alicePreDepositBal);
     }
 
-    /// @dev WARN: Error here because we changed the implementation of harvest
-    /// You can only test now with aave and AaveMining rewards contract
-    // function testHarvester() public {
-    //     uint256 aliceShareAmount = makeDeposit();
-
-    //     assertEq(vault.totalSupply(), aliceShareAmount);
-    //     assertEq(vault.totalAssets(), 100 ether);
-    //     console.log("totalAssets before harvest", vault.totalAssets());
-
-    //     assertEq(ERC20(rewardToken).balanceOf(address(vault)), 1000 ether);
-    //     vault.harvest();
-    //     assertEq(ERC20(rewardToken).balanceOf(address(vault)), 0);
-    //     console.log("totalAssets after harvest", vault.totalAssets());
-    // }
 }
