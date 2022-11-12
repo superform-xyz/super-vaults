@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.14;
 
 /**
  * @title IRewardsController
@@ -7,6 +7,18 @@ pragma solidity ^0.8.4;
  * @notice Defines the basic interface for a Rewards Controller.
  */
 interface IRewardsController {
+
+    /**
+     * @dev Returns the list of available reward token addresses of an incentivized asset
+     * @param asset The incentivized asset
+     * @return List of rewards addresses of the input asset
+     **/
+
+    function getRewardsByAsset(address asset)
+        external
+        view
+        returns (address[] memory);
+
     /**
      * @dev Claims all rewards for a user to the desired address, on all the assets of the pool, accumulating the pending rewards
      * @param assets The list of assets to check eligible distributions before claiming rewards

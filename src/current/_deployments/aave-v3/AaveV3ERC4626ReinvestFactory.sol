@@ -12,6 +12,8 @@ import {IRewardsController} from "./external/IRewardsController.sol";
 /// @notice Factory for creating AaveV2ERC4626 contracts
 contract AaveV3ERC4626ReinvestFactory {
 
+    address public manager;
+
     /// @notice Emitted when a new ERC4626 vault has been created
     /// @param asset The base asset used by the vault
     /// @param vault The vault that was created
@@ -41,10 +43,11 @@ contract AaveV3ERC4626ReinvestFactory {
     /// Constructor
     /// -----------------------------------------------------------------------
 
-    constructor(IPool lendingPool_, address rewardRecipient_, IRewardsController rewardsController_) {
+    constructor(IPool lendingPool_, address rewardRecipient_, IRewardsController rewardsController_, address manager_) {
         lendingPool = lendingPool_;
         rewardRecipient = rewardRecipient_;
         rewardsController = rewardsController_;
+        manager = manager_;
     }
 
     /// -----------------------------------------------------------------------
@@ -59,7 +62,7 @@ contract AaveV3ERC4626ReinvestFactory {
         }
 
         vault =
-        new AaveV3ERC4626Reinvest{salt: bytes32(0)}(asset, ERC20(aTokenAddress), lendingPool, rewardRecipient, rewardsController);
+        new AaveV3ERC4626Reinvest{salt: bytes32(0)}(asset, ERC20(aTokenAddress), lendingPool, rewardRecipient, rewardsController, manager);
 
         emit CreateERC4626Reinvest(asset, vault);
     }

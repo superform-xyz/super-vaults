@@ -61,7 +61,8 @@ contract AaveV3ERC4626ReinvestTest is Test {
         factory = new AaveV3ERC4626ReinvestFactory(
             lendingPool,
             rewardRecipient, /// TODO: Change on the factory contract, dont need it
-            rewards
+            rewards,
+            manager
         );
 
         (ERC4626 v, AaveV3ERC4626Reinvest v_) = setVault(

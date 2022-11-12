@@ -8,6 +8,8 @@ import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {IPool} from "./external/IPool.sol";
 import {IRewardsController} from "./external/IRewardsController.sol";
 
+import {DexSwap} from "../../utils/swapUtils.sol";
+
 /// @title AaveV3ERC4626Reinvest - extended implementation of yield-daddy @author zefram.eth
 /// @dev Reinvests rewards accrued for higher APY
 /// @notice ERC4626 wrapper for Aave V3
@@ -17,6 +19,8 @@ import {IRewardsController} from "./external/IRewardsController.sol";
 /// price atomically, and then exploit an external lending market that uses this contract
 /// as collateral.
 contract AaveV3ERC4626Reinvest is ERC4626 {
+    address public manager;
+
     /// -----------------------------------------------------------------------
     /// Libraries usage
     /// -----------------------------------------------------------------------
@@ -33,11 +37,16 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
     /// Constants
     /// -----------------------------------------------------------------------
 
-    uint256 internal constant DECIMALS_MASK = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00FFFFFFFFFFFF;
-    uint256 internal constant ACTIVE_MASK = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFFFFFFFFFF;
-    uint256 internal constant FROZEN_MASK = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDFFFFFFFFFFFFFF;
-    uint256 internal constant PAUSED_MASK = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFFFFFFFFFFF;
-    uint256 internal constant SUPPLY_CAP_MASK = 0xFFFFFFFFFFFFFFFFFFFFFFFFFF000000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
+    uint256 internal constant DECIMALS_MASK =
+        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00FFFFFFFFFFFF;
+    uint256 internal constant ACTIVE_MASK =
+        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFFFFFFFFFF;
+    uint256 internal constant FROZEN_MASK =
+        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDFFFFFFFFFFFFFF;
+    uint256 internal constant PAUSED_MASK =
+        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFFFFFFFFFFF;
+    uint256 internal constant SUPPLY_CAP_MASK =
+        0xFFFFFFFFFFFFFFFFFFFFFFFFFF000000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
 
     uint256 internal constant SUPPLY_CAP_START_BIT_POSITION = 116;
     uint256 internal constant RESERVE_DECIMALS_START_BIT_POSITION = 48;
@@ -58,6 +67,24 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
     /// @notice The Aave RewardsController contract
     IRewardsController public immutable rewardsController;
 
+    /// @notice The Aave reward tokens for a pool
+    ERC20[] public rewardTokens;
+
+    /// @notice Map rewardToken to its swapInfo for harvest
+    mapping(ERC20 => swapInfo) public swapInfoMap;
+
+    /// @notice Pointer to swapInfo
+    swapInfo public SwapInfo;
+
+    /// Compact struct to make two swaps (on Uniswap v2)
+    /// A => B (using pair1) then B => asset (of Wrapper) (using pair2)
+    /// will work fine as long we only get 1 type of reward token
+    struct swapInfo {
+        address token;
+        address pair1;
+        address pair2;
+    }
+
     /// -----------------------------------------------------------------------
     /// Constructor
     /// -----------------------------------------------------------------------
@@ -67,36 +94,110 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
         ERC20 aToken_,
         IPool lendingPool_,
         address rewardRecipient_,
-        IRewardsController rewardsController_
+        IRewardsController rewardsController_,
+        address manager_
     ) ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_)) {
         aToken = aToken_;
         lendingPool = lendingPool_;
         rewardRecipient = rewardRecipient_;
         rewardsController = rewardsController_;
+        manager = manager_;
     }
 
     /// -----------------------------------------------------------------------
     /// Aave liquidity mining
     /// -----------------------------------------------------------------------
 
+    function setRoutes(
+        address token,
+        address pair1,
+        address pair2
+    ) external {
+        require(msg.sender == manager, "onlyOwner");
+
+        address[] memory tokens = rewardsController.getRewardsByAsset(
+            address(aToken)
+        );
+
+        for (uint256 i = 0; i < tokens.length; i++) {
+            rewardTokens.push(ERC20(tokens[i]));
+        }
+    }
+
+    function setRoute(
+        ERC20 rewardToken,
+        address token,
+        address pair1,
+        address pair2
+    ) external {
+        require(msg.sender == manager, "onlyOwner");
+        swapInfoMap[rewardToken] = swapInfo(token, pair1, pair2);
+        rewardToken.approve(SwapInfo.pair1, type(uint256).max); /// max approves address
+        ERC20(SwapInfo.token).approve(SwapInfo.pair2, type(uint256).max); /// max approves address
+    }
+
     /// @notice Claims liquidity mining rewards from Aave and sends it to rewardRecipient
-    function claimRewards() external {
+    function harvest() external {
         address[] memory assets = new address[](1);
         assets[0] = address(aToken);
-        (, uint256[] memory claimedAmounts) = rewardsController.claimAllRewards(assets, rewardRecipient);
-        emit ClaimRewards(claimedAmounts[0]);
+
+        /// @dev trusting aave here
+        (
+            address[] memory rewardList,
+            uint256[] memory claimedAmounts
+        ) = rewardsController.claimAllRewards(assets, address(this));
+
+        /// @dev if pool rewards more than one token
+        if (claimedAmounts.length == 1) {
+            swap(rewardList[0], claimedAmounts[0]);
+        } else {
+            for (uint256 i = 0; i < claimedAmounts.length; i++) {
+                swap(rewardList[i], claimedAmounts[i]);
+            }
+        }
+    }
+
+    function swap(address rewardToken, uint256 earned) internal {
+        /// If one swap needed (high liquidity pair) - set swapInfo.token0/token/pair2 to 0x
+        /// @dev Swap AAVE-Fork token for asset
+        if (SwapInfo.token == address(asset)) {
+            DexSwap.swap(
+                earned, /// REWARDS amount to swap
+                rewardToken, // from REWARD-TOKEN
+                address(asset), /// to target underlying of this Vault
+                SwapInfo.pair1 /// pairToken (pool)
+            );
+            /// If two swaps needed
+        } else {
+            uint256 swapTokenAmount = DexSwap.swap(
+                earned,
+                rewardToken, // from AAVE-Fork
+                SwapInfo.token, /// to intermediary token with high liquidity (no direct pools)
+                SwapInfo.pair1 /// pairToken (pool)
+            );
+
+            swapTokenAmount = DexSwap.swap(
+                swapTokenAmount,
+                SwapInfo.token, // from received token
+                address(asset), /// to target underlying of this Vault
+                SwapInfo.pair2 /// pairToken (pool)
+            );
+        }
+
+        /// reinvest() without minting (no asset.totalSupply() increase == profit)
+        /// afterDeposit just makes totalAssets() aToken's balance growth (to be distributed back to share owners)
+        afterDeposit(asset.balanceOf(address(this)), 0);
     }
 
     /// -----------------------------------------------------------------------
     /// ERC4626 overrides
     /// -----------------------------------------------------------------------
 
-    function withdraw(uint256 assets, address receiver, address owner)
-        public
-        virtual
-        override
-        returns (uint256 shares)
-    {
+    function withdraw(
+        uint256 assets,
+        address receiver,
+        address owner
+    ) public virtual override returns (uint256 shares) {
         shares = previewWithdraw(assets); // No need to check for rounding error, previewWithdraw rounds up.
 
         if (msg.sender != owner) {
@@ -117,7 +218,11 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
         lendingPool.withdraw(address(asset), assets, receiver);
     }
 
-    function redeem(uint256 shares, address receiver, address owner) public virtual override returns (uint256 assets) {
+    function redeem(
+        uint256 shares,
+        address receiver,
+        address owner
+    ) public virtual override returns (uint256 assets) {
         if (msg.sender != owner) {
             uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
 
@@ -144,7 +249,10 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
         return aToken.balanceOf(address(this));
     }
 
-    function afterDeposit(uint256 assets, uint256 /*shares*/ ) internal virtual override {
+    function afterDeposit(
+        uint256 assets,
+        uint256 /*shares*/
+    ) internal virtual override {
         /// -----------------------------------------------------------------------
         /// Deposit assets into Aave
         /// -----------------------------------------------------------------------
@@ -156,10 +264,23 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
         lendingPool.supply(address(asset), assets, address(this), 0);
     }
 
-    function maxDeposit(address) public view virtual override returns (uint256) {
+    function maxDeposit(address)
+        public
+        view
+        virtual
+        override
+        returns (uint256)
+    {
         // check if asset is paused
-        uint256 configData = lendingPool.getReserveData(address(asset)).configuration.data;
-        if (!(_getActive(configData) && !_getFrozen(configData) && !_getPaused(configData))) {
+        uint256 configData = lendingPool
+            .getReserveData(address(asset))
+            .configuration
+            .data;
+        if (
+            !(_getActive(configData) &&
+                !_getFrozen(configData) &&
+                !_getPaused(configData))
+        ) {
             return 0;
         }
 
@@ -170,14 +291,21 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
         }
 
         uint8 tokenDecimals = _getDecimals(configData);
-        uint256 supplyCap = supplyCapInWholeTokens * 10 ** tokenDecimals;
+        uint256 supplyCap = supplyCapInWholeTokens * 10**tokenDecimals;
         return supplyCap - aToken.totalSupply();
     }
 
     function maxMint(address) public view virtual override returns (uint256) {
         // check if asset is paused
-        uint256 configData = lendingPool.getReserveData(address(asset)).configuration.data;
-        if (!(_getActive(configData) && !_getFrozen(configData) && !_getPaused(configData))) {
+        uint256 configData = lendingPool
+            .getReserveData(address(asset))
+            .configuration
+            .data;
+        if (
+            !(_getActive(configData) &&
+                !_getFrozen(configData) &&
+                !_getPaused(configData))
+        ) {
             return 0;
         }
 
@@ -188,13 +316,22 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
         }
 
         uint8 tokenDecimals = _getDecimals(configData);
-        uint256 supplyCap = supplyCapInWholeTokens * 10 ** tokenDecimals;
+        uint256 supplyCap = supplyCapInWholeTokens * 10**tokenDecimals;
         return convertToShares(supplyCap - aToken.totalSupply());
     }
 
-    function maxWithdraw(address owner) public view virtual override returns (uint256) {
+    function maxWithdraw(address owner)
+        public
+        view
+        virtual
+        override
+        returns (uint256)
+    {
         // check if asset is paused
-        uint256 configData = lendingPool.getReserveData(address(asset)).configuration.data;
+        uint256 configData = lendingPool
+            .getReserveData(address(asset))
+            .configuration
+            .data;
         if (!(_getActive(configData) && !_getPaused(configData))) {
             return 0;
         }
@@ -204,9 +341,18 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
         return cash < assetsBalance ? cash : assetsBalance;
     }
 
-    function maxRedeem(address owner) public view virtual override returns (uint256) {
+    function maxRedeem(address owner)
+        public
+        view
+        virtual
+        override
+        returns (uint256)
+    {
         // check if asset is paused
-        uint256 configData = lendingPool.getReserveData(address(asset)).configuration.data;
+        uint256 configData = lendingPool
+            .getReserveData(address(asset))
+            .configuration
+            .data;
         if (!(_getActive(configData) && !_getPaused(configData))) {
             return 0;
         }
@@ -221,11 +367,21 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
     /// ERC20 metadata generation
     /// -----------------------------------------------------------------------
 
-    function _vaultName(ERC20 asset_) internal view virtual returns (string memory vaultName) {
+    function _vaultName(ERC20 asset_)
+        internal
+        view
+        virtual
+        returns (string memory vaultName)
+    {
         vaultName = string.concat("ERC4626-Wrapped Aave v3 ", asset_.symbol());
     }
 
-    function _vaultSymbol(ERC20 asset_) internal view virtual returns (string memory vaultSymbol) {
+    function _vaultSymbol(ERC20 asset_)
+        internal
+        view
+        virtual
+        returns (string memory vaultSymbol)
+    {
         vaultSymbol = string.concat("wa", asset_.symbol());
     }
 
@@ -234,7 +390,11 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
     /// -----------------------------------------------------------------------
 
     function _getDecimals(uint256 configData) internal pure returns (uint8) {
-        return uint8((configData & ~DECIMALS_MASK) >> RESERVE_DECIMALS_START_BIT_POSITION);
+        return
+            uint8(
+                (configData & ~DECIMALS_MASK) >>
+                    RESERVE_DECIMALS_START_BIT_POSITION
+            );
     }
 
     function _getActive(uint256 configData) internal pure returns (bool) {
