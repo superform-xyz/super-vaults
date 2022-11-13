@@ -103,8 +103,6 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
         assets[0] = address(aToken);
         uint256 earned = rewards.claimRewards(assets, type(uint256).max, address(this));
 
-        // uint256 earned = ERC20(rewardToken).balanceOf(address(this));
-
         /// If one swap needed (high liquidity pair) - set swapInfo.token0/token/pair2 to 0x
         /// @dev Swap AAVE-Fork token for asset
         if (SwapInfo.token == address(asset)) {

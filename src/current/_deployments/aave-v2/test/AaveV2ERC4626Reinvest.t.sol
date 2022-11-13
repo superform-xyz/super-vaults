@@ -13,8 +13,12 @@ import {IAaveMining} from "../aave/IAaveMining.sol";
 import {DexSwap} from "../../../utils/swapUtils.sol";
 
 contract AaveV2ERC4626ReinvestTest is Test {
+
+    ////////////////////////////////////////
+
     address public manager;
     address public alice;
+    address public bob;
 
     uint256 public ethFork;
     uint256 public ftmFork;
@@ -35,6 +39,7 @@ contract AaveV2ERC4626ReinvestTest is Test {
     ILendingPool public lendingPool;
     address public rewardToken;
 
+    ////////////////////////////////////////
     constructor() {
 
         ethFork = vm.createFork(POLYGON_MAINNET_RPC); /// @dev No rewards on ETH mainnet
@@ -82,7 +87,10 @@ contract AaveV2ERC4626ReinvestTest is Test {
 
     function setUp() public {
         alice = address(0x1);
+        bob = address(0x2);
         deal(address(asset), alice, 10000 ether);
+        deal(address(asset), bob, 10000 ether);
+
     }
 
     function testFactoryDeploy() public {
