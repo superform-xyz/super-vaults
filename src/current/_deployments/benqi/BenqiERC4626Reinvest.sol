@@ -119,7 +119,7 @@ contract BenqiERC4626Reinvest is ERC4626 {
                 address(asset), /// to target underlying of this Vault ie USDC
                 SwapInfo.pair1 /// pairToken (pool)
             );
-        /// If two swaps needed
+            /// If two swaps needed
         } else {
             uint256 swapTokenAmount = DexSwap.swap(
                 earned, /// REWARDS amount to swap
@@ -144,10 +144,18 @@ contract BenqiERC4626Reinvest is ERC4626 {
     /// We can't inherit directly from Yield-daddy because of rewardClaim lock
     /// -----------------------------------------------------------------------
 
-    function totalAssets() public view virtual override returns (uint256) {
-        return cToken.viewUnderlyingBalanceOf(address(this));
+    function viewUnderlyingBalanceOf() internal view returns (uint256) {
+        return
+            cToken.balanceOf(address(this)).mulWadDown(
+                cToken.exchangeRateStored()
+            );
     }
-    
+
+    function totalAssets() public view virtual override returns (uint256) {
+        /// TODO: Investigate why libcompound fails for benqi fork?
+        return viewUnderlyingBalanceOf();
+    }
+
     function beforeWithdraw(
         uint256 assets,
         uint256 /*shares*/

@@ -58,6 +58,7 @@ contract AaveV3ERC4626ReinvestTest is Test {
         rewards = IRewardsController(vm.envAddress("AAVEV3_AVAX_REWARDS"));
         lendingPool = IPool(vm.envAddress("AAVEV3_AVAX_LENDINGPOOL"));
 
+        /// @dev This makes factory persistent, not always wanted behavior
         factory = new AaveV3ERC4626ReinvestFactory(
             lendingPool,
             rewards,
@@ -136,6 +137,47 @@ contract AaveV3ERC4626ReinvestTest is Test {
 
         vm.prank(alice);
         vault.withdraw(aliceUnderlyingAmount, alice, alice);
+
+        assertEq(vault.totalAssets(), 0);
+        assertEq(vault.balanceOf(alice), 0);
+        assertEq(vault.convertToAssets(vault.balanceOf(alice)), 0);
+        assertEq(asset.balanceOf(alice), alicePreDepositBal);
+    }
+
+    function testSingleMintRedeem() public {
+        vm.startPrank(alice);
+
+        uint256 amount = 100 ether;
+
+        uint256 aliceShareAmount = amount;
+
+        asset.approve(address(vault), aliceShareAmount);
+        assertEq(asset.allowance(alice, address(vault)), aliceShareAmount);
+
+        uint256 alicePreDepositBal = asset.balanceOf(alice);
+
+        uint256 aliceUnderlyingAmount = vault.mint(aliceShareAmount, alice);
+
+        // Expect exchange rate to be 1:1 on initial mint.
+        assertEq(aliceShareAmount, aliceUnderlyingAmount);
+        assertEq(
+            vault.previewWithdraw(aliceShareAmount),
+            aliceUnderlyingAmount
+        );
+        assertEq(vault.previewDeposit(aliceUnderlyingAmount), aliceShareAmount);
+        assertEq(vault.totalSupply(), aliceShareAmount);
+        assertEq(vault.totalAssets(), aliceUnderlyingAmount);
+        assertEq(vault.balanceOf(alice), aliceUnderlyingAmount);
+        assertEq(
+            vault.convertToAssets(vault.balanceOf(alice)),
+            aliceUnderlyingAmount
+        );
+        assertEq(
+            asset.balanceOf(alice),
+            alicePreDepositBal - aliceUnderlyingAmount
+        );
+
+        vault.redeem(aliceShareAmount, alice, alice);
 
         assertEq(vault.totalAssets(), 0);
         assertEq(vault.balanceOf(alice), 0);

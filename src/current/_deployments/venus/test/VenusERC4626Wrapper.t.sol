@@ -43,6 +43,7 @@ contract VenusERC4626WrapperTest is Test {
         comptroller = IComptroller(VENUS_COMPTROLLER);
 
         /// Set vault as fallback
+        /// @dev NOTE: This is neccessary only because we do not have Factory deployment for Venus
         setVault(
             ERC20(vm.envAddress("VENUS_USDC_ASSET")),
             ERC20(vm.envAddress("VENUS_REWARD_XVS")),
@@ -54,6 +55,7 @@ contract VenusERC4626WrapperTest is Test {
         );
 
         /// Init USDC vault always as fallback
+        /// @dev NOTE: This is neccessary only because we do not have Factory deployment for Venus
         asset = ERC20(VENUS_USDC_ASSET);
         reward = ERC20(VENUS_REWARD_XVS);
         cToken = ICERC20(VENUS_VUSDC_CTOKEN);

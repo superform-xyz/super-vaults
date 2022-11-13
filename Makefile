@@ -29,6 +29,7 @@ test-arrakis :; forge test --match-contract Arrakis_LP_Test -vvv
 test-venus :; forge test --match-contract VenusERC4626WrapperTest -vvv
 test-aaveV2-reinvest :; forge test --match-contract AaveV2ERC4626ReinvestTest -vvv
 test-aaveV3-reinvest :; forge test --match-contract AaveV3ERC4626ReinvestTest -vvv
+test-benqi-reinvest :; forge test --match-contract BenqiERC4626ReinvestTest -vvv
 
 # Deploy forks BSC, AVAX, FTM, POLY, ARB, OPT
 # forge create --rpc-url <your_rpc_url> \

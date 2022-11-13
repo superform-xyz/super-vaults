@@ -1,43 +1,91 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.14;
+// SPDX-License-Identifier: AGPL-3.0
+pragma solidity ^0.8.14;
 
 import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
+
 import {BenqiERC4626Reinvest} from "../BenqiERC4626Reinvest.sol";
+
 import {ICERC20} from "../compound/ICERC20.sol";
 import {IComptroller} from "../compound/IComptroller.sol";
 
 contract BenqiERC4626ReinvestTest is Test {
+
+    address public manager;
+    address public alice;
+    address public bob;
+
     uint256 public ethFork;
+    uint256 public ftmFork;
+    uint256 public avaxFork;
+    uint256 public polyFork;
 
     string ETH_RPC_URL = vm.envString("ETH_MAINNET_RPC");
+    string FTM_RPC_URL = vm.envString("FTM_MAINNET_RPC");
+    string AVAX_RPC_URL = vm.envString("AVAX_MAINNET_RPC");
+    string POLYGON_MAINNET_RPC = vm.envString("POLYGON_MAINNET_RPC");
 
     BenqiERC4626Reinvest public vault;
+    ERC20 public asset;
+    ERC20 public reward;
+    ICERC20 public cToken;
+    IComptroller public comptroller;
 
-    ERC20 public asset = ERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
-    ERC20 public reward = ERC20(0xc00e94Cb662C3520282E6f5717214004A7f26888);
-    ICERC20 public cToken = ICERC20(0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643);
-    IComptroller public comptroller =
-        IComptroller(0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B);
+    constructor() {
+        avaxFork = vm.createFork(AVAX_RPC_URL);
+        vm.selectFork(avaxFork);
+        manager = msg.sender;
+        comptroller = IComptroller(vm.envAddress("BENQI_COMPTROLLER"));
+
+        /// Set vault as fallback
+        setVault(
+            ERC20(vm.envAddress("BENQI_USDC_ASSET")),
+            ERC20(vm.envAddress("BENQI_REWARD_QI")),
+            ICERC20(vm.envAddress("BENQI_USDC_CTOKEN")),
+            comptroller
+        );
+
+        /// Init USDC vault always as fallback
+        asset = ERC20(vm.envAddress("BENQI_USDC_ASSET"));
+        reward = ERC20(vm.envAddress("BENQI_REWARD_QI"));
+        cToken = ICERC20(vm.envAddress("BENQI_USDC_CTOKEN"));
+    }
 
     function setUp() public {
-        ethFork = vm.createFork(ETH_RPC_URL);
-        vm.selectFork(ethFork);
+        alice = address(0x1);
+        bob = address(0x2);
+        deal(address(asset), alice, 10000 ether);
+        deal(address(asset), bob, 10000 ether);
+
+    }
+
+    function setVault(
+        ERC20 underylyingAsset,
+        ERC20 reward_,
+        ICERC20 cToken_,
+        IComptroller comptroller_
+    ) public {
+        vm.startPrank(manager);
+
+        asset = underylyingAsset;
+        reward = reward;
+        cToken = cToken_;
+
         vault = new BenqiERC4626Reinvest(
-            asset,
-            reward,
-            cToken,
-            comptroller,
-            msg.sender
+            underylyingAsset,
+            reward_,
+            cToken_,
+            comptroller_,
+            manager
         );
+
+        vm.stopPrank();
     }
 
     function testDepositWithdraw() public {
         uint256 amount = 100 ether;
 
-        address alice = address(0x616eFd3E811163F8fc180611508D72D842EA7D07);
-        vm.prank(alice);
-        
+        vm.prank(alice);        
         uint256 aliceUnderlyingAmount = amount;
         
         asset.approve(address(vault), aliceUnderlyingAmount);
@@ -55,18 +103,5 @@ contract BenqiERC4626ReinvestTest is Test {
         vm.prank(alice);
         vault.withdraw(aliceAssetsToWithdraw, alice, alice);      
     }
-
-    // function testHarvest() public {
-    //     uint256 aliceShareAmount = makeDeposit();
-
-    //     assertEq(vault.totalSupply(), aliceShareAmount);
-    //     assertEq(vault.totalAssets(), 100 ether);
-    //     console.log("totalAssets before harvest", vault.totalAssets());
-
-    //     assertEq(ERC20(rewardToken).balanceOf(address(vault)), 1000 ether);
-    //     vault.harvest();
-    //     assertEq(ERC20(rewardToken).balanceOf(address(vault)), 0);
-    //     console.log("totalAssets after harvest", vault.totalAssets());
-    // }
 
 }
