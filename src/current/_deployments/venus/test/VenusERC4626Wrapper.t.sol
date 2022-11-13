@@ -3,7 +3,7 @@ pragma solidity 0.8.14;
 
 import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
-import {VenusERC4626Wrapper} from "../VenusERC4626Wrapper.sol";
+import {VenusERC4626Reinvest} from "../VenusERC4626Reinvest.sol";
 
 import {ICERC20} from "../compound/ICERC20.sol";
 import {LibCompound} from "../compound/LibCompound.sol";
@@ -29,8 +29,8 @@ contract VenusERC4626WrapperTest is Test {
     address VENUS_PAIR1_USDC = vm.envAddress("VENUS_PAIR1_USDC");
     address VENUS_PAIR2_USDC = vm.envAddress("VENUS_PAIR2_USDC");
 
-    /// Write to storage for a duration of test
-    VenusERC4626Wrapper public vault;
+    /// Write to storage for a duration of test TODO: Change. Should be only by invoke + as fallback
+    VenusERC4626Reinvest public vault;
     ERC20 public asset;
     ERC20 public reward;
     ICERC20 public cToken;
@@ -74,7 +74,7 @@ contract VenusERC4626WrapperTest is Test {
         reward = reward;
         cToken = cToken_;
 
-        vault = new VenusERC4626Wrapper(
+        vault = new VenusERC4626Reinvest(
             underylyingAsset,
             reward_,
             cToken_,

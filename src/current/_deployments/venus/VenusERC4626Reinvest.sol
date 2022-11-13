@@ -14,7 +14,7 @@ import {DexSwap} from "../../utils/swapUtils.sol";
 
 /// @title CompoundV2StrategyWrapper - Custom implementation of yield-daddy wrappers with flexible reinvesting logic
 /// Rationale: Forked protocols often implement custom functions and modules on top of forked code.
-contract VenusERC4626Wrapper is ERC4626 {
+contract VenusERC4626Reinvest is ERC4626 {
     /// -----------------------------------------------------------------------
     /// Libraries usage
     /// -----------------------------------------------------------------------
