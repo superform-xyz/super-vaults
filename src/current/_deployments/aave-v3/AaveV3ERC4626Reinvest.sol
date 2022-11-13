@@ -63,9 +63,6 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
     /// @notice The Aave Pool contract
     IPool public immutable lendingPool;
 
-    /// @notice The address that will receive the liquidity mining rewards (if any)
-    address public immutable rewardRecipient;
-
     /// @notice The Aave RewardsController contract
     IRewardsController public immutable rewardsController;
 
@@ -95,13 +92,11 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
         ERC20 asset_,
         ERC20 aToken_,
         IPool lendingPool_,
-        address rewardRecipient_,
         IRewardsController rewardsController_,
         address manager_
     ) ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_)) {
         aToken = aToken_;
         lendingPool = lendingPool_;
-        rewardRecipient = rewardRecipient_;
         rewardsController = rewardsController_;
         manager = manager_;
 
@@ -112,6 +107,9 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
     /// Aave liquidity mining
     /// -----------------------------------------------------------------------
 
+    /// @notice Get all rewards from AAVE market
+    /// @dev Call before setting routes
+    /// @dev Requires manual management of Routes
     function setRewards() external {
         require(msg.sender == manager, "onlyOwner");
         address[] memory tokens = rewardsController.getRewardsByAsset(
@@ -132,7 +130,7 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
         address pair2
     ) external {
         require(msg.sender == manager, "onlyOwner");
-        require(rewardsSet, "rewards not set");
+        require(rewardsSet, "rewards not set"); /// @dev Soft-check. Should check per token.
 
         for (uint256 i = 0; i < rewardTokens.length; i++) {
             if (rewardTokens[i] == rewardToken) {
@@ -160,15 +158,15 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
 
         /// @dev if pool rewards more than one token
         if (claimedAmounts.length == 1) {
-            swap(rewardList[0], claimedAmounts[0]);
+            swapRewards(rewardList[0], claimedAmounts[0]);
         } else {
             for (uint256 i = 0; i < claimedAmounts.length; i++) {
-                swap(rewardList[i], claimedAmounts[i]);
+                swapRewards(rewardList[i], claimedAmounts[i]);
             }
         }
     }
 
-    function swap(address rewardToken, uint256 earned) internal {
+    function swapRewards(address rewardToken, uint256 earned) internal {
         swapInfo memory swapMap = swapInfoMap[ERC20(rewardToken)];
         /// If one swap needed (high liquidity pair) - set swapInfo.token0/token/pair2 to 0x
         /// @dev Swap AAVE-Fork token for asset

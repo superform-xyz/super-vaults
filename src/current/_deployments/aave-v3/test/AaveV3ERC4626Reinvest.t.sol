@@ -55,12 +55,10 @@ contract AaveV3ERC4626ReinvestTest is Test {
         vm.selectFork(avaxFork);
 
         rewards = IRewardsController(vm.envAddress("AAVEV2_POLYGON_REWARDS"));
-        rewardToken = vm.envAddress("AAVEV2_POLYGON_REWARDTOKEN");
         lendingPool = IPool(vm.envAddress("AAVEV2_POLYGON_LENDINGPOOL"));
 
         factory = new AaveV3ERC4626ReinvestFactory(
             lendingPool,
-            rewardRecipient, /// TODO: Change on the factory contract, dont need it
             rewards,
             manager
         );

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.14;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
@@ -33,9 +33,6 @@ contract AaveV3ERC4626ReinvestFactory {
     /// @notice The Aave Pool contract
     IPool public immutable lendingPool;
 
-    /// @notice The address that will receive the liquidity mining rewards (if any)
-    address public immutable rewardRecipient;
-
     /// @notice The Aave RewardsController contract
     IRewardsController public immutable rewardsController;
 
@@ -43,10 +40,12 @@ contract AaveV3ERC4626ReinvestFactory {
     /// Constructor
     /// -----------------------------------------------------------------------
 
-    constructor(IPool lendingPool_, address rewardRecipient_, IRewardsController rewardsController_, address manager_) {
+    constructor(IPool lendingPool_, IRewardsController rewardsController_, address manager_) {
         lendingPool = lendingPool_;
-        rewardRecipient = rewardRecipient_;
         rewardsController = rewardsController_;
+
+        /// @dev manager is only used for setting swap routes
+        /// TODO: Redesign it / limit AC more
         manager = manager_;
     }
 
@@ -62,7 +61,7 @@ contract AaveV3ERC4626ReinvestFactory {
         }
 
         vault =
-        new AaveV3ERC4626Reinvest{salt: bytes32(0)}(asset, ERC20(aTokenAddress), lendingPool, rewardRecipient, rewardsController, manager);
+        new AaveV3ERC4626Reinvest{salt: bytes32(0)}(asset, ERC20(aTokenAddress), lendingPool, rewardsController, manager);
 
         emit CreateERC4626Reinvest(asset, vault);
     }
