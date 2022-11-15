@@ -32,8 +32,9 @@ contract BenqiERC4626ReinvestTest is Test {
     IComptroller public comptroller;
 
     constructor() {
-        avaxFork = vm.createFork(AVAX_RPC_URL, 15_171_037);
+        avaxFork = vm.createFork(AVAX_RPC_URL);
         vm.selectFork(avaxFork);
+        vm.roll(12649496);
         manager = msg.sender;
         comptroller = IComptroller(vm.envAddress("BENQI_COMPTROLLER"));
 
@@ -45,7 +46,6 @@ contract BenqiERC4626ReinvestTest is Test {
             comptroller
         );
 
-        /// Init USDC vault always as fallback
         asset = ERC20(vm.envAddress("BENQI_USDC_ASSET"));
         reward = ERC20(vm.envAddress("BENQI_REWARD_QI"));
         cToken = ICERC20(vm.envAddress("BENQI_USDC_CTOKEN"));
@@ -100,7 +100,7 @@ contract BenqiERC4626ReinvestTest is Test {
         /// TODO: check rewards accrued more reliably than through transfering tokens directly
         // console.log("rewardsAccrued", rewardsAccrued);
         // console.log(block.timestamp, block.number);
-        // vm.warp(block.timestamp + 100000000);
+        // vm.roll(22378835);
         // console.log(block.timestamp, block.number);
         // rewardsAccrued = comptroller.rewardAccrued(1, address(vault));
         // console.log("rewardsAccruedPost", rewardsAccrued);
