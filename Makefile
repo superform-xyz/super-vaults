@@ -9,14 +9,13 @@ update:; forge update
 
 # Build & test
 build  :; forge build
-test   :; forge test --no-match-contract rEthTest\|Alpaca\|Benqi*.*Test -vv
-test-old :; forge test --match-contract Alpaca\|Benqi.*Test
+test   :; forge test --no-match-contract rEthTest -vvv # skip rEthTest*.*Test TODO: slot check
 clean  :; forge clean
 snapshot :; forge snapshot
 fmt    :; forge fmt && forge fmt test/
 
-test-aave :; forge test --fork-url $(FTM_MAINNET_RPC) --match-contract AaveV2* -vvv
-test-compound :; forge test --match-contract CompoundV2StrategyWrapperTest -vvv
+test-aave :; forge test --match-contract AaveV2* -vvv
+test-compound :; forge test --match-contract CompoundV2* -vvv
 test-steth :; forge test --match-contract stEth.*Test -vvv
 test-steth2 :; forge test --match-contract stEthNoSwap.*Test -vvv
 test-wmatic :; forge test --match-contract stMatic.*Test -vvv
@@ -25,8 +24,7 @@ test-uniswapV2swap :; forge test --match-contract UniswapV2TestSwap -vvv
 test-reth :; forge test --match-contract rEthTest -vvv
 test-arrakis :; forge test --match-contract Arrakis_LP_Test -vvv
 
-# Test deployments
-
+# Reinvest test
 test-venus :; forge test --match-contract VenusERC4626WrapperTest -vvv
 test-aaveV2-reinvest :; forge test --match-contract AaveV2ERC4626ReinvestTest -vvv
 test-aaveV3-reinvest :; forge test --match-contract AaveV3ERC4626ReinvestTest -vvv
@@ -34,7 +32,7 @@ test-benqi-reinvest :; forge test --match-contract BenqiERC4626ReinvestTest -vvv
 
 ### BINANCE CHAIN
 
-# USDC/vUSDC/XVS/Comptroller and the rest (VenusStrategyWrapper)
+# USDC/vUSDC/XVS/Comptroller
 deploy-venus-usdc :; forge create --rpc-url $(BSC_MAINNET_RPC) \
 				--constructor-args $(VENUS_USDC_ASSET) $(VENUS_REWARD_XVS) $(VENUS_VUSDC_CTOKEN) $(VENUS_COMPTROLLER) $(MANAGER) \ 
 				--private-key $(PRIVATE_KEY) src/current/aave-v2/AaveV2StrategyWrapperNoHarvester:AaveV2StrategyWrapperNoHarvester \
