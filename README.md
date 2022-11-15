@@ -1,6 +1,6 @@
 # Super-vaults
 
-ERC4626 different wrappers for SuperForm Vault system
+ERC4626 Wrappers for SuperForm's Vault system. 
 
 # Build
 
@@ -12,26 +12,21 @@ Create `.env` file with RPC_URLs, otherwise tests will fail!
 
 `make build`
 
-`make test` for current implementation
+`make test`
 
-`make test-aave` for testing aave (forked FTM)
+Or you can `match-contract` 
 
-`make test-compound` for testing compound (forked ETH)
+`make test-aave` for testing aave
 
-`make test-steth` for testing aave (forked ETH)
+`make test-compound` for testing compound
+
+`make test-steth` for testing lido's stEth
 
 ... (check the Makefile for more)
 
 `make test-old` for old implementation (not used!)
 
-# To run OLD test:
+# Structure
 
-You need to run specific tests with correct RPC endpoint for given network, global command `forge test` won't successfully execute tests.
+Each protocol resides inside of a separate directory. For a single protocol we expect to see many different wrappers. Starting from the most basic, allowing only zapIn/zapOut of the non-ERC4626 Vault through the ERC4626 interface, ending on the reinvesting strategies or levaraged position management. If you plan on adding your own wrapper or standalone ERC4626 Vault, PR with the whole directory following established structure.
 
-_for BNB Vaults_
-
-Command: `forge test -f https://bsc-dataseed.binance.org/ --match-contract Alpaca_BTC_Test` ( for matching bnb chain contracts)
-
-_for Avalanche Vaults_:
-
-command: `forge test -f https://api.avax.network/ext/bc/C/rpc --match-contract BenqiUSDCTest --match-test testWithdrawSuccess -vv` ( -vv increases verbosity)

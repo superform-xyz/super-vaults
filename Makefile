@@ -14,6 +14,7 @@ test-old :; forge test --match-contract Alpaca\|Benqi.*Test
 clean  :; forge clean
 snapshot :; forge snapshot
 fmt    :; forge fmt && forge fmt test/
+
 test-aave :; forge test --fork-url $(FTM_MAINNET_RPC) --match-contract AaveV2* -vvv
 test-compound :; forge test --match-contract CompoundV2StrategyWrapperTest -vvv
 test-steth :; forge test --match-contract stEth.*Test -vvv
@@ -30,13 +31,6 @@ test-venus :; forge test --match-contract VenusERC4626WrapperTest -vvv
 test-aaveV2-reinvest :; forge test --match-contract AaveV2ERC4626ReinvestTest -vvv
 test-aaveV3-reinvest :; forge test --match-contract AaveV3ERC4626ReinvestTest -vvv
 test-benqi-reinvest :; forge test --match-contract BenqiERC4626ReinvestTest -vvv
-
-# Deploy forks BSC, AVAX, FTM, POLY, ARB, OPT
-# forge create --rpc-url <your_rpc_url> \
-#     --constructor-args "ForgeUSD" "FUSD" 18 1000000000000000000000 \
-#     --private-key <your_private_key> src/MyToken.sol:MyToken \
-#     --etherscan-api-key <your_etherscan_api_key> \
-#     --verify
 
 ### BINANCE CHAIN
 
