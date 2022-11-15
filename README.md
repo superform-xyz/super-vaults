@@ -30,3 +30,6 @@ Or you can `match-contract`
 
 Each protocol resides inside of a separate directory. For a single protocol we expect to see many different wrappers. Starting from the most basic, allowing only zapIn/zapOut of the non-ERC4626 Vault through the ERC4626 interface, ending on the reinvesting strategies or levaraged position management. If you plan on adding your own wrapper or standalone ERC4626 Vault, PR with the whole directory following established structure.
 
+# Disclaimer
+
+This is still work in progress. There are on-going standarization efforts for this repository with an end goal of providing all the neccessary toolkit and templates for working with ERC4626.
