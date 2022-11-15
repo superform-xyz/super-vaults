@@ -36,6 +36,7 @@ contract VenusERC4626WrapperTest is Test {
     ICERC20 public cToken;
     IComptroller public comptroller;
 
+    /// @dev constructor runs only once
     constructor() {
         fork = vm.createFork(BSC_RPC_URL);
         vm.selectFork(fork);

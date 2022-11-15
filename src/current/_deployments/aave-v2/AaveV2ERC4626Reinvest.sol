@@ -8,7 +8,7 @@ import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {ILendingPool} from "./aave/ILendingPool.sol";
 import {IAaveMining} from "./aave/IAaveMining.sol";
 
-import {DexSwap} from "../../utils/swapUtils.sol";
+import {DexSwap} from "./utils/swapUtils.sol";
 
 /// @title AaveV2StrategyWrapper - Custom implementation of yield-daddy wrappers with flexible reinvesting logic
 /// Rationale: Forked protocols often implement custom functions and modules on top of forked code.

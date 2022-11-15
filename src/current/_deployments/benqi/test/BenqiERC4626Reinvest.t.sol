@@ -32,7 +32,7 @@ contract BenqiERC4626ReinvestTest is Test {
     IComptroller public comptroller;
 
     constructor() {
-        avaxFork = vm.createFork(AVAX_RPC_URL);
+        avaxFork = vm.createFork(AVAX_RPC_URL, 15_171_037);
         vm.selectFork(avaxFork);
         manager = msg.sender;
         comptroller = IComptroller(vm.envAddress("BENQI_COMPTROLLER"));
@@ -54,8 +54,8 @@ contract BenqiERC4626ReinvestTest is Test {
     function setUp() public {
         alice = address(0x1);
         bob = address(0x2);
-        deal(address(asset), alice, 10000 ether);
-        deal(address(asset), bob, 10000 ether);
+        deal(address(asset), alice, 100000000 ether);
+        deal(address(asset), bob, 100000000 ether);
 
     }
 
@@ -83,7 +83,7 @@ contract BenqiERC4626ReinvestTest is Test {
     }
 
     function testDepositWithdraw() public {
-        uint256 amount = 100 ether;
+        uint256 amount = 1000000 ether;
 
         vm.prank(alice);        
         uint256 aliceUnderlyingAmount = amount;
@@ -95,6 +95,17 @@ contract BenqiERC4626ReinvestTest is Test {
 
         vm.prank(alice);
         uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
+        uint256 rewardsAccrued = comptroller.rewardAccrued(1, address(vault));
+
+        /// TODO: check rewards accrued more reliably than through transfering tokens directly
+        // console.log("rewardsAccrued", rewardsAccrued);
+        // console.log(block.timestamp, block.number);
+        // vm.warp(block.timestamp + 100000000);
+        // console.log(block.timestamp, block.number);
+        // rewardsAccrued = comptroller.rewardAccrued(1, address(vault));
+        // console.log("rewardsAccruedPost", rewardsAccrued);
+        //////////////////////////////////////////////////////////////
+
         uint256 aliceAssetsToWithdraw = vault.convertToAssets(aliceShareAmount);
         assertEq(aliceUnderlyingAmount, aliceShareAmount);
         assertEq(vault.totalSupply(), aliceShareAmount);

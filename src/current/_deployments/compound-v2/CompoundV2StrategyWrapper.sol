@@ -15,7 +15,7 @@ import {DexSwap} from "./utils/swapUtils.sol";
 /// @title CompoundV2StrategyWrapper - Custom implementation of yield-daddy wrappers with flexible reinvesting logic
 /// Rationale: Forked protocols often implement custom functions and modules on top of forked code.
 /// Example: Staking systems. Very common in DeFi. Re-investing/Re-Staking rewards on the Vault level can be included in permissionless way.
-contract BenqiERC4626Reinvest is ERC4626 {
+contract CompoundV2StrategyWrapper is ERC4626 {
     /// -----------------------------------------------------------------------
     /// Libraries usage
     /// -----------------------------------------------------------------------
@@ -103,9 +103,7 @@ contract BenqiERC4626Reinvest is ERC4626 {
     function harvest() external {
         ICERC20[] memory cTokens = new ICERC20[](1);
         cTokens[0] = cToken;
-
-        /// TODO: Setter for rewardType
-        comptroller.claimReward(1, address(this));
+        comptroller.claimComp(address(this));
         reward.safeTransfer(address(this), reward.balanceOf(address(this)));
 
         uint256 earned = ERC20(reward).balanceOf(address(this));
@@ -119,7 +117,7 @@ contract BenqiERC4626Reinvest is ERC4626 {
                 address(asset), /// to target underlying of this Vault ie USDC
                 SwapInfo.pair1 /// pairToken (pool)
             );
-            /// If two swaps needed
+        /// If two swaps needed
         } else {
             uint256 swapTokenAmount = DexSwap.swap(
                 earned, /// REWARDS amount to swap
@@ -144,18 +142,10 @@ contract BenqiERC4626Reinvest is ERC4626 {
     /// We can't inherit directly from Yield-daddy because of rewardClaim lock
     /// -----------------------------------------------------------------------
 
-    function viewUnderlyingBalanceOf() internal view returns (uint256) {
-        return
-            cToken.balanceOf(address(this)).mulWadDown(
-                cToken.exchangeRateStored()
-            );
-    }
-
     function totalAssets() public view virtual override returns (uint256) {
-        /// TODO: Investigate why libcompound fails for benqi fork?
-        return viewUnderlyingBalanceOf();
+        return cToken.viewUnderlyingBalanceOf(address(this));
     }
-
+    
     function beforeWithdraw(
         uint256 assets,
         uint256 /*shares*/

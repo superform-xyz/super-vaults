@@ -8,7 +8,7 @@ import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {IPool} from "./external/IPool.sol";
 import {IRewardsController} from "./external/IRewardsController.sol";
 
-import {DexSwap} from "../../utils/swapUtils.sol";
+import {DexSwap} from "./utils/swapUtils.sol";
 
 /// @title AaveV3ERC4626Reinvest - extended implementation of yield-daddy @author zefram.eth
 /// @dev Reinvests rewards accrued for higher APY

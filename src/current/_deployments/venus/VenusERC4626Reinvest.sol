@@ -10,10 +10,9 @@ import {ICERC20} from "./compound/ICERC20.sol";
 import {LibCompound} from "./compound/LibCompound.sol";
 import {IComptroller} from "./compound/IComptroller.sol";
 
-import {DexSwap} from "../../utils/swapUtils.sol";
+import {DexSwap} from "./utils/swapUtils.sol";
 
 /// @title CompoundV2StrategyWrapper - Custom implementation of yield-daddy wrappers with flexible reinvesting logic
-/// Rationale: Forked protocols often implement custom functions and modules on top of forked code.
 contract VenusERC4626Reinvest is ERC4626 {
     /// -----------------------------------------------------------------------
     /// Libraries usage
@@ -104,8 +103,6 @@ contract VenusERC4626Reinvest is ERC4626 {
     }
 
     /// @notice Claims liquidity mining rewards from Compound and performs low-lvl swap with instant reinvesting
-    /// Calling harvest() claims COMP-Fork token through direct Pair swap for best control and lowest cost
-    /// harvest() can be called by anybody. ideally this function should be adjusted per needs (e.g add fee for harvesting)
     function harvest() external {
         ICERC20[] memory cTokens = new ICERC20[](1);
         cTokens[0] = cToken;

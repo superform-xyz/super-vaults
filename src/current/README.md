@@ -17,7 +17,3 @@
 `test` - directory containing test files for all of the above
 
 `utils` - helpers, mocks, harvester's swap library - in `swapUtils.sol`, ignore `/harvest` (harvester implementation is used in a lot of contracts)
-
-### TODO
-
-Most of TODO's are noted through out the contract comments and console.log's. Look at both contract file and its test file.

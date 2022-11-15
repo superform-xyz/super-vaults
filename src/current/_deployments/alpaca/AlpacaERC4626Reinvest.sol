@@ -9,7 +9,7 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 import {IBToken} from "./interfaces/IBToken.sol";
 import {IFairLaunch} from "./interfaces/IFairLaunch.sol";
-import {DexSwap} from "../../utils/swapUtils.sol";
+import {DexSwap} from "./utils/swapUtils.sol";
 
 interface IVaultConfig {
     /// @dev Return the bps rate for reserve pool.
