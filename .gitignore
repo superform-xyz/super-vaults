@@ -1,6 +1,8 @@
 cache/
 out/
 
+.vscode/
+.vscode
 node_modules
 .env
 coverage
