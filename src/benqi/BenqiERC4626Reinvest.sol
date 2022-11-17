@@ -106,7 +106,6 @@ contract BenqiERC4626Reinvest is ERC4626 {
 
         /// TODO: Setter for rewardType
         comptroller.claimReward(1, address(this));
-        reward.safeTransfer(address(this), reward.balanceOf(address(this)));
 
         uint256 earned = ERC20(reward).balanceOf(address(this));
         address rewardToken = address(reward);

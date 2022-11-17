@@ -107,7 +107,6 @@ contract VenusERC4626Reinvest is ERC4626 {
         ICERC20[] memory cTokens = new ICERC20[](1);
         cTokens[0] = cToken;
         comptroller.claimVenus(address(this));
-        reward.safeTransfer(address(this), reward.balanceOf(address(this)));
 
         uint256 earned = ERC20(reward).balanceOf(address(this));
         address rewardToken = address(reward);
