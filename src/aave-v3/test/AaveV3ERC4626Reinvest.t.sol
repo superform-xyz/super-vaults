@@ -12,7 +12,6 @@ import {IRewardsController} from "../../aave-v3/external/IRewardsController.sol"
 import {IPool} from "../external/IPool.sol";
 
 contract AaveV3ERC4626ReinvestTest is Test {
-
     ////////////////////////////////////////
 
     address public manager;
@@ -34,7 +33,7 @@ contract AaveV3ERC4626ReinvestTest is Test {
 
     ERC20 public asset;
     ERC20 public aToken;
-    
+
     IRewardsController public rewards;
     IPool public lendingPool;
 
@@ -43,9 +42,8 @@ contract AaveV3ERC4626ReinvestTest is Test {
     ////////////////////////////////////////
 
     constructor() {
-
         ethFork = vm.createFork(ETH_RPC_URL); /// @dev No rewards on ETH mainnet
-        ftmFork = vm.createFork(FTM_RPC_URL);  /// @dev No rewards on FTM
+        ftmFork = vm.createFork(FTM_RPC_URL); /// @dev No rewards on FTM
         polyFork = vm.createFork(POLYGON_MAINNET_RPC); /// @dev No rewards on Polygon
 
         /// @dev REWARDS on Avax
@@ -66,14 +64,16 @@ contract AaveV3ERC4626ReinvestTest is Test {
         );
 
         (ERC4626 v, AaveV3ERC4626Reinvest v_) = setVault(
-            ERC20(vm.envAddress("AAVEV3_AVAX_DAI"))
+            ERC20(vm.envAddress("AAVEV3_AVAX_USDC"))
         );
         vault = v_;
+        console.log("Vault deployed at", address(vault));
     }
 
-    function setVault(
-        ERC20 _asset
-    ) public returns (ERC4626 vault_, AaveV3ERC4626Reinvest _vault_) {
+    function setVault(ERC20 _asset)
+        public
+        returns (ERC4626 vault_, AaveV3ERC4626Reinvest _vault_)
+    {
         asset = _asset;
 
         /// @dev If we need strict ERC4626 interface
@@ -85,23 +85,24 @@ contract AaveV3ERC4626ReinvestTest is Test {
         asset = _vault_.asset();
     }
 
-
     function setUp() public {
         alice = address(0x1);
         bob = address(0x2);
-        deal(address(asset), alice, 10000 ether);
-        deal(address(asset), bob, 10000 ether);
+        deal(address(asset), alice, 10000e6);
+        deal(address(asset), bob, 10000e6);
     }
 
     function testFactoryDeploy() public {
         vm.startPrank(manager);
-        
+
         /// @dev We deploy with different asset than at runtime (constructor)
-        ERC4626 vault_ = factory.createERC4626(ERC20(vm.envAddress("AAVEV3_AVAX_USDC")));
+        ERC4626 vault_ = factory.createERC4626(
+            ERC20(vm.envAddress("AAVEV3_AVAX_DAI"))
+        );
 
         /// @dev We don't set global var to a new vault! This vault exists only within function scope
         ERC20 vaultAsset = vault_.asset();
-        
+
         vm.stopPrank();
         vm.startPrank(alice);
 
@@ -114,7 +115,7 @@ contract AaveV3ERC4626ReinvestTest is Test {
     }
 
     function testSingleDepositWithdraw() public {
-        uint256 aliceUnderlyingAmount = 100 ether;
+        uint256 aliceUnderlyingAmount = 100e6;
 
         vm.prank(alice);
         asset.approve(address(vault), aliceUnderlyingAmount);
@@ -127,13 +128,22 @@ contract AaveV3ERC4626ReinvestTest is Test {
 
         // Expect exchange rate to be 1:1 on initial deposit.
         assertEq(aliceUnderlyingAmount, aliceShareAmount);
-        assertEq(vault.previewWithdraw(aliceShareAmount), aliceUnderlyingAmount);
+        assertEq(
+            vault.previewWithdraw(aliceShareAmount),
+            aliceUnderlyingAmount
+        );
         assertEq(vault.previewDeposit(aliceUnderlyingAmount), aliceShareAmount);
         assertEq(vault.totalSupply(), aliceShareAmount);
         assertEq(vault.totalAssets(), aliceUnderlyingAmount);
         assertEq(vault.balanceOf(alice), aliceShareAmount);
-        assertEq(vault.convertToAssets(vault.balanceOf(alice)), aliceUnderlyingAmount);
-        assertEq(asset.balanceOf(alice), alicePreDepositBal - aliceUnderlyingAmount);
+        assertEq(
+            vault.convertToAssets(vault.balanceOf(alice)),
+            aliceUnderlyingAmount
+        );
+        assertEq(
+            asset.balanceOf(alice),
+            alicePreDepositBal - aliceUnderlyingAmount
+        );
 
         vm.prank(alice);
         vault.withdraw(aliceUnderlyingAmount, alice, alice);
@@ -147,7 +157,7 @@ contract AaveV3ERC4626ReinvestTest is Test {
     function testSingleMintRedeem() public {
         vm.startPrank(alice);
 
-        uint256 amount = 100 ether;
+        uint256 amount = 100e6;
 
         uint256 aliceShareAmount = amount;
 
@@ -185,4 +195,35 @@ contract AaveV3ERC4626ReinvestTest is Test {
         assertEq(asset.balanceOf(alice), alicePreDepositBal);
     }
 
+    // function testHarvester() public {
+    //     uint256 aliceUnderlyingAmount = 100e6;
+
+    //     vm.startPrank(manager);
+    //     /// Move to constructor, set routes
+
+    //     /// Spoof IncentiveV3 contract storage var
+    //     address[] memory rewardTokens = vault.setRewards();
+    //     console.log("rewardTokens", rewardTokens[0]);
+    //     if (rewardTokens.length == 1) {
+    //         rewardToken = rewardTokens[0];
+    //         deal(address(asset), address(vault), 100 ether);
+    //     } else {
+    //         console.log("more than 1 reward token");
+    //     }
+    //     vm.stopPrank();
+
+    //     vm.startPrank(alice);
+    //     asset.approve(address(vault), aliceUnderlyingAmount);
+    //     uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
+
+    //     assertEq(vault.totalSupply(), aliceShareAmount);
+    //     assertEq(vault.totalAssets(), 100 ether);
+    //     console.log("totalAssets before harvest", vault.totalAssets());
+
+    //     assertEq(ERC20(rewardToken).balanceOf(address(vault)), 100 ether);
+    //     vault.harvest();
+
+    //     assertEq(ERC20(rewardToken).balanceOf(address(vault)), 0);
+    //     console.log("totalAssets after harvest", vault.totalAssets());
+    // }
 }

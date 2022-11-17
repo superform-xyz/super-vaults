@@ -110,9 +110,9 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
     /// @notice Get all rewards from AAVE market
     /// @dev Call before setting routes
     /// @dev Requires manual management of Routes
-    function setRewards() external {
+    function setRewards() external returns(address[] memory tokens) {
         require(msg.sender == manager, "onlyOwner");
-        address[] memory tokens = rewardsController.getRewardsByAsset(
+        tokens = rewardsController.getRewardsByAsset(
             address(aToken)
         );
 
@@ -133,10 +133,13 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
         require(rewardsSet, "rewards not set"); /// @dev Soft-check. Should check per token.
 
         for (uint256 i = 0; i < rewardTokens.length; i++) {
+            /// @dev if rewardToken given as arg matches any rewardToken found by setRewards()
+            ///      set route for that token
             if (rewardTokens[i] == rewardToken) {
                 swapInfoMap[rewardToken] = swapInfo(token, pair1, pair2);
 
                 rewardToken.approve(SwapInfo.pair1, type(uint256).max); /// max approves address
+                
                 ERC20(SwapInfo.token).approve(
                     SwapInfo.pair2,
                     type(uint256).max
@@ -147,6 +150,7 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
 
     /// @notice Claims liquidity mining rewards from Aave and sends it to rewardRecipient
     function harvest() external {
+        /// NOTE: Good target for MultiVault here
         address[] memory assets = new address[](1);
         assets[0] = address(aToken);
 

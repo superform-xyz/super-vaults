@@ -70,6 +70,7 @@ contract AaveV2ERC4626ReinvestTest is Test {
         (ERC4626 v, AaveV2ERC4626Reinvest v_) = setVault(
             ERC20(vm.envAddress("AAVEV2_POLYGON_DAI"))
         );
+        
         vault = v_;
     }
 

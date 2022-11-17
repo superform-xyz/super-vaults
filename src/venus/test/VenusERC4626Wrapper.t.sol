@@ -29,22 +29,18 @@ contract VenusERC4626WrapperTest is Test {
     address VENUS_PAIR1_USDC = vm.envAddress("VENUS_PAIR1_USDC");
     address VENUS_PAIR2_USDC = vm.envAddress("VENUS_PAIR2_USDC");
 
-    /// Write to storage for a duration of test TODO: Change. Should be only by invoke + as fallback
     VenusERC4626Reinvest public vault;
     ERC20 public asset;
     ERC20 public reward;
     ICERC20 public cToken;
     IComptroller public comptroller;
 
-    /// @dev constructor runs only once
     constructor() {
         fork = vm.createFork(BSC_RPC_URL);
         vm.selectFork(fork);
         manager = msg.sender;
         comptroller = IComptroller(VENUS_COMPTROLLER);
 
-        /// Set vault as fallback
-        /// @dev NOTE: This is neccessary only because we do not have Factory deployment for Venus
         setVault(
             ERC20(vm.envAddress("VENUS_USDC_ASSET")),
             ERC20(vm.envAddress("VENUS_REWARD_XVS")),
