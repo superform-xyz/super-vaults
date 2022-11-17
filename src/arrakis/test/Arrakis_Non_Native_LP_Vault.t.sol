@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 import {ArrakisNonNativeVault, IArrakisRouter, IUniswapV3Pool, LiquidityAmounts, IGUniPool, TickMath, SafeTransferLib} from "../Arrakis_Non_Native_LP_Vault.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {IWETH} from "../utils/IWETH.sol";
+import {ArrakisFactory} from "../Arrakis_Factory.sol";
 interface UniRouter {
     function factory() external view returns (address);
 
@@ -29,6 +30,7 @@ contract Arrakis_LP_Test is Test {
     ArrakisNonNativeVault vault;
     ArrakisNonNativeVault public arrakisNonNativeVault;
     ArrakisNonNativeVault public arrakisToken1AsAssetVault;
+    ArrakisFactory public arrakisFactory;
     IWETH public WMATIC = IWETH(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270);
     address public USDC = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
     /// @notice TraderJoe router
@@ -42,26 +44,15 @@ contract Arrakis_LP_Test is Test {
 
         /* ------------------------------- deployments ------------------------------ */
         arrakisVault = ERC20(0x4520c823E3a84ddFd3F99CDd01b2f8Bf5372A82a);
-        // with WMATIC as asset
-        arrakisNonNativeVault = new ArrakisNonNativeVault(
-            address(arrakisVault),
-            "Arrakis WMATIC/USDC LP Vault",
-            "aLP4626",
-            true,
-            0xbc91a120cCD8F80b819EAF32F0996daC3Fa76a6C,
-            0x9941C03D31BC8B3aA26E363f7DD908725e1a21bb,
-            50
-        );
 
-        // with USDC as an asset in WMATIC/USDC univ3 LP
-        arrakisToken1AsAssetVault = new ArrakisNonNativeVault(
-            address(arrakisVault),
-            "Arrakis WMATIC/USDC LP Vault",
-            "aLP4626",
-            false,
-            0xbc91a120cCD8F80b819EAF32F0996daC3Fa76a6C,
-            0x9941C03D31BC8B3aA26E363f7DD908725e1a21bb,
-            50
+        arrakisFactory = new ArrakisFactory(0xbc91a120cCD8F80b819EAF32F0996daC3Fa76a6C);
+
+        (arrakisNonNativeVault, arrakisToken1AsAssetVault) = arrakisFactory.createArrakisVaults(
+         address(arrakisVault),
+        "Arrakis WMATIC/USDC LP Vault",
+        "aLP4626", 
+        0x9941C03D31BC8B3aA26E363f7DD908725e1a21bb,
+        50
         );
     }
 
