@@ -6,6 +6,8 @@ interface IStETH {
 
     function submit(address) external payable returns (uint256);
 
+    function submit() external payable returns (uint256);
+
     function burnShares(address, uint256) external returns (uint256);
 
     function approve(address, uint256) external returns (bool);

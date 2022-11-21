@@ -166,7 +166,7 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
         cEther.mint{value: assets}();
     }
 
-    function depositNative(address receiver) public payable returns (uint256 shares) {
+    function deposit(address receiver) public payable returns (uint256 shares) {
         // Check for rounding error since we round down in previewDeposit.
         if((shares = previewDeposit(msg.value)) == 0)
             revert CompoundERC4626_ZEROSHARES_Error();
