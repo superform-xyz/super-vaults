@@ -30,6 +30,10 @@ test-aaveV2-reinvest :; forge test --match-contract AaveV2ERC4626ReinvestTest -v
 test-aaveV3-reinvest :; forge test --match-contract AaveV3ERC4626ReinvestTest -vvv
 test-benqi-reinvest :; forge test --match-contract BenqiERC4626ReinvestTest -vvv
 
+# Harvester tests
+
+test-aaveV3-harvest :; forge test --match-contract AaveV3ERC4626ReinvestTest --match-test testHarvester -vvv
+
 ### BINANCE CHAIN
 
 # USDC/vUSDC/XVS/Comptroller

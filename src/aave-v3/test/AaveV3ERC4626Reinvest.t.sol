@@ -12,6 +12,7 @@ import {IRewardsController} from "../../aave-v3/external/IRewardsController.sol"
 import {IPool} from "../external/IPool.sol";
 
 contract AaveV3ERC4626ReinvestTest is Test {
+    
     ////////////////////////////////////////
 
     address public manager;
@@ -38,15 +39,18 @@ contract AaveV3ERC4626ReinvestTest is Test {
     IPool public lendingPool;
 
     address public rewardToken;
+    address public swapToken;
+    address public pair1;
+    address public pair2;
 
     ////////////////////////////////////////
 
     constructor() {
-        ethFork = vm.createFork(ETH_RPC_URL); /// @dev No rewards on ETH mainnet
-        ftmFork = vm.createFork(FTM_RPC_URL); /// @dev No rewards on FTM
-        polyFork = vm.createFork(POLYGON_MAINNET_RPC); /// @dev No rewards on Polygon
+        ethFork = vm.createFork(ETH_RPC_URL); 
+        ftmFork = vm.createFork(FTM_RPC_URL); 
+        polyFork = vm.createFork(POLYGON_MAINNET_RPC);
 
-        /// @dev REWARDS on Avax
+        /// @dev WAVAX REWARDS on Avax
         avaxFork = vm.createFork(AVAX_RPC_URL);
 
         manager = msg.sender;
@@ -56,7 +60,6 @@ contract AaveV3ERC4626ReinvestTest is Test {
         rewards = IRewardsController(vm.envAddress("AAVEV3_AVAX_REWARDS"));
         lendingPool = IPool(vm.envAddress("AAVEV3_AVAX_LENDINGPOOL"));
 
-        /// @dev This makes factory persistent, not always wanted behavior
         factory = new AaveV3ERC4626ReinvestFactory(
             lendingPool,
             rewards,
@@ -66,6 +69,12 @@ contract AaveV3ERC4626ReinvestTest is Test {
         (ERC4626 v, AaveV3ERC4626Reinvest v_) = setVault(
             ERC20(vm.envAddress("AAVEV3_AVAX_USDC"))
         );
+
+        /// @dev Set rewards & routes (to abstract)
+        swapToken = vm.envAddress("AAVEV3_AVAX_USDC_SWAPTOKEN");
+        pair1 = vm.envAddress("AAVEV3_AVAX_USDC_PAIR1");
+        pair2 = vm.envAddress("AAVEV3_AVAX_USDC_PAIR2");
+
         vault = v_;
         console.log("Vault deployed at", address(vault));
     }
@@ -95,12 +104,12 @@ contract AaveV3ERC4626ReinvestTest is Test {
     function testFactoryDeploy() public {
         vm.startPrank(manager);
 
-        /// @dev We deploy with different asset than at runtime (constructor)
+        /// @dev We deploy with different asset than at the runtime
         ERC4626 vault_ = factory.createERC4626(
             ERC20(vm.envAddress("AAVEV3_AVAX_DAI"))
         );
 
-        /// @dev We don't set global var to a new vault! This vault exists only within function scope
+        /// @dev We don't set global var to a new vault. vault exists only within function scope
         ERC20 vaultAsset = vault_.asset();
 
         vm.stopPrank();
@@ -195,35 +204,40 @@ contract AaveV3ERC4626ReinvestTest is Test {
         assertEq(asset.balanceOf(alice), alicePreDepositBal);
     }
 
-    // function testHarvester() public {
-    //     uint256 aliceUnderlyingAmount = 100e6;
+    function testHarvester() public {
+        uint256 aliceUnderlyingAmount = 100e6;
 
-    //     vm.startPrank(manager);
-    //     /// Move to constructor, set routes
+        vm.startPrank(manager);
+        /// Move to constructor, set routes
 
-    //     /// Spoof IncentiveV3 contract storage var
-    //     address[] memory rewardTokens = vault.setRewards();
-    //     console.log("rewardTokens", rewardTokens[0]);
-    //     if (rewardTokens.length == 1) {
-    //         rewardToken = rewardTokens[0];
-    //         deal(address(asset), address(vault), 100 ether);
-    //     } else {
-    //         console.log("more than 1 reward token");
-    //     }
-    //     vm.stopPrank();
+        /// Spoof IncentiveV3 contract storage var
+        address[] memory rewardTokens = vault.setRewards();
+        console.log("rewardTokens", rewardTokens[0]);
+        console.log("routes", swapToken, pair1, pair2);
+        
+        vault.setRoutes(ERC20(rewardTokens[0]), swapToken, pair1, pair2);
+        
+        if (rewardTokens.length == 1) {
+            rewardToken = rewardTokens[0];
+            deal(address(asset), address(vault), 100 ether);
+        } else {
+            console.log("more than 1 reward token");
+        }
+        vm.stopPrank();
 
-    //     vm.startPrank(alice);
-    //     asset.approve(address(vault), aliceUnderlyingAmount);
-    //     uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
+        // vm.startPrank(alice);
 
-    //     assertEq(vault.totalSupply(), aliceShareAmount);
-    //     assertEq(vault.totalAssets(), 100 ether);
-    //     console.log("totalAssets before harvest", vault.totalAssets());
+        // asset.approve(address(vault), aliceUnderlyingAmount);
+        // uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
 
-    //     assertEq(ERC20(rewardToken).balanceOf(address(vault)), 100 ether);
-    //     vault.harvest();
+        // assertEq(vault.totalSupply(), aliceShareAmount);
+        // assertEq(vault.totalAssets(), 100 ether);
+        // console.log("totalAssets before harvest", vault.totalAssets());
 
-    //     assertEq(ERC20(rewardToken).balanceOf(address(vault)), 0);
-    //     console.log("totalAssets after harvest", vault.totalAssets());
-    // }
+        // assertEq(ERC20(rewardToken).balanceOf(address(vault)), 100 ether);
+        // vault.harvest();
+
+        // assertEq(ERC20(rewardToken).balanceOf(address(vault)), 0);
+        // console.log("totalAssets after harvest", vault.totalAssets());
+    }
 }

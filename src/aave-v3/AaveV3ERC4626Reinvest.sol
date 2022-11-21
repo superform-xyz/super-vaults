@@ -10,6 +10,8 @@ import {IRewardsController} from "./external/IRewardsController.sol";
 
 import {DexSwap} from "./utils/swapUtils.sol";
 
+import "forge-std/console.sol";
+
 /// @title AaveV3ERC4626Reinvest - extended implementation of yield-daddy @author zefram.eth
 /// @dev Reinvests rewards accrued for higher APY
 /// @notice ERC4626 wrapper for Aave V3
@@ -117,6 +119,7 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
         );
 
         for (uint256 i = 0; i < tokens.length; i++) {
+            console.log("tokens", tokens[i]);
             rewardTokens.push(ERC20(tokens[i]));
         }
 
@@ -136,12 +139,16 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
             /// @dev if rewardToken given as arg matches any rewardToken found by setRewards()
             ///      set route for that token
             if (rewardTokens[i] == rewardToken) {
+                   
                 swapInfoMap[rewardToken] = swapInfo(token, pair1, pair2);
 
-                rewardToken.approve(SwapInfo.pair1, type(uint256).max); /// max approves address
+                swapInfo memory swapInfo_ = swapInfoMap[rewardToken];
+
+                rewardTokens[i].approve(swapInfo_.pair1, type(uint256).max); /// max approves address
                 
-                ERC20(SwapInfo.token).approve(
-                    SwapInfo.pair2,
+                /// @dev add condition to check if other approve is even needed
+                ERC20(swapInfo_.token).approve(
+                    swapInfo_.pair2,
                     type(uint256).max
                 );
             }
