@@ -166,9 +166,6 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
             uint256[] memory claimedAmounts
         ) = rewardsController.claimAllRewards(assets, address(this));
 
-        /// @dev Test overwrite for harvest
-        claimedAmounts[0] = 1 ether;
-
         /// @dev if pool rewards more than one token
         if (claimedAmounts.length == 1) {
             swapRewards(rewardList[0], claimedAmounts[0]);

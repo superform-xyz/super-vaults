@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.14;
+// SPDX-License-Identifier: AGPL-3.0
+pragma solidity ^0.8.14;
 
 import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
@@ -204,39 +204,39 @@ contract AaveV3ERC4626ReinvestTest is Test {
     }
 
     /// @dev This tests requires harvest() claimedAmounts[] to be set manually
-    /// @dev Test overwrite for harvest
+    /// @dev TODO: find better test method
     // claimedAmounts[0] = 1 ether;
-    function testHarvester() public {
-        uint256 aliceUnderlyingAmount = 100e6;
+    // function testHarvester() public {
+    //     uint256 aliceUnderlyingAmount = 100e6;
 
-        /// Spoof IncentiveV3 contract storage var
-        vm.startPrank(manager);
-        address[] memory rewardTokens = vault.setRewards();
+    //     /// Spoof IncentiveV3 contract storage var
+    //     vm.startPrank(manager);
+    //     address[] memory rewardTokens = vault.setRewards();
 
-        console.log("rewardTokens", rewardTokens[0]);
-        console.log("routes", swapToken, pair1, pair2);
+    //     console.log("rewardTokens", rewardTokens[0]);
+    //     console.log("routes", swapToken, pair1, pair2);
 
-        if (rewardTokens.length == 1) {
-            vault.setRoutes(ERC20(rewardTokens[0]), swapToken, pair1, pair2);
-            deal(rewardTokens[0], address(vault), 1 ether);
-        } else {
-            console.log("more than 1 reward token");
-        }
+    //     if (rewardTokens.length == 1) {
+    //         vault.setRoutes(ERC20(rewardTokens[0]), swapToken, pair1, pair2);
+    //         deal(rewardTokens[0], address(vault), 1 ether);
+    //     } else {
+    //         console.log("more than 1 reward token");
+    //     }
 
-        vm.stopPrank();
-        ///////////////////////////
+    //     vm.stopPrank();
+    //     ///////////////////////////
 
-        vm.startPrank(alice);
+    //     vm.startPrank(alice);
 
-        asset.approve(address(vault), aliceUnderlyingAmount);
-        uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
+    //     asset.approve(address(vault), aliceUnderlyingAmount);
+    //     uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
 
-        console.log("totalAssets before harvest", vault.totalAssets());
-        console.log("rewardBalance before harvest", ERC20(rewardTokens[0]).balanceOf(address(vault)));
+    //     console.log("totalAssets before harvest", vault.totalAssets());
+    //     console.log("rewardBalance before harvest", ERC20(rewardTokens[0]).balanceOf(address(vault)));
 
-        assertEq(ERC20(rewardTokens[0]).balanceOf(address(vault)), 1 ether);
+    //     assertEq(ERC20(rewardTokens[0]).balanceOf(address(vault)), 1 ether);
 
-        vault.harvest();
+    //     vault.harvest();
 
-    }
+    // }
 }
