@@ -13,7 +13,6 @@ import {IComptroller} from "./compound/IComptroller.sol";
 import {DexSwap} from "./utils/swapUtils.sol";
 import {WrappedNative} from "./utils/WrappedNative.sol";
 
-
 contract BenqiNativeERC4626Reinvest is ERC4626 {
     /// -----------------------------------------------------------------------
     /// Libraries usage
@@ -145,10 +144,7 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
     /// ERC4626 overrides
     /// -----------------------------------------------------------------------
 
-    function beforeWithdraw(uint256 assets, uint256)
-        internal
-        override
-    {
+    function beforeWithdraw(uint256 assets, uint256) internal override {
         // Withdraw the underlying tokens from the cEther.
         uint256 errorCode = cEther.redeemUnderlying(assets);
         if (errorCode != NO_ERROR) {
@@ -157,18 +153,25 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
     }
 
     function viewUnderlyingBalanceOf() internal view returns (uint256) {
-        return cEther.balanceOf(address(this)).mulWadDown(cEther.exchangeRateStored());
+        return
+            cEther.balanceOf(address(this)).mulWadDown(
+                cEther.exchangeRateStored()
+            );
     }
 
     function afterDeposit(uint256 assets, uint256) internal override {
         WrappedNative(address(asset)).withdraw(assets);
-            // mint tokens
+        // mint tokens
         cEther.mint{value: assets}();
     }
 
-    function deposit(address receiver) public payable returns (uint256 shares) {
+    function deposit(address assets, address receiver)
+        public
+        payable
+        returns (uint256 shares)
+    {
         // Check for rounding error since we round down in previewDeposit.
-        if((shares = previewDeposit(msg.value)) == 0)
+        if ((shares = previewDeposit(msg.value)) == 0)
             revert CompoundERC4626_ZEROSHARES_Error();
         require((shares = previewDeposit(msg.value)) != 0, "ZERO_SHARES");
 
@@ -178,6 +181,23 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
         emit Deposit(msg.sender, receiver, msg.value, shares);
 
         afterDeposit(msg.value, shares);
+    }
+
+    /// Standard ERC4626 deposit can only accept ERC20
+    function deposit(uint256 assets, address receiver)
+        public
+        override
+        returns (uint256 shares)
+    {
+        require((shares = previewDeposit(assets)) != 0, "ZERO_SHARES");
+
+        asset.safeTransferFrom(msg.sender, address(this), assets);
+
+        _mint(receiver, shares);
+
+        emit Deposit(msg.sender, receiver, assets, shares);
+
+        afterDeposit(assets, shares);
     }
 
     /// @notice Total amount of the underlying asset that
@@ -234,7 +254,8 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
         if (msg.sender != owner) {
             uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
 
-            if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
+            if (allowed != type(uint256).max)
+                allowance[owner][msg.sender] = allowed - shares;
         }
 
         beforeWithdraw(assets, shares);
@@ -242,7 +263,7 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
         _burn(owner, shares);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
-        WrappedNative(address(asset)).deposit{value:assets}();
+        WrappedNative(address(asset)).deposit{value: assets}();
         asset.safeTransfer(receiver, assets);
     }
 
@@ -254,11 +275,12 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
         if (msg.sender != owner) {
             uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
 
-            if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
+            if (allowed != type(uint256).max)
+                allowance[owner][msg.sender] = allowed - shares;
         }
 
         // Check for rounding error since we round down in previewRedeem.
-        if((assets = previewRedeem(shares)) == 0)
+        if ((assets = previewRedeem(shares)) == 0)
             revert CompoundERC4626_ZEROASSETS_Error();
 
         beforeWithdraw(assets, shares);
@@ -266,7 +288,7 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
         _burn(owner, shares);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
-        WrappedNative(address(asset)).deposit{value:assets}();
+        WrappedNative(address(asset)).deposit{value: assets}();
         asset.safeTransfer(receiver, assets);
     }
 
