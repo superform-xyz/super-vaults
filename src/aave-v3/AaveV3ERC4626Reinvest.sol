@@ -10,8 +10,6 @@ import {IRewardsController} from "./external/IRewardsController.sol";
 
 import {DexSwap} from "./utils/swapUtils.sol";
 
-import "forge-std/console.sol";
-
 /// @title AaveV3ERC4626Reinvest - extended implementation of yield-daddy @author zefram.eth
 /// @dev Reinvests rewards accrued for higher APY
 /// @notice ERC4626 wrapper for Aave V3
