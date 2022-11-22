@@ -11,7 +11,7 @@ import {LibCompound} from "./compound/LibCompound.sol";
 import {IComptroller} from "./compound/IComptroller.sol";
 
 import {DexSwap} from "./utils/swapUtils.sol";
-import {WrappedNative} from "./utils/WrappedNative.sol";
+import {WrappedNative} from "./utils/wrappedNative.sol";
 
 contract BenqiNativeERC4626Reinvest is ERC4626 {
     /// -----------------------------------------------------------------------
@@ -165,7 +165,7 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
         cEther.mint{value: assets}();
     }
 
-    function deposit(address assets, address receiver)
+    function deposit(address receiver)
         public
         payable
         returns (uint256 shares)
@@ -176,6 +176,7 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
         require((shares = previewDeposit(msg.value)) != 0, "ZERO_SHARES");
 
         WrappedNative(address(asset)).deposit{value: msg.value}();
+
         _mint(receiver, shares);
 
         emit Deposit(msg.sender, receiver, msg.value, shares);

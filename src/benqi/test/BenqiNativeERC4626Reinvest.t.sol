@@ -54,6 +54,7 @@ contract BenqiNativeERC4626ReinvestTest is Test {
     function setUp() public {
         alice = address(0x1);
         bob = address(0x2);
+        hoax(alice, 1000 ether);
         deal(address(asset), alice, 100000000 ether);
         deal(address(asset), bob, 100000000 ether);
 
@@ -96,14 +97,22 @@ contract BenqiNativeERC4626ReinvestTest is Test {
         uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
         uint256 rewardsAccrued = comptroller.rewardAccrued(1, address(vault));
 
-        /// TODO: check rewards accrued more reliably than through transfering tokens directly
-        // console.log("rewardsAccrued", rewardsAccrued);
-        // console.log(block.timestamp, block.number);
-        // vm.roll(22378835);
-        // console.log(block.timestamp, block.number);
-        // rewardsAccrued = comptroller.rewardAccrued(1, address(vault));
-        // console.log("rewardsAccruedPost", rewardsAccrued);
-        //////////////////////////////////////////////////////////////
+        uint256 aliceAssetsToWithdraw = vault.convertToAssets(aliceShareAmount);
+        assertEq(aliceUnderlyingAmount, aliceShareAmount);
+        assertEq(vault.totalSupply(), aliceShareAmount);
+        assertEq(vault.balanceOf(alice), aliceShareAmount);
+
+        vm.prank(alice);
+        vault.withdraw(aliceAssetsToWithdraw, alice, alice);      
+    }
+
+    function testDepositWithdrawAVAX() public {
+        uint256 amount = 100 ether;
+
+        vm.prank(alice);        
+        uint256 aliceUnderlyingAmount = amount;
+
+        uint256 aliceShareAmount = vault.deposit{value: aliceUnderlyingAmount}(alice);
 
         uint256 aliceAssetsToWithdraw = vault.convertToAssets(aliceShareAmount);
         assertEq(aliceUnderlyingAmount, aliceShareAmount);
