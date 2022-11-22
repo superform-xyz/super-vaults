@@ -22,7 +22,6 @@ import "forge-std/console.sol";
 /// as collateral.
 contract AaveV3ERC4626Reinvest is ERC4626 {
     address public manager;
-
     bool public rewardsSet;
 
     /// -----------------------------------------------------------------------
@@ -168,26 +167,38 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
         ) = rewardsController.claimAllRewards(assets, address(this));
 
         /// @dev if pool rewards more than one token
-        if (claimedAmounts.length == 1) {
-            swapRewards(rewardList[0], claimedAmounts[0]);
-        } else {
-            for (uint256 i = 0; i < claimedAmounts.length; i++) {
-                swapRewards(rewardList[i], claimedAmounts[i]);
-            }
-        }
+        // if (claimedAmounts.length == 1) {
+        //     swapRewards(rewardList[0], claimedAmounts[0]);
+        // } else {
+        //     for (uint256 i = 0; i < claimedAmounts.length; i++) {
+        //         swapRewards(rewardList[i], claimedAmounts[i]);
+        //     }
+        // }
+
+        address rewardToken = rewardList[0];
+        console.log("rewardList[0]", rewardToken);
+        uint256 earned = ERC20(rewardToken).balanceOf(address(this));
+        console.log("earned", earned);
+
+        swapRewards(rewardToken, earned);
     }
 
     function swapRewards(address rewardToken, uint256 earned) internal {
         swapInfo memory swapMap = swapInfoMap[ERC20(rewardToken)];
         /// If one swap needed (high liquidity pair) - set swapInfo.token0/token/pair2 to 0x
         /// @dev Swap AAVE-Fork token for asset
-        if (SwapInfo.token == address(asset)) {
-            DexSwap.swap(
+        if (swapMap.token == address(asset)) {
+            console.log("asset", address(asset));
+            console.log("rewardToken", rewardToken);
+            console.log("swapMap.token", swapMap.token);
+            console.log("swapMap.pair1", swapMap.pair1);
+            uint256 amt = DexSwap.swap(
                 earned, /// REWARDS amount to swap
                 rewardToken, // from REWARD-TOKEN
                 address(asset), /// to target underlying of this Vault
                 swapMap.pair1 /// pairToken (pool)
             );
+            console.log("amt", amt);
             /// If two swaps needed
         } else {
             uint256 swapTokenAmount = DexSwap.swap(

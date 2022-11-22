@@ -38,7 +38,6 @@ contract AaveV3ERC4626ReinvestTest is Test {
     IRewardsController public rewards;
     IPool public lendingPool;
 
-    address public rewardToken;
     address public swapToken;
     address public pair1;
     address public pair2;
@@ -207,35 +206,34 @@ contract AaveV3ERC4626ReinvestTest is Test {
     function testHarvester() public {
         uint256 aliceUnderlyingAmount = 100e6;
 
-        vm.startPrank(manager);
-        /// Move to constructor, set routes
-
         /// Spoof IncentiveV3 contract storage var
+        vm.startPrank(manager);
         address[] memory rewardTokens = vault.setRewards();
+
         console.log("rewardTokens", rewardTokens[0]);
         console.log("routes", swapToken, pair1, pair2);
-        
-        vault.setRoutes(ERC20(rewardTokens[0]), swapToken, pair1, pair2);
-        
+
         if (rewardTokens.length == 1) {
-            rewardToken = rewardTokens[0];
-            deal(address(asset), address(vault), 100 ether);
+            vault.setRoutes(ERC20(rewardTokens[0]), swapToken, pair1, pair2);
+            deal(rewardTokens[0], address(vault), 1 ether);
         } else {
             console.log("more than 1 reward token");
         }
+
         vm.stopPrank();
+        ///////////////////////////
 
-        // vm.startPrank(alice);
+        vm.startPrank(alice);
 
-        // asset.approve(address(vault), aliceUnderlyingAmount);
-        // uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
+        asset.approve(address(vault), aliceUnderlyingAmount);
+        uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
 
-        // assertEq(vault.totalSupply(), aliceShareAmount);
-        // assertEq(vault.totalAssets(), 100 ether);
-        // console.log("totalAssets before harvest", vault.totalAssets());
+        console.log("totalAssets before harvest", vault.totalAssets());
+        console.log("rewardBalance before harvest", ERC20(rewardTokens[0]).balanceOf(address(vault)));
 
-        // assertEq(ERC20(rewardToken).balanceOf(address(vault)), 100 ether);
-        // vault.harvest();
+        assertEq(ERC20(rewardTokens[0]).balanceOf(address(vault)), 1 ether);
+
+        vault.harvest();
 
         // assertEq(ERC20(rewardToken).balanceOf(address(vault)), 0);
         // console.log("totalAssets after harvest", vault.totalAssets());
