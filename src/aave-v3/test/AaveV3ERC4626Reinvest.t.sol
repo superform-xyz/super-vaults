@@ -203,6 +203,9 @@ contract AaveV3ERC4626ReinvestTest is Test {
         assertEq(asset.balanceOf(alice), alicePreDepositBal);
     }
 
+    /// @dev This tests requires harvest() claimedAmounts[] to be set manually
+    /// @dev Test overwrite for harvest
+    // claimedAmounts[0] = 1 ether;
     function testHarvester() public {
         uint256 aliceUnderlyingAmount = 100e6;
 
@@ -235,7 +238,5 @@ contract AaveV3ERC4626ReinvestTest is Test {
 
         vault.harvest();
 
-        // assertEq(ERC20(rewardToken).balanceOf(address(vault)), 0);
-        // console.log("totalAssets after harvest", vault.totalAssets());
     }
 }
