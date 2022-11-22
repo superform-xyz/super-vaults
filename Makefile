@@ -1,7 +1,7 @@
 # include .env file and export its env vars
 # (-include to ignore error if it does not exist)
 -include .env
--include .env.addresses
+-include .addresses
 
 # deps
 install:; forge install
@@ -14,7 +14,8 @@ clean  :; forge clean
 snapshot :; forge snapshot
 fmt    :; forge fmt && forge fmt test/
 
-test-aave :; forge test --match-contract AaveV2* -vvv
+# General test
+test-aave :; forge test --match-contract Aave* -vvv
 test-compound :; forge test --match-contract CompoundV2* -vvv
 test-steth :; forge test --match-contract stEth.*Test -vvv
 test-steth2 :; forge test --match-contract stEthNoSwap.*Test -vvv
@@ -30,6 +31,10 @@ test-aaveV2-reinvest :; forge test --match-contract AaveV2ERC4626ReinvestTest -v
 test-aaveV3-reinvest :; forge test --match-contract AaveV3ERC4626ReinvestTest -vvv
 test-benqi-reinvest :; forge test --match-contract BenqiERC4626ReinvestTest -vvv
 test-benqiNative-reinvest :; forge test --match-contract BenqiNativeERC4626ReinvestTest -vvv
+
+# Harvester tests
+
+test-aaveV3-harvest :; forge test --match-contract AaveV3ERC4626ReinvestTest --match-test testHarvester -vvv
 
 ### BINANCE CHAIN
 
