@@ -13,6 +13,8 @@ import {IComptroller} from "./compound/IComptroller.sol";
 import {DexSwap} from "./utils/swapUtils.sol";
 import {WrappedNative} from "./utils/wrappedNative.sol";
 
+/// @title BenqiERC4626Reinvest - Custom implementation of yield-daddy wrappers with flexible reinvesting logic
+/// @notice Extended with payable function to accept native token transfer
 contract BenqiNativeERC4626Reinvest is ERC4626 {
     /// -----------------------------------------------------------------------
     /// Libraries usage
@@ -305,7 +307,7 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
         virtual
         returns (string memory vaultName)
     {
-        vaultName = string.concat("CompStratERC4626- ", asset_.symbol());
+        vaultName = string.concat("ERC4626-Wrapped Benqi - ", asset_.symbol());
     }
 
     function _vaultSymbol(ERC20 asset_)
@@ -314,6 +316,6 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
         virtual
         returns (string memory vaultSymbol)
     {
-        vaultSymbol = string.concat("cS-", asset_.symbol());
+        vaultSymbol = string.concat("bq46-", asset_.symbol());
     }
 }

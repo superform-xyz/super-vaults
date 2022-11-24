@@ -19,14 +19,14 @@ test-aave :; forge test --match-contract Aave* -vvv
 test-compound :; forge test --match-contract CompoundV2* -vvv
 test-steth :; forge test --match-contract stEth.*Test -vvv
 # test-steth-swap :; forge test --match-contract stEthSwap.*Test -vvv # fix & extend
-test-wmatic :; forge test --match-contract stMatic.*Test -vvv
+test-stmatic :; forge test --match-contract stMatic.*Test -vvv
 test-uniswapV2 :; forge test --match-contract UniswapV2Test -vvv
 test-uniswapV2swap :; forge test --match-contract UniswapV2TestSwap -vvv
 test-reth :; forge test --match-contract rEthTest -vvv
 test-arrakis :; forge test --match-contract Arrakis_LP_Test -vvv
 
 # Reinvest test
-test-venus :; forge test --match-contract VenusERC4626WrapperTest -vvv
+test-venus-reinvest :; forge test --match-contract VenusERC4626WrapperTest -vvv
 test-aaveV2-reinvest :; forge test --match-contract AaveV2ERC4626ReinvestTest -vvv
 test-aaveV3-reinvest :; forge test --match-contract AaveV3ERC4626ReinvestTest -vvv
 test-benqi-reinvest :; forge test --match-contract BenqiERC4626ReinvestTest -vvv
@@ -39,15 +39,18 @@ test-aaveV3-harvest :; forge test --match-contract AaveV3ERC4626ReinvestTest --m
 ### BINANCE CHAIN ##
 ####################
 
-# USDC/vUSDC/XVS/Comptroller
-# deploy-venus-usdc :; forge create --rpc-url $(BSC_MAINNET_RPC) \
-# 				--constructor-args $(VENUS_USDC_ASSET) $(VENUS_REWARD_XVS) $(VENUS_VUSDC_CTOKEN) $(VENUS_COMPTROLLER) $(MANAGER) \ 
-# 				--private-key $(PRIVATE_KEY) src/current/aave-v2/AaveV2StrategyWrapperNoHarvester:AaveV2StrategyWrapperNoHarvester
+# VENUS-BSC-USDC
+deploy-venus-usdc :; forge create --rpc-url $(BSC_MAINNET_RPC) \
+				--constructor-args $(VENUS_USDC_ASSET) $(VENUS_REWARD_XVS) $(VENUS_VUSDC_CTOKEN) $(VENUS_COMPTROLLER) \
+				 $(VENUS_SWAPTOKEN_USDC) $(VENUS_PAIR1_USDC) $(VENUS_PAIR2_USDC) $(MANAGER) \
+				--private-key $(PRIVATE_KEY) src/venus/VenusERC4626Reinvest.sol:VenusERC4626Reinvest
 
-
-# deploy-venus-dai :; forge create --rpc-url $(BSC_MAINNET_RPC) \
-# 				--constructor-args $(ASSET) $(REWARD) $(CTOKEN) $(COMPTROLLER) $(MANAGER) \ 
-# 				--private-key $(PRIVATE_KEY) src/current/aave-v2/AaveV2StrategyWrapperNoHarvester:AaveV2StrategyWrapperNoHarvester
+# VENUS-BSC-BUSD
+deploy-venus-dai :; forge create --rpc-url $(BSC_MAINNET_RPC) \
+				--constructor-args $(VENUS_BUSD_ASSET) $(VENUS_REWARD_XVS) \
+				 $(VENUS_BUSD_CTOKEN) $(VENUS_COMPTROLLER) \
+				 $(VENUS_SWAPTOKEN_BUSD) $(VENUS_PAIR1_BUSD) $(VENUS_PAIR2_BUSD) $(MANAGER) \
+				--private-key $(PRIVATE_KEY) src/venus/VenusERC4626Reinvest.sol:VenusERC4626Reinvest
 
 
 # Already deployed (check status)
@@ -122,12 +125,15 @@ deploy-aave2-avax-wavax :; forge create --rpc-url $(AVAX_MAINNET_RPC) \
 				--constructor-args $(AAVEV2_AVAX_WAVAX) $(AAVEV2_AVAX_AWAVAX) $(AAVEV2_AVAX_REWARDS) $(AAVEV2_AVAX_LENDINGPOOL) $(AAVEV2_AVAX_REWARDTOKEN) $(MANAGER) \
 				--private-key $(PRIVATE_KEY) src/aave-v2/AaveV2ERC4626Reinvest.sol:AaveV2ERC4626Reinvest
 
-# AVAX (NATIVE) / DAI.e (ERC20) / USDC.e (ERC20) - claim QI rewards https://app.benqi.fi/markets
-# deploy-benqi-avax :; forge create --rpc-url $(AVAX_MAINNET_RPC) \
-# 				--constructor-args "" "" 18 1000 \ 
-# 				--private-key $(PRIVATE_KEY) src/current/aave-v2/AaveV2StrategyWrapperNoHarvester:AaveV2StrategyWrapperNoHarvester
+# BENQI-AVAX-USDC
+deploy-benqi-usdc :; forge create --rpc-url $(AVAX_MAINNET_RPC) \
+				--constructor-args $(BENQI_USDC_ASSET) $(BENQI_REWARD_QI) $(BENQI_USDC_CTOKEN) $(BENQI_COMPTROLLER) $(MANAGER) \
+				--private-key $(PRIVATE_KEY) src/benqi/BenqiERC4626Reinvest.sol:BenqiERC4626Reinvest
 
-
+# BENQI-AVAX-WAVAX (native)
+deploy-benqi-wavax :; forge create --rpc-url $(AVAX_MAINNET_RPC) \
+				--constructor-args $(BENQI_WAVAX_ASSET) $(BENQI_REWARD_QI) $(BENQI_WAVAX_CETHER) $(BENQI_COMPTROLLER) $(MANAGER) \
+				--private-key $(PRIVATE_KEY) src/benqi/BenqiNativeERC4626Reinvest.sol:BenqiNativeERC4626Reinvest
 
 # deploy-traderjoe-avax :; forge create --rpc-url $(AVAX_MAINNET_RPC) \
 # 				--constructor-args "" "" 18 1000 \ 

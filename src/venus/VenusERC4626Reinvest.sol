@@ -12,7 +12,8 @@ import {IComptroller} from "./compound/IComptroller.sol";
 
 import {DexSwap} from "./utils/swapUtils.sol";
 
-/// @title CompoundV2StrategyWrapper - Custom implementation of yield-daddy wrappers with flexible reinvesting logic
+/// @title VenusERC4626Reinvest - extended implementation of yield-daddy CompoundV2 wrapper
+/// @dev Reinvests rewards accrued for higher APY
 contract VenusERC4626Reinvest is ERC4626 {
     /// -----------------------------------------------------------------------
     /// Libraries usage
@@ -213,7 +214,7 @@ contract VenusERC4626Reinvest is ERC4626 {
         virtual
         returns (string memory vaultName)
     {
-        vaultName = string.concat("VenusWrapperERC4626- ", asset_.symbol());
+        vaultName = string.concat("ERC4626-Wrapped Venus- ", asset_.symbol());
     }
 
     function _vaultSymbol(ERC20 asset_)
@@ -222,6 +223,6 @@ contract VenusERC4626Reinvest is ERC4626 {
         virtual
         returns (string memory vaultSymbol)
     {
-        vaultSymbol = string.concat("venus46-", asset_.symbol());
+        vaultSymbol = string.concat("vs46-", asset_.symbol());
     }
 }
