@@ -9,7 +9,7 @@ update:; forge update
 
 # Build & test
 build  :; forge build
-test   :; forge test --no-match-contract rEthTest -vvv # skip rEthTest*.*Test TODO: slot check
+test   :; forge test --no-match-contract rEthTest\|stEthSwapTest -vvv # skip rEthTest*.*Test TODO: slot check
 clean  :; forge clean
 snapshot :; forge snapshot
 fmt    :; forge fmt && forge fmt test/
@@ -18,7 +18,7 @@ fmt    :; forge fmt && forge fmt test/
 test-aave :; forge test --match-contract Aave* -vvv
 test-compound :; forge test --match-contract CompoundV2* -vvv
 test-steth :; forge test --match-contract stEth.*Test -vvv
-test-steth2 :; forge test --match-contract stEthNoSwap.*Test -vvv
+# test-steth-swap :; forge test --match-contract stEthSwap.*Test -vvv # fix & extend
 test-wmatic :; forge test --match-contract stMatic.*Test -vvv
 test-uniswapV2 :; forge test --match-contract UniswapV2Test -vvv
 test-uniswapV2swap :; forge test --match-contract UniswapV2TestSwap -vvv

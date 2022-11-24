@@ -3,7 +3,7 @@ pragma solidity 0.8.14;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-import {StETHERC4626NoSwap} from "../stETH_noSwap.sol";
+import {StETHERC4626} from "../stETH.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 import {ICurve} from "../interfaces/ICurve.sol";
@@ -11,7 +11,7 @@ import {IStETH} from "../interfaces/IStETH.sol";
 import {IWETH} from "../interfaces/IWETH.sol";
 import {wstETH} from "../interfaces/wstETH.sol";
 
-contract stEthNoSwapTest is Test {
+contract stEthTest is Test {
     uint256 public ethFork;
     uint256 public immutable ONE_THOUSAND_E18 = 1000 ether;
     uint256 public immutable HUNDRED_E18 = 100 ether;
@@ -20,7 +20,7 @@ contract stEthNoSwapTest is Test {
 
     string ETH_RPC_URL = vm.envString("ETH_MAINNET_RPC");
 
-    StETHERC4626NoSwap public vault;
+    StETHERC4626 public vault;
 
     address public weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public stEth = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
@@ -35,7 +35,7 @@ contract stEthNoSwapTest is Test {
         ethFork = vm.createFork(ETH_RPC_URL);
         vm.selectFork(ethFork);
 
-        vault = new StETHERC4626NoSwap(weth, stEth);
+        vault = new StETHERC4626(weth, stEth);
         alice = address(0x1);
         manager = msg.sender;
 

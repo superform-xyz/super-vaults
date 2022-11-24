@@ -9,7 +9,6 @@ import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {ICurve} from "./interfaces/ICurve.sol";
 import {IStETH} from "./interfaces/IStETH.sol";
 import {IWETH} from "./interfaces/IWETH.sol";
-import {wstETH} from "./interfaces/wstETH.sol";
 
 import "forge-std/console.sol";
 
@@ -19,10 +18,9 @@ import "forge-std/console.sol";
 /// Assets Under Managment (totalAssets()) operates on rebasing balance, re-calculated to the current value in ETH.
 /// Uses ETH/stETH CurvePool for a fast-exit with 1% slippage hardcoded.
 /// @author ZeroPoint Labs
-contract StETHERC4626 is ERC4626 {
+contract StETHERC4626Swap is ERC4626 {
 
     IStETH public stEth;
-    wstETH public wstEth;
     IWETH public weth;
     ICurve public curvePool;
 
@@ -42,19 +40,15 @@ contract StETHERC4626 is ERC4626 {
 
     /// @param weth_ weth address (Vault's underlying / deposit token)
     /// @param stEth_ stETH (Lido contract) address
-    /// @param wstEth_ wstETH contract addresss (Unused in this impl)
     constructor(
         address weth_,
         address stEth_,
-        address wstEth_,
         address curvePool_
     ) ERC4626(ERC20(weth_), "ERC4626-Wrapped stETH", "wLstETH") {
         stEth = IStETH(stEth_);
-        wstEth = wstETH(wstEth_);
         weth = IWETH(weth_);
         curvePool = ICurve(curvePool_);
         stEth.approve(address(curvePool), type(uint256).max);
-        stEth.approve(address(wstEth_), type(uint256).max);
     }
 
     receive() external payable {}
@@ -64,9 +58,6 @@ contract StETHERC4626 is ERC4626 {
     //////////////////////////////////////////////////////////////*/
 
     function beforeWithdraw(uint256 assets, uint256) internal override {
-
-        /// NOTE: stEth is not bridgable, in our case withdrawing in stEth would mean additional swap at SuperForm lvl.
-        /// We can deploy other version which withdraw pure stEth, for community use
         uint256 min_dy = (curvePool.get_dy(index_stEth, index_eth, assets) * 9900) / 10000; /// 1% slip
         uint256 amount = curvePool.exchange(index_stEth, index_eth, assets, min_dy);
         console.log("amount", amount);
@@ -161,7 +152,11 @@ contract StETHERC4626 is ERC4626 {
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
-        SafeTransferLib.safeTransferETH(receiver, assets);
+        console.log("assets", assets); /// assets value isn't updated to reflect eth value
+
+        /// TODO: transfer fails because assets != beforeWithdraw eth on balance
+        /// how safe is doing address(this).balance?
+        SafeTransferLib.safeTransferETH(receiver, address(this).balance);
     }
 
     function redeem(
@@ -184,18 +179,8 @@ contract StETHERC4626 is ERC4626 {
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
-        SafeTransferLib.safeTransferETH(receiver, assets);
+        SafeTransferLib.safeTransferETH(receiver, address(this).balance);
     }
-
-    /// @dev payable mint() is difficult to implement, probably should be dropped fully
-    /// we can live with mint() being only available through weth
-
-    // function mint(uint256 shares, address receiver, bool isPayable) public payable returns (uint256 assets) {
-    //     require((ethAmount = previewMint(shares)) == msg.value, "NOT_ENOUGH");
-    //     _mint(receiver, shares);
-    //     emit Deposit(msg.sender, receiver, ethAmount, shares);
-    //     afterDeposit(msg.value, shares);
-    // }
 
     /// Pure/Native ETH as AUM. Rebasing! We can make wstEth as underlying a separate implementation
     function totalAssets() public view virtual override returns (uint256) {
