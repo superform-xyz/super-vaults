@@ -63,7 +63,14 @@ contract AaveV3ERC4626ReinvestFactory {
         vault =
         new AaveV3ERC4626Reinvest{salt: bytes32(0)}(asset, ERC20(aTokenAddress), lendingPool, rewardsController, manager);
 
+        /// @dev TODO: Seed initial deposit, requires approve to factory
+        // init(vault, initAmount);
+
         emit CreateERC4626Reinvest(asset, vault);
     }
+
+    // function init(ERC4626 vault, uint256 initAmount) internal {
+    //     vault.deposit(initAmount, manager);
+    // }
 
 }

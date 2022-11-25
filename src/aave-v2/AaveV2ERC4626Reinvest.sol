@@ -10,10 +10,8 @@ import {IAaveMining} from "./aave/IAaveMining.sol";
 
 import {DexSwap} from "./utils/swapUtils.sol";
 
-/// @title AaveV2StrategyWrapper - Custom implementation of yield-daddy wrappers with flexible reinvesting logic
-/// Rationale: Forked protocols often implement custom functions and modules on top of forked code.
-/// Example: Aave-forked protocol doesn't use AaveMining for rewards distribution but Curve's MultiFeeDistribution
-/// Example Two: Staking systems. Very common in DeFi. Re-investing/Re-Staking rewards on the Vault level can be included in permissionless way.
+/// @title AaveV2ERC4626Reinvest - extended implementation of yield-daddy @author zefram.eth
+/// @dev Reinvests rewards accrued for higher APY
 contract AaveV2ERC4626Reinvest is ERC4626 {
     
     address public immutable manager;
@@ -51,7 +49,6 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
 
     /// Compact struct to make two swaps (on Uniswap v2)
     /// A => B (using pair1) then B => asset (of Wrapper) (using pair2)
-    /// will work fine as long we only get 1 type of reward token
     struct swapInfo {
         address token;
         address pair1;
@@ -65,7 +62,7 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
     constructor(
         ERC20 asset_,
         ERC20 aToken_,
-        IAaveMining rewards_, /// @dev Aave-forked protocols often offer alternative reward systems
+        IAaveMining rewards_,
         ILendingPool lendingPool_,
         address rewardToken_,
         address manager_
@@ -80,7 +77,8 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
     /// -----------------------------------------------------------------------
     /// AAVE-Fork Rewards Module
     /// -----------------------------------------------------------------------
-
+    
+    /// @notice Set swap routes for selling rewards
     function setRoute(
         address token,
         address pair1,
@@ -93,9 +91,6 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
     }
 
     /// @notice Claims liquidity providing rewards from AAVE-Fork and performs low-lvl swap with instant reinvesting
-    /// MultiFeeDistribution on AAVE-Fork accrues AAVE-Fork token as reward for supplying liq
-    /// Calling harvest() sells AAVE-Fork token through direct Pair swap for best control and lowest cost
-    /// harvest() can be called by anybody. ideally this function should be adjusted per needs (e.g add fee for harvesting)
     function harvest() external {
 
         /// @dev Claim rewards from AAVE-Fork
@@ -136,7 +131,6 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
 
     /// -----------------------------------------------------------------------
     /// ERC4626 overrides
-    /// We can't inherit directly from Yield-daddy because of rewardClaim lock
     /// -----------------------------------------------------------------------
 
     function withdraw(
@@ -190,7 +184,6 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
 
     function totalAssets() public view virtual override returns (uint256) {
         // aTokens use rebasing to accrue interest, so the total assets is just the aToken balance
-        // it's called before every share/asset calculation so it should reflect real value
         return aToken.balanceOf(address(this));
     }
 
@@ -314,7 +307,7 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
         virtual
         returns (string memory vaultName)
     {
-        vaultName = string.concat("AaveStratERC4626 ", asset_.symbol());
+        vaultName = string.concat("ERC4626-Wrapped Aave v2 ", asset_.symbol());
     }
 
     function _vaultSymbol(ERC20 asset_)
@@ -323,7 +316,7 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
         virtual
         returns (string memory vaultSymbol)
     {
-        vaultSymbol = string.concat("aS-", asset_.symbol());
+        vaultSymbol = string.concat("wa2-", asset_.symbol());
     }
 
     /// -----------------------------------------------------------------------
