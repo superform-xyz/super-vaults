@@ -18,7 +18,7 @@ fmt    :; forge fmt && forge fmt test/
 test-aave :; forge test --match-contract Aave* -vvv
 test-compound :; forge test --match-contract CompoundV2* -vvv
 test-steth :; forge test --match-contract stEth.*Test -vvv
-# test-steth-swap :; forge test --match-contract stEthSwap.*Test -vvv # fix & extend
+test-steth-swap :; forge test --match-contract stEthSwap.*Test -vvv # fix & extend
 test-stmatic :; forge test --match-contract stMatic.*Test -vvv
 test-uniswapV2 :; forge test --match-contract UniswapV2Test -vvv
 test-uniswapV2swap :; forge test --match-contract UniswapV2TestSwap -vvv

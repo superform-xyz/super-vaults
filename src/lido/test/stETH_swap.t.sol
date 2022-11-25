@@ -38,11 +38,11 @@ contract stEthSwapTest is Test {
     function setUp() public {
         ethFork = vm.createFork(ETH_RPC_URL);
         vm.selectFork(ethFork);
-
-        vault = new StETHERC4626Swap(weth, stEth, curvePool);
         alice = address(0x1);
         bob = address(0x2);
         manager = msg.sender;
+
+        vault = new StETHERC4626Swap(weth, stEth, curvePool, manager);
 
         deal(weth, alice, ONE_THOUSAND_E18);
         deal(weth, bob, ONE_THOUSAND_E18);
