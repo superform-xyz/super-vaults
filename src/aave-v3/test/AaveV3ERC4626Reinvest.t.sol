@@ -96,6 +96,7 @@ contract AaveV3ERC4626ReinvestTest is Test {
     function setUp() public {
         alice = address(0x1);
         bob = address(0x2);
+        /// TODO: Should be e18 by default
         deal(address(asset), alice, 10000e6);
         deal(address(asset), bob, 10000e6);
     }
@@ -203,8 +204,12 @@ contract AaveV3ERC4626ReinvestTest is Test {
         assertEq(asset.balanceOf(alice), alicePreDepositBal);
     }
 
+    function testSingleDepositWithdrawDAI() public {
+
+    }
+
     /// @dev This tests requires harvest() claimedAmounts[] to be set manually
-    /// @dev TODO: find better test method
+    /// @dev TODO: find a better test method
     // claimedAmounts[0] = 1 ether;
     // function testHarvester() public {
     //     uint256 aliceUnderlyingAmount = 100e6;

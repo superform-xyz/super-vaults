@@ -17,7 +17,7 @@ import "forge-std/console.sol";
 /// Assets Under Managment (totalAssets()) operates on rebasing balance.
 /// This stEth ERC4626 wrapper is prefered way to deal with stEth wrapping over other solutions.
 /// @author ZeroPoint Labs
-contract StETHERC4626NoSwap is ERC4626 {
+contract StETHERC4626 is ERC4626 {
 
     IStETH public stEth;
     ERC20 public stEthAsset;
