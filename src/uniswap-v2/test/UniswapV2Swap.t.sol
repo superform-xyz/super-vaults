@@ -73,15 +73,13 @@ contract UniswapV2TestSwap is Test {
 
         uint256 aliceShareAmount = vault.deposit(amount, alice);
         uint256 assetsFromShares = vault.convertToAssets(aliceShareAmount);
-        uint256 previewAssets = vault.previewWithdraw(amount);
-        uint256 previeToken0Amount = vault.getSharesFromAssets(amount);
-        (uint a, uint b) = vault.getAssetsAmounts(1);
+        uint256 previewWithdraw = vault.previewWithdraw(amount);
+        uint256 getSharesFromAssets = vault.getSharesFromAssets(amount);
 
         console.log("alice", aliceShareAmount);
         console.log("assetsFromShares", assetsFromShares);
-        console.log("preivewAssets", previewAssets);
-        console.log("previeToken0Amount", previeToken0Amount);
-        console.log("getAssetAmounts", a, b);
+        console.log("previewWithdraw", previewWithdraw);
+        console.log("getSharesFromAssets", getSharesFromAssets);
 
         uint256 sharesBurned = vault.withdraw(aliceShareAmount, alice, alice);
 

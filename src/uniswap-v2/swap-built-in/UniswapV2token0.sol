@@ -67,6 +67,8 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         /// getAmountOut(assets, reserveIn, reserveOut)
         (uint256 assets0, uint256 assets1) = getAssetsAmounts(shares);
 
+        /// @dev shares need to be reversed here to uni-lp underlying
+
         console.log("totalAssets", totalAssets());
         console.log("withdraw shares", shares);
         console.log("withdraw a0", assets0, "a1", assets1);
@@ -115,8 +117,11 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
 
         swap(assets);
 
+        /// @dev shares minted equal to virtual DAI from UNI-LP
+        shares = virtualAssets(liquidityDeposit());
+
         /// @dev totalAssets holds sum of all UniLP, value accrues to this Vault which then divides per shareholder
-        require((shares = liquidityDeposit()) != 0, "ZERO_SHARES");
+        // require((shares = liquidityDeposit()) != 0, "ZERO_SHARES");
 
         _mint(receiver, shares);
 
@@ -149,7 +154,6 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
     ) public override returns (uint256 shares) {
 
         /// how many shares of this wrapper LP we need to burn to get this amount of token0 assets
-        /// this value should be the same as previewWithdraw()
         shares = previewWithdraw(assets);
         
         if (msg.sender != owner) {
@@ -165,8 +169,6 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
-        /// TODO: It succedes because it transfers only small amount of assets, available
-        /// from overally quitted liquidity in beforeWithdraw()
         console.log("assets safeTransfer", assets);
         token0.safeTransfer(receiver, assets);
     }
@@ -202,8 +204,10 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
     ////////////////////////////// ACCOUNTING //////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
 
+    /// totalAssets virtualAssets should grow with fees accrued to lp tokens held by this vault
     function totalAssets() public view override returns (uint256) {
-        return pair.balanceOf(address(this));
+        return virtualAssets(pair.balanceOf(address(this)));
+        // return pair.balanceOf(address(this));
     }
 
     function virtualAssets(uint256 shares) public view returns (uint256 assets) {
@@ -221,9 +225,24 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         return a0 + UniswapV2Library.getAmountOut(a1, resB, resA);
     }
 
-    /// @dev for X amount of asset how much shares do we need to burn?
-    /// 1. Simulate entry to the Pool with asset amount 
-    /// 2. 
+    function pairBalance() public view returns (uint256) {
+        return pair.balanceOf(address(this));
+    }
+
+    /// for this many DAI (assets) we get this many shares
+    function previewDeposit(uint256 assets) public view override returns (uint256 shares) {
+        (uint256 resA, uint256 resB) = UniswapV2Library.getReserves(
+            address(pair),
+            address(token0),
+            address(token1)
+        );
+
+        uint256 swapAmt = UniswapV2Library.getSwapAmount(resA, assets);
+
+        shares = getLiquidityAmountOutFor(assets, swapAmt);
+    }
+
+
     function previewWithdraw(uint256 assets) public view override returns (uint256 shares) {
         /// User wants to get back 100DAI he deposited from 50/50 Liquidity Split
         /// assets == 100e18
@@ -232,6 +251,8 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         /// this means that exiting is highly ineeficient, because we need to swap to token0
 
         /// Step 1: Take 100 assets (DAI) 
+        /// lp_usdc = reserve_usdc * lp_balance / total_supply
+        /// lp_balance =    
 
         (uint256 resA, uint256 resB) = UniswapV2Library.getReserves(
             address(pair),
@@ -239,7 +260,7 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
             address(token1)
         );
 
-        uint256 swapAmt = UniswapV2Library.getSwapAmount(resA, assets);
+        uint256 token1Amount = UniswapV2Library.getAmountOut(assets, resA, resB);
 
         uint256 supply = totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
 
@@ -256,12 +277,10 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
             address(token0),
             address(token1)
         );
-                
-        lpToBurn = (resA * assets) / pairSupply;
-                /// amount of token0 to provide to receive poolLpAmount
-        // assets0 = (reserveA * amount) / pairSupply;
-        amount = (resA * assets) / pairSupply
-         
+
+        /// 88780873309999
+        /// 44323815842013
+        lpToBurn = (assets * pairSupply) / resA;
     }
 
 
@@ -269,14 +288,14 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
     /////////////////////////// UNISWAP CALLS //////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
 
-    function swap(uint256 assets) internal {
+    function swap(uint256 assets) internal returns (uint256 swapAmt) {
         (uint256 resA, uint256 resB) = UniswapV2Library.getReserves(
             address(pair),
             address(token0),
             address(token1)
         );
 
-        uint256 swapAmt = UniswapV2Library.getSwapAmount(resA, assets);
+        swapAmt = UniswapV2Library.getSwapAmount(resA, assets);
 
         DexSwap.swap(
             /// amt to swap
@@ -315,6 +334,22 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         assets1 = (reserveB * amount) / pairSupply;
     }
 
+    function getLiquidityAmountOutFor(uint256 assets0, uint256 assets1)
+        public
+        view
+        returns (uint256 poolLpAmount)
+    {
+        (uint256 reserveA, uint256 reserveB) = UniswapV2Library.getReserves(
+            address(pair),
+            address(token0),
+            address(token1)
+        );
+        poolLpAmount = min(
+            ((assets0 * pair.totalSupply()) / reserveA),
+            (assets1 * pair.totalSupply()) / reserveB
+        );
+    }
+
     ////////////////////////////////////////////////////////////////////////////
     /////////////////////////// SLIPPAGE MGMT //////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
@@ -328,4 +363,10 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
     function getSlippage(uint256 amount) internal view returns (uint256) {
         return (amount * slippage) / slippageFloat;
     }
+
+
+    function min(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        z = x < y ? x : y;
+    }
+
 }
