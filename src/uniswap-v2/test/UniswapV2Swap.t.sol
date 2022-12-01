@@ -47,12 +47,14 @@ contract UniswapV2TestSwap is Test {
         vm.selectFork(ethFork);
 
         vault = new UniswapV2WrapperERC4626Swap(
+            dai,
             name,
             symbol,
             router,
             pair,
             slippage
         );
+        
         alice = address(0x1);
         bob = address(0x2);
         manager = msg.sender;
@@ -70,13 +72,65 @@ contract UniswapV2TestSwap is Test {
         dai.approve(address(vault), amount);
 
         uint256 aliceShareAmount = vault.deposit(amount, alice);
+        uint256 assetsFromShares = vault.convertToAssets(aliceShareAmount);
+        uint256 previewAssets = vault.previewWithdraw(amount);
+        uint256 previeToken0Amount = vault.getSharesFromAssets(amount);
+        (uint a, uint b) = vault.getAssetsAmounts(1);
+
         console.log("alice", aliceShareAmount);
+        console.log("assetsFromShares", assetsFromShares);
+        console.log("preivewAssets", previewAssets);
+        console.log("previeToken0Amount", previeToken0Amount);
+        console.log("getAssetAmounts", a, b);
 
         uint256 sharesBurned = vault.withdraw(aliceShareAmount, alice, alice);
 
         assertEq(aliceShareAmount, sharesBurned);
         assertEq(vault.balanceOf(alice), 0);
 
+    }
+
+    function testMultipleDepositWithdraw() public {
+        uint256 amount = 100 ether;
+
+        vm.startPrank(alice);
+
+        dai.approve(address(vault), amount);
+
+        uint256 aliceShareAmount = vault.deposit(amount, alice);
+
+        console.log("alice", aliceShareAmount);
+
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+
+        dai.approve(address(vault), amount);
+
+        uint256 bobShareAmount = vault.deposit(amount, bob);
+
+        console.log("bob", bobShareAmount); 
+
+        vm.stopPrank();
+       
+        vm.startPrank(alice);
+
+        uint256 sharesBurned = vault.withdraw(aliceShareAmount, alice, alice);
+
+        assertEq(aliceShareAmount, sharesBurned);
+
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+
+        uint256 previewWithdraw = vault.previewWithdraw(bobShareAmount);
+        uint256 previewDeposit = vault.previewDeposit(amount);
+
+        console.log("prevW", previewWithdraw, "prevD", previewDeposit);
+
+        sharesBurned = vault.withdraw(bobShareAmount, bob, bob);
+
+        assertEq(bobShareAmount, sharesBurned);
     }
 
     function testMintRedeem() public {
