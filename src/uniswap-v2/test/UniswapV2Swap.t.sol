@@ -77,7 +77,7 @@ contract UniswapV2TestSwap is Test {
         // uint256 previewWithdraw = vault.previewWithdraw(amount);
         // uint256 getSharesFromAssets = vault.getSharesFromAssets(amount);
 
-        // console.log("alice", aliceShareAmount);
+        console.log("alice", aliceShareAmount);
         // console.log("assetsFromShares", assetsFromShares);
         // console.log("previewWithdraw", previewWithdraw);
         // console.log("getSharesFromAssets", getSharesFromAssets);

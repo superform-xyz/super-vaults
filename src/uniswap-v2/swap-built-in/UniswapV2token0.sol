@@ -63,11 +63,8 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         /// get a0,a1, if a0 = assets > removeLiquidity > send a0
         /// TODO: WARN: call swap again with remaining a1
 
-        /// this makes APY on this Vault volatile (each exit from vault makes unoptimal swaps, 0.3% fee eaten)
-        /// getAmountOut(assets, reserveIn, reserveOut)
+        /// this makes APY on this Vault volatile (each exit from vault makes non-optimal swaps, 0.3% fee eaten)
         (uint256 assets0, uint256 assets1) = getAssetsAmounts(shares);
-
-        /// @dev dai virtual needs to be reversed here to real uni-lp underlying
     
         console.log("totalAssets", totalAssets());
         console.log("withdraw shares", shares);
@@ -86,6 +83,12 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
             address(this),
             block.timestamp + 100
         );
+
+        // if (aA <= assets) {
+
+        // }
+
+        /// TODO: Re-deposit mechanism
 
         console.log("aA", aA, "aB", aB);
     }
@@ -117,9 +120,8 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
 
         swap(assets);
 
-        /// @dev shares minted equal to virtual DAI from UNI-LP
-        // shares = virtualAssets(liquidityDeposit());
-        /// @dev totalAssets holds sum of all UniLP, value accrues to this Vault which then divides per shareholder
+        /// @dev totalAssets holds sum of all UniLP, 
+        /// UniLP is non-rebasing, yield accrues on Uniswap pool (you can redeem more t0/t1 for same amount of LP)
         require((shares = liquidityDeposit()) != 0, "ZERO_SHARES");
 
         _mint(receiver, shares);
@@ -132,6 +134,7 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         override
         returns (uint256 assets)
     {
+        /// TODO To implement previewMint calculations
         assets = previewMint(shares);
 
         asset.safeTransferFrom(msg.sender, address(this), assets);
@@ -147,15 +150,18 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
 
     /// @dev burns shares from owner and sends exactly assets of underlying tokens to receiver.
     function withdraw(
-        uint256 assets, /// this is a token0 amount to get back
+        uint256 assets, /// token0 amount (we need to get it from token0 & token1 in LP)
         address receiver,
         address owner
     ) public override returns (uint256 shares) {
 
         /// how many shares of this wrapper LP we need to burn to get this amount of token0 assets
+        /// If user joined with 100 DAI, he owns a claim to 50token0/50token1
+        /// this will output required shares to burn for only token0
+        /// should we simulate full split here?
         shares = previewWithdraw(assets);
         console.log("shares to burn for asset", shares);
-        
+
         if (msg.sender != owner) {
             uint256 allowed = allowance[owner][msg.sender];
 
@@ -170,6 +176,8 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
         console.log("assets safeTransfer", assets);
+        
+        /// TODO: We need to account for token1 amounts
         token0.safeTransfer(receiver, assets);
     }
 
@@ -206,8 +214,11 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
 
     /// totalAssets virtualAssets should grow with fees accrued to lp tokens held by this vault
     function totalAssets() public view override returns (uint256) {
-        // return virtualAssets(pair.balanceOf(address(this)));
         return pairBalance();
+    }
+
+    function pairBalance() public view returns (uint256) {
+        return pair.balanceOf(address(this));
     }
 
     function virtualAssets(uint256 shares) public view returns (uint256 assets) {
@@ -223,10 +234,6 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
 
         /// DAI + DAI amt from USDC swapped to DAI
         return a0 + UniswapV2Library.getAmountOut(a1, resB, resA);
-    }
-
-    function pairBalance() public view returns (uint256) {
-        return pair.balanceOf(address(this));
     }
 
     /// for this many DAI (assets) we get this many shares
@@ -245,41 +252,7 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
     /// we need only assets umount up to the 50% LP amount
     /// how many shares of this wrapper LP we need to burn to get this amount of token0 assets
     function previewWithdraw(uint256 assets) public view override returns (uint256 shares) {
-        /// User wants to get back 100DAI he deposited from 50/50 Liquidity Split
-        /// assets == 100e18
-        /// simulate removeLiquidity in amount X so that user gets back 100DAI
-        /// output of previeWithdraw == simulate removeLiquidity(X)
-        /// this means that exiting is highly ineeficient, because we need to swap to token0
-
-        /// Step 1: Take 100 assets (DAI)
-        /// Step 2: Get overall DAI AUM of this Vault
-        /// Step 3: How much pairToken needs to be burned of this balance to receive 100 DAI () 
-        /// lp_usdc = reserve_usdc * lp_balance / total_supply
-        /// lp_balance = lp_usdc * total_supply / reserve_usdc    
-
-        /// can't use getAmountOut because output amount is for 2 tokens
-        /// but to hell with it? let the user worry and let him check earlier, disuades exits?
         return getSharesFromAssets(assets);
-    }
-
-    /// @dev this is same as previewWithdraw
-    function getSharesFromAssets(uint256 assets) public view returns (uint256 lpToBurn) {
-
-        uint256 pairSupply = pair.totalSupply();
-
-        (uint256 resA, uint256 resB) = UniswapV2Library.getReserves(
-            address(pair),
-            address(token0),
-            address(token1)
-        );
-
-        uint256 amountOfDaiToSwapToUSDC = UniswapV2Library.getSwapAmount(resA, assets);
-        uint256 amountOfUSDCfromDAI = UniswapV2Library.quote(amountOfDaiToSwapToUSDC, resA, resB);
-        console.log("amountOfDaiToSwapToUSDC", amountOfDaiToSwapToUSDC);
-        console.log("amountOfUSDCfromDAI", amountOfUSDCfromDAI);
-        /// 88780873309999 --- because its for 100 DAI / 100 USDC BEFORE SWAP
-        /// 44323815842013 --- because its for 50 DAI / 50 USDC SWAPPED
-        lpToBurn = (amountOfDaiToSwapToUSDC * pairSupply) / resA;
     }
 
 
@@ -314,7 +287,7 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
     }
 
     /// For requested 100 UniLp tokens, how much tok0/1 we need to give?
-    function getAssetsAmounts(uint256 amount)
+    function getAssetsAmounts(uint256 poolLpAmount)
         public
         view
         returns (uint256 assets0, uint256 assets1)
@@ -328,9 +301,9 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         /// shares of uni pair contract
         uint256 pairSupply = pair.totalSupply();
         /// amount of token0 to provide to receive poolLpAmount
-        assets0 = (reserveA * amount) / pairSupply;
+        assets0 = (reserveA * poolLpAmount) / pairSupply;
         /// amount of token1 to provide to receive poolLpAmount
-        assets1 = (reserveB * amount) / pairSupply;
+        assets1 = (reserveB * poolLpAmount) / pairSupply;
     }
 
     function getLiquidityAmountOutFor(uint256 assets0, uint256 assets1)
@@ -338,15 +311,35 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         view
         returns (uint256 poolLpAmount)
     {
+        uint256 pairSupply = pair.totalSupply();
+
         (uint256 reserveA, uint256 reserveB) = UniswapV2Library.getReserves(
             address(pair),
             address(token0),
             address(token1)
         );
         poolLpAmount = min(
-            ((assets0 * pair.totalSupply()) / reserveA),
-            (assets1 * pair.totalSupply()) / reserveB
+            ((assets0 * pairSupply) / reserveA),
+            (assets1 * pairSupply) / reserveB
         );
+    }
+
+    /// @notice Take amount of token0 > split to token0/token1 amounts > calculate how much shares to burn
+    function getSharesFromAssets(uint256 assets) public view returns (uint256 poolLpAmount) {
+
+        (uint256 resA, uint256 resB) = UniswapV2Library.getReserves(
+            address(pair),
+            address(token0),
+            address(token1)
+        );
+
+        uint256 amountOfDaiToSwapToUSDC = UniswapV2Library.getSwapAmount(resA, assets);
+        uint256 amountOfUSDCfromDAI = UniswapV2Library.quote(amountOfDaiToSwapToUSDC, resA, resB);
+        
+        console.log("amountOfDaiToSwapToUSDC", amountOfDaiToSwapToUSDC);
+        console.log("amountOfUSDCfromDAI", amountOfUSDCfromDAI);
+
+        poolLpAmount = getLiquidityAmountOutFor(amountOfDaiToSwapToUSDC, amountOfUSDCfromDAI);
     }
 
     ////////////////////////////////////////////////////////////////////////////
