@@ -54,7 +54,7 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         /// Approve management TODO
         token0.approve(address(router), type(uint256).max);
         token1.approve(address(router), type(uint256).max);
-        asset.approve(address(router), type(uint256).max);
+        ERC20(address(pair)).approve(address(router), type(uint256).max);
     }
 
     function beforeWithdraw(uint256 assets, uint256 shares) internal override {
