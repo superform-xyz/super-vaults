@@ -61,14 +61,14 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         /// now we have DAI virtual amount here passed
         /// lets say user wants 80 DAI out of 100 DAI deposit
         /// get a0,a1, if a0 = assets > removeLiquidity > send a0
-        /// call swap again with remaining a1
+        /// TODO: WARN: call swap again with remaining a1
 
         /// this makes APY on this Vault volatile (each exit from vault makes unoptimal swaps, 0.3% fee eaten)
         /// getAmountOut(assets, reserveIn, reserveOut)
         (uint256 assets0, uint256 assets1) = getAssetsAmounts(shares);
 
-        /// @dev shares need to be reversed here to uni-lp underlying
-
+        /// @dev dai virtual needs to be reversed here to real uni-lp underlying
+    
         console.log("totalAssets", totalAssets());
         console.log("withdraw shares", shares);
         console.log("withdraw a0", assets0, "a1", assets1);
@@ -118,10 +118,9 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         swap(assets);
 
         /// @dev shares minted equal to virtual DAI from UNI-LP
-        shares = virtualAssets(liquidityDeposit());
-
+        // shares = virtualAssets(liquidityDeposit());
         /// @dev totalAssets holds sum of all UniLP, value accrues to this Vault which then divides per shareholder
-        // require((shares = liquidityDeposit()) != 0, "ZERO_SHARES");
+        require((shares = liquidityDeposit()) != 0, "ZERO_SHARES");
 
         _mint(receiver, shares);
 
@@ -155,6 +154,7 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
 
         /// how many shares of this wrapper LP we need to burn to get this amount of token0 assets
         shares = previewWithdraw(assets);
+        console.log("shares to burn for asset", shares);
         
         if (msg.sender != owner) {
             uint256 allowed = allowance[owner][msg.sender];
@@ -206,8 +206,8 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
 
     /// totalAssets virtualAssets should grow with fees accrued to lp tokens held by this vault
     function totalAssets() public view override returns (uint256) {
-        return virtualAssets(pair.balanceOf(address(this)));
-        // return pair.balanceOf(address(this));
+        // return virtualAssets(pair.balanceOf(address(this)));
+        return pairBalance();
     }
 
     function virtualAssets(uint256 shares) public view returns (uint256 assets) {
@@ -242,7 +242,8 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         shares = getLiquidityAmountOutFor(assets, swapAmt);
     }
 
-
+    /// we need only assets umount up to the 50% LP amount
+    /// how many shares of this wrapper LP we need to burn to get this amount of token0 assets
     function previewWithdraw(uint256 assets) public view override returns (uint256 shares) {
         /// User wants to get back 100DAI he deposited from 50/50 Liquidity Split
         /// assets == 100e18
@@ -250,21 +251,15 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         /// output of previeWithdraw == simulate removeLiquidity(X)
         /// this means that exiting is highly ineeficient, because we need to swap to token0
 
-        /// Step 1: Take 100 assets (DAI) 
+        /// Step 1: Take 100 assets (DAI)
+        /// Step 2: Get overall DAI AUM of this Vault
+        /// Step 3: How much pairToken needs to be burned of this balance to receive 100 DAI () 
         /// lp_usdc = reserve_usdc * lp_balance / total_supply
-        /// lp_balance =    
+        /// lp_balance = lp_usdc * total_supply / reserve_usdc    
 
-        (uint256 resA, uint256 resB) = UniswapV2Library.getReserves(
-            address(pair),
-            address(token0),
-            address(token1)
-        );
-
-        uint256 token1Amount = UniswapV2Library.getAmountOut(assets, resA, resB);
-
-        uint256 supply = totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
-
-        return supply == 0 ? assets : assets.mulDivUp(supply, totalAssets());
+        /// can't use getAmountOut because output amount is for 2 tokens
+        /// but to hell with it? let the user worry and let him check earlier, disuades exits?
+        return getSharesFromAssets(assets);
     }
 
     /// @dev this is same as previewWithdraw
@@ -278,9 +273,13 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
             address(token1)
         );
 
-        /// 88780873309999
-        /// 44323815842013
-        lpToBurn = (assets * pairSupply) / resA;
+        uint256 amountOfDaiToSwapToUSDC = UniswapV2Library.getSwapAmount(resA, assets);
+        uint256 amountOfUSDCfromDAI = UniswapV2Library.quote(amountOfDaiToSwapToUSDC, resA, resB);
+        console.log("amountOfDaiToSwapToUSDC", amountOfDaiToSwapToUSDC);
+        console.log("amountOfUSDCfromDAI", amountOfUSDCfromDAI);
+        /// 88780873309999 --- because its for 100 DAI / 100 USDC BEFORE SWAP
+        /// 44323815842013 --- because its for 50 DAI / 50 USDC SWAPPED
+        lpToBurn = (amountOfDaiToSwapToUSDC * pairSupply) / resA;
     }
 
 

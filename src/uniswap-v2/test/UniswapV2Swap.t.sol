@@ -66,22 +66,23 @@ contract UniswapV2TestSwap is Test {
 
     function testDepositWithdraw() public {
         uint256 amount = 100 ether;
+        uint256 amountAdjusted = 95 ether;
 
         vm.startPrank(alice);
 
         dai.approve(address(vault), amount);
 
         uint256 aliceShareAmount = vault.deposit(amount, alice);
-        uint256 assetsFromShares = vault.convertToAssets(aliceShareAmount);
-        uint256 previewWithdraw = vault.previewWithdraw(amount);
-        uint256 getSharesFromAssets = vault.getSharesFromAssets(amount);
+        // uint256 assetsFromShares = vault.convertToAssets(aliceShareAmount);
+        // uint256 previewWithdraw = vault.previewWithdraw(amount);
+        // uint256 getSharesFromAssets = vault.getSharesFromAssets(amount);
 
-        console.log("alice", aliceShareAmount);
-        console.log("assetsFromShares", assetsFromShares);
-        console.log("previewWithdraw", previewWithdraw);
-        console.log("getSharesFromAssets", getSharesFromAssets);
+        // console.log("alice", aliceShareAmount);
+        // console.log("assetsFromShares", assetsFromShares);
+        // console.log("previewWithdraw", previewWithdraw);
+        // console.log("getSharesFromAssets", getSharesFromAssets);
 
-        uint256 sharesBurned = vault.withdraw(aliceShareAmount, alice, alice);
+        uint256 sharesBurned = vault.withdraw(amountAdjusted, alice, alice);
 
         assertEq(aliceShareAmount, sharesBurned);
         assertEq(vault.balanceOf(alice), 0);
