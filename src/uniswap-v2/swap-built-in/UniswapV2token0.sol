@@ -84,11 +84,14 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
             block.timestamp + 100
         );
 
-        // if (aA <= assets) {
-
-        // }
-
         /// TODO: Re-deposit mechanism
+        /// If we re-deposit, do we mint back shares to user? what about previewWithdraw calculation?
+        /// We first burn shares for liqudity == a0, a1 only to get a0, there should be some 'floating' amounts left
+        if (aA >= assets) {
+            // UniswapV2Library.getSwapAmount(resA, aB);
+        } else {
+
+        }
 
         console.log("aA", aA, "aB", aB);
     }
@@ -160,6 +163,7 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         /// this will output required shares to burn for only token0
         /// should we simulate full split here?
         shares = previewWithdraw(assets);
+
         console.log("shares to burn for asset", shares);
 
         if (msg.sender != owner) {
@@ -326,7 +330,22 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
 
     /// @notice Take amount of token0 > split to token0/token1 amounts > calculate how much shares to burn
     function getSharesFromAssets(uint256 assets) public view returns (uint256 poolLpAmount) {
+        
+        /// temp naming, need to re-work token0/token1 logic to ensure sorting on reserves anyway
+        (uint256 amountOfDaiToSwapToUSDC, uint256 amountOfUSDCfromDAI) = getSplitAssetAmounts(assets);
 
+        console.log("amountOfDaiToSwapToUSDC", amountOfDaiToSwapToUSDC);
+        console.log("amountOfUSDCfromDAI", amountOfUSDCfromDAI);
+
+        poolLpAmount = getLiquidityAmountOutFor(amountOfDaiToSwapToUSDC, amountOfUSDCfromDAI);
+    }
+
+    /// @notice Take amount of token0 (underlying) > split to token0/token1 (virtual) amounts
+    function getSplitAssetAmounts(uint256 assets)
+        public
+        view
+        returns (uint256 assets0, uint256 assets1)
+    {
         (uint256 resA, uint256 resB) = UniswapV2Library.getReserves(
             address(pair),
             address(token0),
@@ -335,11 +354,9 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
 
         uint256 amountOfDaiToSwapToUSDC = UniswapV2Library.getSwapAmount(resA, assets);
         uint256 amountOfUSDCfromDAI = UniswapV2Library.quote(amountOfDaiToSwapToUSDC, resA, resB);
-        
-        console.log("amountOfDaiToSwapToUSDC", amountOfDaiToSwapToUSDC);
-        console.log("amountOfUSDCfromDAI", amountOfUSDCfromDAI);
 
-        poolLpAmount = getLiquidityAmountOutFor(amountOfDaiToSwapToUSDC, amountOfUSDCfromDAI);
+        assets0 = amountOfDaiToSwapToUSDC;
+        assets1 = amountOfUSDCfromDAI;
     }
 
     ////////////////////////////////////////////////////////////////////////////
