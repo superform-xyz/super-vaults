@@ -46,7 +46,7 @@ contract AaveV2ERC4626ReinvestTest is Test {
         ftmFork = vm.createFork(POLYGON_MAINNET_RPC);  /// @dev No rewards on FTM
         avaxFork = vm.createFork(POLYGON_MAINNET_RPC); /// @dev No rewards on Avax
 
-        /// @dev Aave V2 makes sense only on Polygon (TVL)
+        /// @dev Use Polygon Fork
         polyFork = vm.createFork(POLYGON_MAINNET_RPC); /// @dev No rewards on Polygon
 
         manager = msg.sender;
