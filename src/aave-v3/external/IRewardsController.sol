@@ -7,6 +7,13 @@ pragma solidity ^0.8.14;
  * @notice Defines the basic interface for a Rewards Controller.
  */
 interface IRewardsController {
+    function getAllUserRewards(address[] calldata assets, address user)
+        external
+        view
+        returns (
+            address[] memory rewardsList,
+            uint256[] memory unclaimedAmounts
+        );
 
     /**
      * @dev Returns the list of available reward token addresses of an incentivized asset

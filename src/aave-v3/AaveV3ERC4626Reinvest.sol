@@ -12,9 +12,12 @@ import {DexSwap} from "./utils/swapUtils.sol";
 
 /// @title AaveV3ERC4626Reinvest - extended implementation of yield-daddy @author zefram.eth
 /// @dev Reinvests rewards accrued for higher APY
-/// @notice ERC4626 wrapper for Aave V3 with reward reinvesting
+/// @notice ERC4626 wrapper for Aave V3 with rewards reinvesting
 contract AaveV3ERC4626Reinvest is ERC4626 {
+    /// @notice Manager for setting swap routes for harvest()
     address public manager;
+
+    /// @notice Check if rewards have been set before harvest() and setRoutes()
     bool public rewardsSet;
 
     /// -----------------------------------------------------------------------
@@ -91,6 +94,8 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
         aToken = aToken_;
         lendingPool = lendingPool_;
         rewardsController = rewardsController_;
+
+        /// For all SuperForm AAVE wrappers Factory contract is the manager
         manager = manager_;
 
         /// TODO: tighter checks
@@ -117,6 +122,7 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
 
     /// @notice Set swap routes for selling rewards
     /// @dev Set route for each rewardToken separately
+    /// @dev Setting wrong addresses here will revert harvest() calls
     function setRoutes(
         address rewardToken,
         address token,
@@ -125,8 +131,6 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
     ) external {
         require(msg.sender == manager, "onlyOwner");
         require(rewardsSet, "rewards not set"); /// @dev Soft-check
-
-        /// @dev TODO: Verify that fed addresses are Uniswap Pools
 
         for (uint256 i = 0; i < rewardTokens.length; i++) {
             /// @dev if rewardToken given as arg matches any rewardToken found by setRewards()
@@ -137,8 +141,9 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
         }
     }
 
-    /// @notice Claims liquidity mining rewards from Aave and sends it to rewardRecipient
+    /// @notice Claims liquidity mining rewards from Aave and sends it to this Vault
     function harvest() external {
+        /// @dev Wrapper exists only for single aToken
         address[] memory assets = new address[](1);
         assets[0] = address(aToken);
 
@@ -150,23 +155,21 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
 
         /// @dev if pool rewards more than one token
         /// TODO: Better control. Give ability to select what rewards to swap
-        claimedAmounts[0] = 1 ether;
         for (uint256 i = 0; i < claimedAmounts.length; i++) {
             swapRewards(rewardList[i], claimedAmounts[i]);
         }
     }
 
+    /// @notice Swap reward token for underlying asset
     function swapRewards(address rewardToken, uint256 earned) internal {
-        
-        /// @dev Used just for approve TODO: no need to export full interface
+        /// @dev Used just for approve
         ERC20 rewardToken_ = ERC20(rewardToken);
 
         swapInfo memory swapMap = swapInfoMap[rewardToken];
 
         /// @dev Swap AAVE-Fork token for asset
         if (swapMap.token == address(asset)) {
-
-            rewardToken_.approve(swapMap.pair1, earned); /// max approves address
+            rewardToken_.approve(swapMap.pair1, earned); /// approve only available rewards
 
             DexSwap.swap(
                 earned, /// REWARDS amount to swap
@@ -176,7 +179,7 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
             );
             /// If two swaps needed
         } else {
-            rewardToken_.approve(swapMap.pair1, earned); /// max approves address
+            rewardToken_.approve(swapMap.pair1, earned); /// approve only available rewards
 
             uint256 swapTokenAmount = DexSwap.swap(
                 earned,
@@ -197,6 +200,21 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
 
         /// reinvest() without minting (no asset.totalSupply() increase == profit)
         afterDeposit(asset.balanceOf(address(this)), 0);
+    }
+
+    /// @notice Check how much rewards are available to claim, useful before harvest()
+    function getAllRewardsAccrued()
+        external
+        view
+        returns (address[] memory rewardList, uint256[] memory claimedAmounts)
+    {
+        address[] memory assets = new address[](1);
+        assets[0] = address(aToken);
+
+        (rewardList, claimedAmounts) = rewardsController.getAllUserRewards(
+            assets,
+            address(this)
+        );
     }
 
     /// -----------------------------------------------------------------------

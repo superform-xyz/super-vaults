@@ -12,7 +12,6 @@ import {IRewardsController} from "../../aave-v3/external/IRewardsController.sol"
 import {IPool} from "../external/IPool.sol";
 
 contract AaveV3ERC4626ReinvestTest is Test {
-    
     ////////////////////////////////////////
 
     address public manager;
@@ -45,8 +44,8 @@ contract AaveV3ERC4626ReinvestTest is Test {
     ////////////////////////////////////////
 
     constructor() {
-        ethFork = vm.createFork(ETH_RPC_URL); 
-        ftmFork = vm.createFork(FTM_RPC_URL); 
+        ethFork = vm.createFork(ETH_RPC_URL);
+        ftmFork = vm.createFork(FTM_RPC_URL);
         polyFork = vm.createFork(POLYGON_MAINNET_RPC);
 
         /// @dev WAVAX REWARDS on Avax
@@ -82,6 +81,7 @@ contract AaveV3ERC4626ReinvestTest is Test {
         public
         returns (ERC4626 vault_, AaveV3ERC4626Reinvest vaultERC4626_)
     {
+        vm.startPrank(manager);
 
         /// @dev If we need strict ERC4626 interface
         vault_ = factory.createERC4626(_asset);
@@ -91,6 +91,8 @@ contract AaveV3ERC4626ReinvestTest is Test {
 
         asset = vault_.asset();
         vault = vaultERC4626_;
+
+        vm.stopPrank();
     }
 
     function setUp() public {
@@ -101,7 +103,7 @@ contract AaveV3ERC4626ReinvestTest is Test {
         deal(address(asset), bob, 10000e6);
     }
 
-    function testFactoryDeployDAI() public {
+    function testFactoryDeployDAIAndDeposit() public {
         vm.startPrank(manager);
 
         /// @dev We deploy with different asset than at the runtime
@@ -205,49 +207,49 @@ contract AaveV3ERC4626ReinvestTest is Test {
         assertEq(asset.balanceOf(alice), alicePreDepositBal);
     }
 
-    /// @dev This tests requires harvest() claimedAmounts[] to be set manually
+    /// @dev This tests requires harvest() claimedAmounts[] to be set manually on forked state
     /// @dev TODO: find a better test method
     // claimedAmounts[0] = 1 ether;
-    function testHarvester() public {
-        uint256 aliceUnderlyingAmount = 100e6;
+    // function testHarvester() public {
+    //     uint256 aliceUnderlyingAmount = 100e6;
 
-        /// Spoof IncentiveV3 contract storage var
-        vm.startPrank(manager);
-        address[] memory rewardTokens = vault.setRewards();
+    //     /// Spoof IncentiveV3 contract storage var
+    //     vm.startPrank(manager);
+    //     address[] memory rewardTokens = factory.setRewards(vault);
 
-        console.log("rewardTokens", rewardTokens[0]);
-        console.log("routes", swapToken, pair1, pair2);
+    //     console.log("rewardTokens", rewardTokens[0]);
+    //     console.log("routes", swapToken, pair1, pair2);
 
-        if (rewardTokens.length == 1) {
-            vault.setRoutes(rewardTokens[0], swapToken, pair1, pair2);
-            deal(rewardTokens[0], address(vault), 1 ether);
-        } else {
-            console.log("more than 1 reward token");
-        }
+    //     if (rewardTokens.length == 1) {
+    //         factory.setRoutes(vault, rewardTokens[0], swapToken, pair1, pair2);
+    //         deal(rewardTokens[0], address(vault), 1 ether);
+    //     } else {
+    //         console.log("more than 1 reward token");
+    //     }
 
-        vm.stopPrank();
-        ///////////////////////////
+    //     vm.stopPrank();
+    //     ///////////////////////////
 
-        vm.startPrank(alice);
+    //     vm.startPrank(alice);
 
-        asset.approve(address(vault), aliceUnderlyingAmount);
-        uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
+    //     asset.approve(address(vault), aliceUnderlyingAmount);
+    //     uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
 
-        uint256 beforeHarvest = vault.totalAssets();
-        uint256 beforeHarvestReward = ERC20(rewardTokens[0]).balanceOf(address(vault));
+    //     uint256 beforeHarvest = vault.totalAssets();
+    //     uint256 beforeHarvestReward = ERC20(rewardTokens[0]).balanceOf(address(vault));
 
-        console.log("totalAssets before harvest", beforeHarvest);
-        console.log("rewardBalance before harvest", beforeHarvestReward);
+    //     console.log("totalAssets before harvest", beforeHarvest);
+    //     console.log("rewardBalance before harvest", beforeHarvestReward);
 
-        assertEq(ERC20(rewardTokens[0]).balanceOf(address(vault)), 1 ether);
+    //     assertEq(ERC20(rewardTokens[0]).balanceOf(address(vault)), 1 ether);
 
-        vault.harvest();
+    //     vault.harvest();
 
-        uint256 afterHarvest = vault.totalAssets();
-        uint256 afterHarvestReward = ERC20(rewardTokens[0]).balanceOf(address(vault));
+    //     uint256 afterHarvest = vault.totalAssets();
+    //     uint256 afterHarvestReward = ERC20(rewardTokens[0]).balanceOf(address(vault));
 
-        console.log("totalAssets after harvest", afterHarvest);
-        console.log("rewardBalance after harvest", afterHarvestReward);
+    //     console.log("totalAssets after harvest", afterHarvest);
+    //     console.log("rewardBalance after harvest", afterHarvestReward);
 
-    }
+    // }
 }
