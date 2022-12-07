@@ -143,6 +143,11 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
         /// reinvest() without minting (no asset.totalSupply() increase == profit)
         afterDeposit(asset.balanceOf(address(this)), 0);
     }
+    
+    /// @notice Check how much rewards are available to claim, useful before harvest()
+    function getRewardsAccrued() external view returns (uint256) {
+        return rewards.getUserUnclaimedRewards(address(this));
+    }
 
     /// -----------------------------------------------------------------------
     /// ERC4626 overrides
