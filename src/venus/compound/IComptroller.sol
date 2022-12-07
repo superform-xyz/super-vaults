@@ -13,5 +13,7 @@ interface IComptroller {
 
     function claimVenus(address holder) external;
 
+    function venusAccrued(address user) external view returns (uint256 venusRewards);
+
     function mintGuardianPaused(ICERC20 cToken) external view returns (bool);
 }
