@@ -17,6 +17,12 @@ contract AaveV2ERC4626ReinvestFactory {
     /// @param vault The vault that was created
     event CreateERC4626Reinvest(ERC20 indexed asset, ERC4626 vault);
 
+    /// @notice Emitted when swap routes have been set for a given aToken vault
+    event RoutesSetERC4626Reinvest(AaveV2ERC4626Reinvest vault);
+
+    /// @notice Emitted when harvest has been called for a given aToken vault
+    event HarvestERC4626Reinvest(AaveV2ERC4626Reinvest vault);
+
     /// -----------------------------------------------------------------------
     /// Errors
     /// -----------------------------------------------------------------------
@@ -34,11 +40,10 @@ contract AaveV2ERC4626ReinvestFactory {
     /// @notice The Aave LendingPool contract
     ILendingPool public immutable lendingPool;
 
-    /// @notice DAO owner
+    /// @notice Manager for setting swap routes for harvest() per each vault
     address public immutable manager;
 
     /// @notice address of reward token from AAVE liquidity mining
-    /// TODO: Setter for this
     address public rewardToken;
 
     /// -----------------------------------------------------------------------
@@ -52,7 +57,6 @@ contract AaveV2ERC4626ReinvestFactory {
         address manager_
     ) {
         /// @dev manager is only used for setting swap routes
-        /// TODO: Redesign it / limit AC more
         manager = manager_;
 
         /// @dev in case any of those contracts changes, we need to redeploy factory
@@ -71,6 +75,7 @@ contract AaveV2ERC4626ReinvestFactory {
         virtual
         returns (ERC4626 vault)
     {
+        require(msg.sender == manager, "onlyOwner");
         ILendingPool.ReserveData memory reserveData = lendingPool
             .getReserveData(address(asset));
         address aTokenAddress = reserveData.aTokenAddress;
@@ -84,10 +89,30 @@ contract AaveV2ERC4626ReinvestFactory {
             aaveMining,
             lendingPool,
             rewardToken,
-            manager
+            address(this)
         );
 
         emit CreateERC4626Reinvest(asset, vault);
+    }
+
+    /// @notice Set swap routes for selling rewards
+    /// @dev Centralizes setRoute on all createERC4626 deployments
+    function setRoute(
+        AaveV2ERC4626Reinvest vault_,
+        address token,
+        address pair1,
+        address pair2
+    ) external {
+        require(msg.sender == manager, "onlyOwner");
+        vault_.setRoute(token, pair1, pair2);
+
+        emit RoutesSetERC4626Reinvest(vault_);
+    }
+
+    /// @notice Harvest rewards from specified vault
+    function harvestFrom(AaveV2ERC4626Reinvest vault_) external {
+        vault_.harvest();
+        emit HarvestERC4626Reinvest(vault_);
     }
 
 }

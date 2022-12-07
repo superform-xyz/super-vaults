@@ -73,25 +73,19 @@ contract VenusERC4626Reinvest is ERC4626 {
         ERC20 reward_,
         ICERC20 cToken_,
         IComptroller comptroller_,
-        address token,
-        address pair1,
-        address pair2,
         address manager_
     ) ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_)) {
         reward = reward_;
         cToken = cToken_;
         comptroller = comptroller_;
         manager = manager_;
-
-        SwapInfo = swapInfo(token, pair1, pair2);
-        ERC20(reward).approve(SwapInfo.pair1, type(uint256).max); /// max approve
-        ERC20(SwapInfo.token).approve(SwapInfo.pair2, type(uint256).max); /// max approve
     }
 
     /// -----------------------------------------------------------------------
     /// Compound liquidity mining
     /// -----------------------------------------------------------------------
 
+    /// @notice Set swap route for XVS rewards
     function setRoute(
         address token,
         address pair1,
@@ -99,8 +93,7 @@ contract VenusERC4626Reinvest is ERC4626 {
     ) external {
         require(msg.sender == manager, "onlyOwner");
         SwapInfo = swapInfo(token, pair1, pair2);
-        ERC20(reward).approve(SwapInfo.pair1, type(uint256).max); /// max approve
-        ERC20(SwapInfo.token).approve(SwapInfo.pair2, type(uint256).max); /// max approve
+
     }
 
     /// @notice Claims liquidity mining rewards from Compound and performs low-lvl swap with instant reinvesting
@@ -115,6 +108,9 @@ contract VenusERC4626Reinvest is ERC4626 {
         /// If only one swap needed (high liquidity pair) - set swapInfo.token0/token/pair2 to 0x
         /// XVS => WBNB => USDC
         if (SwapInfo.token == address(asset)) {
+
+            reward.approve(SwapInfo.pair1, earned); 
+
             DexSwap.swap(
                 earned, /// REWARDS amount to swap
                 rewardToken, // from REWARD (because of liquidity)
@@ -123,12 +119,17 @@ contract VenusERC4626Reinvest is ERC4626 {
             );
             /// If two swaps needed
         } else {
+
+            reward.approve(SwapInfo.pair1, earned);
+
             uint256 swapTokenAmount = DexSwap.swap(
                 earned, /// REWARDS amount to swap
                 rewardToken, /// fromToken REWARD
                 SwapInfo.token, /// to intermediary token with high liquidity (no direct pools)
                 SwapInfo.pair1 /// pairToken (pool)
             );
+
+            ERC20(SwapInfo.token).approve(SwapInfo.pair2, swapTokenAmount); 
 
             DexSwap.swap(
                 swapTokenAmount,
@@ -139,6 +140,11 @@ contract VenusERC4626Reinvest is ERC4626 {
         }
 
         afterDeposit(asset.balanceOf(address(this)), 0);
+    }
+
+    /// @notice Check how much rewards are available to claim, useful before harvest()
+    function getRewardsAccrued() external view returns (uint256 amount) {
+        amount = comptroller.venusAccrued(address(this));
     }
 
     /// -----------------------------------------------------------------------

@@ -41,7 +41,6 @@ contract BenqiERC4626ReinvestTest is Test {
         /// Set vault as fallback
         setVault(
             ERC20(vm.envAddress("BENQI_USDC_ASSET")),
-            ERC20(vm.envAddress("BENQI_REWARD_QI")),
             ICERC20(vm.envAddress("BENQI_USDC_CTOKEN")),
             comptroller
         );
@@ -61,7 +60,6 @@ contract BenqiERC4626ReinvestTest is Test {
 
     function setVault(
         ERC20 underylyingAsset,
-        ERC20 reward_,
         ICERC20 cToken_,
         IComptroller comptroller_
     ) public {
@@ -73,7 +71,6 @@ contract BenqiERC4626ReinvestTest is Test {
 
         vault = new BenqiERC4626Reinvest(
             underylyingAsset,
-            reward_,
             cToken_,
             comptroller_,
             manager

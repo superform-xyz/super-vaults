@@ -43,8 +43,14 @@ contract BenqiERC4626Reinvest is ERC4626 {
     /// @notice Access Control for harvest() route
     address public immutable manager;
 
-    /// @notice The COMP-like token contract
-    ERC20 public immutable reward;
+    /// @notice Type of reward currently distributed by Benqi Vaults
+    uint8 public rewardType;
+
+    /// @notice Map rewardType to rewardToken
+    mapping(uint8 => address) public rewardTokenMap;
+
+    /// @notice Map rewardType to swap route
+    mapping(uint8 => swapInfo) public swapInfoMap;
 
     /// @notice The Compound cToken contract
     ICERC20 public immutable cToken;
@@ -69,12 +75,10 @@ contract BenqiERC4626Reinvest is ERC4626 {
 
     constructor(
         ERC20 asset_, // underlying
-        ERC20 reward_, // comp token or other
         ICERC20 cToken_, // compound concept of a share
         IComptroller comptroller_,
         address manager_
     ) ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_)) {
-        reward = reward_;
         cToken = cToken_;
         comptroller = comptroller_;
         manager = manager_;
@@ -84,56 +88,74 @@ contract BenqiERC4626Reinvest is ERC4626 {
     /// Compound liquidity mining
     /// -----------------------------------------------------------------------
 
+    /// @notice Set swap routes for selling rewards
+    /// @notice Set type of reward we are harvesting and selling
+    /// @dev 0 = QiToken, 1 = AVAX
+    /// @dev Setting wrong addresses here will revert harvest() calls
     function setRoute(
+        uint8 rewardType_,
+        address rewardToken,
         address token,
         address pair1,
         address pair2
     ) external {
         require(msg.sender == manager, "onlyOwner");
-        SwapInfo = swapInfo(token, pair1, pair2);
-        ERC20(reward).approve(SwapInfo.pair1, type(uint256).max); /// max approve
-        ERC20(SwapInfo.token).approve(SwapInfo.pair2, type(uint256).max); /// max approve
+        swapInfoMap[rewardType_] = swapInfo(token, pair1, pair2);
+        rewardTokenMap[rewardType_] = rewardToken;
     }
 
-    /// @notice Claims liquidity mining rewards from Compound and performs low-lvl swap with instant reinvesting
-    /// Calling harvest() claims COMP-Fork token through direct Pair swap for best control and lowest cost
-    /// harvest() can be called by anybody. ideally this function should be adjusted per needs (e.g add fee for harvesting)
-    function harvest() external {
+
+    /// @notice Claims liquidity mining rewards from Benqi and sends it to this Vault
+    function harvest(uint8 rewardType_) external {
         ICERC20[] memory cTokens = new ICERC20[](1);
         cTokens[0] = cToken;
 
-        /// TODO: Setter for rewardType
-        comptroller.claimReward(1, address(this));
+        swapInfo memory swapMap = swapInfoMap[rewardType_];
+        address rewardToken = rewardTokenMap[rewardType_];
+        ERC20 rewardToken_ = ERC20(rewardToken);
 
-        uint256 earned = ERC20(reward).balanceOf(address(this));
-        address rewardToken = address(reward);
+        comptroller.claimReward(rewardType_, address(this));
+        uint256 earned = ERC20(rewardToken).balanceOf(address(this));
 
         /// If only one swap needed (high liquidity pair) - set swapInfo.token0/token/pair2 to 0x
-        if (SwapInfo.token == address(asset)) {
+        if (swapMap.token == address(asset)) {
+
+            rewardToken_.approve(swapMap.pair1, earned); 
+
             DexSwap.swap(
                 earned, /// REWARDS amount to swap
                 rewardToken, // from REWARD (because of liquidity)
                 address(asset), /// to target underlying of this Vault ie USDC
-                SwapInfo.pair1 /// pairToken (pool)
+                swapMap.pair1 /// pairToken (pool)
             );
             /// If two swaps needed
         } else {
+
+            rewardToken_.approve(swapMap.pair1, earned);
+
             uint256 swapTokenAmount = DexSwap.swap(
                 earned, /// REWARDS amount to swap
                 rewardToken, /// fromToken REWARD
-                SwapInfo.token, /// to intermediary token with high liquidity (no direct pools)
-                SwapInfo.pair1 /// pairToken (pool)
+                swapMap.token, /// to intermediary token with high liquidity (no direct pools)
+                swapMap.pair1 /// pairToken (pool)
             );
+
+            ERC20(swapMap.token).approve(swapMap.pair2, swapTokenAmount); 
 
             DexSwap.swap(
                 swapTokenAmount,
-                SwapInfo.token, // from received BUSD (because of liquidity)
+                swapMap.token, // from received BUSD (because of liquidity)
                 address(asset), /// to target underlying of this Vault ie USDC
-                SwapInfo.pair2 /// pairToken (pool)
+                swapMap.pair2 /// pairToken (pool)
             );
         }
 
         afterDeposit(asset.balanceOf(address(this)), 0);
+    }
+
+    /// @notice Check how much rewards are available to claim, useful before harvest()
+    function getRewardsAccrued(uint8 rewardType_) external view returns (uint256 amount) {
+        amount = comptroller.rewardAccrued(rewardType_, address(this));
     }
 
     /// -----------------------------------------------------------------------
