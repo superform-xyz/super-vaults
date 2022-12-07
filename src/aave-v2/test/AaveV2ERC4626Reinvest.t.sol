@@ -102,8 +102,17 @@ contract AaveV2ERC4626ReinvestTest is Test {
         vm.startPrank(manager);
         
         /// @dev We deploy with different asset than at runtime (constructor)
-        ERC4626 vault_ = factory.createERC4626(ERC20(vm.envAddress("AAVEV2_POLYGON_WMATIC")));
-        ERC20 vaultAsset = vault_.asset();
+        ERC4626 v_ = factory.createERC4626(ERC20(vm.envAddress("AAVEV2_POLYGON_WMATIC")));
+        ERC20 vaultAsset = v_.asset();
+
+        AaveV2ERC4626Reinvest vault_ = AaveV2ERC4626Reinvest(address(v_));
+
+        factory.setRoute(
+            vault_,
+            address(0x11),
+            address(0x12),
+            address(0x13)
+        );
         
         vm.stopPrank();
         vm.startPrank(alice);
@@ -113,7 +122,25 @@ contract AaveV2ERC4626ReinvestTest is Test {
         deal(address(vaultAsset), alice, 10000 ether);
         uint256 aliceUnderlyingAmount = amount;
         vaultAsset.approve(address(vault_), aliceUnderlyingAmount);
-        uint256 aliceShareAmount = vault_.deposit(aliceUnderlyingAmount, alice);
+        vault_.deposit(aliceUnderlyingAmount, alice);
+    }
+
+    function testFailManagerCreateERC4626() public {
+        vm.startPrank(alice);
+        factory.createERC4626(ERC20(vm.envAddress("AAVEV2_POLYGON_WMATIC")));
+    }
+
+    function testFailManagerSetRoute() public {
+        vm.startPrank(alice);
+        address swapToken = address(0x11);
+        address pair1 = address(0x12);
+        address pair2 = address(0x13);
+        factory.setRoute(vault, swapToken, pair1, pair2);
+        vm.stopPrank();
+
+        vm.startPrank(manager);
+        /// @dev Should fail because only Manager contract can be a setter, not manager itself
+        vault.setRoute(swapToken, pair1, pair2);
     }
 
     function testSingleDepositWithdraw() public {

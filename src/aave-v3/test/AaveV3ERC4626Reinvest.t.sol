@@ -107,18 +107,20 @@ contract AaveV3ERC4626ReinvestTest is Test {
         vm.startPrank(manager);
 
         /// @dev We deploy with different asset than at the runtime
-        ERC4626 vault_ = factory.createERC4626(
+        ERC4626 v_ = factory.createERC4626(
             ERC20(vm.envAddress("AAVEV3_AVAX_DAI"))
         );
+
+        AaveV3ERC4626Reinvest vault_ = AaveV3ERC4626Reinvest(address(v_));
 
         /// @dev We don't set global var to a new vault. vault exists only within function scope
         ERC20 vaultAsset = vault_.asset();
 
         /// @dev Set rewards & routes from factory contract
-        address[] memory rewardTokens = factory.setRewards(vault);
+        address[] memory rewardTokens = factory.setRewards(vault_);
 
         if (rewardTokens.length == 1) {
-            factory.setRoutes(vault, rewardTokens[0], swapToken, pair1, pair2);
+            factory.setRoutes(vault_, rewardTokens[0], swapToken, pair1, pair2);
             deal(rewardTokens[0], address(vault), 1 ether);
         } else {
             console.log("more than 1 reward token");
