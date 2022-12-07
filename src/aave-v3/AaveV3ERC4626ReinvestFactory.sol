@@ -14,6 +14,7 @@ import {Bytes32AddressLib} from "solmate/utils/Bytes32AddressLib.sol";
 contract AaveV3ERC4626ReinvestFactory {
     using Bytes32AddressLib for bytes32;
 
+    /// @notice Manager for setting swap routes for harvest() per each vault
     address public manager;
 
     /// @notice Emitted when a new ERC4626 vault has been created

@@ -95,7 +95,7 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
         lendingPool = lendingPool_;
         rewardsController = rewardsController_;
 
-        /// For all SuperForm AAVE wrappers Factory contract is the manager
+        /// For all SuperForm AAVE wrappers Factory contract is the manager for the Routes
         manager = manager_;
 
         /// TODO: tighter checks

@@ -114,6 +114,16 @@ contract AaveV3ERC4626ReinvestTest is Test {
         /// @dev We don't set global var to a new vault. vault exists only within function scope
         ERC20 vaultAsset = vault_.asset();
 
+        /// @dev Set rewards & routes from factory contract
+        address[] memory rewardTokens = factory.setRewards(vault);
+
+        if (rewardTokens.length == 1) {
+            factory.setRoutes(vault, rewardTokens[0], swapToken, pair1, pair2);
+            deal(rewardTokens[0], address(vault), 1 ether);
+        } else {
+            console.log("more than 1 reward token");
+        }
+
         vm.stopPrank();
 
         vm.startPrank(alice);
@@ -123,7 +133,38 @@ contract AaveV3ERC4626ReinvestTest is Test {
         deal(address(vaultAsset), alice, amount);
         uint256 aliceUnderlyingAmount = amount;
         vaultAsset.approve(address(vault_), aliceUnderlyingAmount);
-        uint256 aliceShareAmount = vault_.deposit(aliceUnderlyingAmount, alice);
+        vault_.deposit(aliceUnderlyingAmount, alice);
+    }
+
+    function testFailManagerCreateERC4626() public {
+        vm.startPrank(alice);
+        factory.createERC4626(ERC20(vm.envAddress("AAVEV3_AVAX_DAI")));
+    }
+
+    function testFailManagerSetRewards() public {
+        vm.startPrank(alice);
+
+        /// @dev Should fail because we setRewards only as Manager contract
+        factory.setRewards(vault);
+
+        /// @dev Should fail because we can only set from Factory contract
+        vault.setRewards();
+        
+        vm.stopPrank();
+
+        vm.startPrank(manager);
+        /// @dev Should fail because only Manager contract can be a setter, not manager itself
+        vault.setRewards();
+    }
+
+    function testFailManagerSetRoutes() public {
+        vm.startPrank(alice);
+        factory.setRoutes(vault, swapToken, swapToken, pair1, pair2);
+        vm.stopPrank();
+
+        vm.startPrank(manager);
+        /// @dev Should fail because only Manager contract can be a setter, not manager itself
+        vault.setRoutes(swapToken, swapToken, pair1, pair2);
     }
 
     function testSingleDepositWithdrawUSDC() public {
