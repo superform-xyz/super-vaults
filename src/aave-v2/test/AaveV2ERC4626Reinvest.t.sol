@@ -77,6 +77,8 @@ contract AaveV2ERC4626ReinvestTest is Test {
     function setVault(
         ERC20 _asset
     ) public returns (ERC4626 vault_, AaveV2ERC4626Reinvest _vault_) {
+        vm.startPrank(manager);
+
         asset = _asset;
 
         /// @dev If we need strict ERC4626 interface
@@ -84,6 +86,8 @@ contract AaveV2ERC4626ReinvestTest is Test {
 
         /// @dev If we need to use the AaveV2ERC4626Reinvest interface with harvest
         _vault_ = AaveV2ERC4626Reinvest(address(vault_));
+
+        vm.stopPrank();
     }
 
     function setUp() public {
