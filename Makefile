@@ -36,7 +36,7 @@ test-benqiNative-reinvest :; forge test --match-contract BenqiNativeERC4626Reinv
 test-aaveV3-harvest :; forge test --match-contract AaveV3ERC4626ReinvestTest --match-test testHarvester -vvv
 
 # Uniswap tests
-test-uniswapV2swap-withdraw :; forge test --match-contract UniswapV2TestSwap --match-test testDepositWithdraw -vvv
+test-uniswapV2swap-withdraw :; forge test --match-contract UniswapV2TestSwap --match-test testDepositWithdraw -vv
 
 ####################
 ### BINANCE CHAIN ##

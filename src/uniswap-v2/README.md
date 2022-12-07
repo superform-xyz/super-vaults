@@ -1,3 +1,5 @@
+# WIP / Experimental phase
+
 # Design notes
 
 We can look at the problem of creating a single asset ERC4626 adapter over Uniswap's V2 double asset Pool as automaton with most interest of input & output variables (tokens).
@@ -11,10 +13,12 @@ Output variable is LP-token of ERC4626
 Uniswap Pool interface within ERC4626 is a transition function (addLiquidity, removeLiquidity)
 
 Acceptors
+
     - Accept token0
     - Accept token0 swap amount to generate token1
 
 State (possible)
+
     - token0 received
     - token0 swapped to token0 & token1
     - pairToken received
@@ -23,12 +27,14 @@ State (possible)
     - token0 & token1 withdraw
 
 Transducers
+
     - addLiquidity (called 2x if we redeposit leftover)
         - previewDeposit
     - removeLiquidity
         - previewWithdraw
 
 Outputs
+
     - token0 safeTransferred 
     - token0 & token1 safeTransferred
 
@@ -36,4 +42,7 @@ Outputs
 
 1. If we accept only token0 as input and token0 as output, shares value is hard to reflect because it's virtual in its nature. Meaning, to get real value we need multiple values simulated. 
     - token0 to token0/token1 to lpAmount to token0/token1 output to token0 swapped to token0/token1 added again
+
 2. When user joins valut with 100 DAI, its split in 50DAI/50USDC. When user wants to exit using his shares (reflecting 50/50) we need to exit whole position. In contrary to Curve, you can't exit only with single token on Uni. It leads to leftover amounts.
+
+AD. 2: Solved by allowing to safeTransfer token0 & token1, previews are not fully implemented and right now serve as indication of how much we expect to reedem. underlying token0 (or token1) is just abstracted as virtual amount, a receiver can be external ZapOut contract. 
