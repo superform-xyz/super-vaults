@@ -33,13 +33,13 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
     ERC20 public token1;
 
     constructor(
-        ERC20 tokenX,
+        ERC20 asset_,
         string memory name_,
         string memory symbol_,
         IUniswapV2Router router_,
         IUniswapV2Pair pair_,
         uint256 slippage_
-    ) ERC4626(tokenX, name_, symbol_) {
+    ) ERC4626(asset_, name_, symbol_) {
         manager = msg.sender;
 
         pair = pair_;
@@ -60,9 +60,7 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
     function liquidityRemove(uint256 assets, uint256 shares) internal returns (uint256 assets0, uint256 assets1) { 
         /// now we have DAI virtual amount here passed
         /// TODO: user this amount for allowed slippage checks (for simulated output vs real removeLiquidity t0/t1)
-        /// lets say user wants 80 DAI out of 100 DAI deposit
-        /// get a0,a1, if a0 = assets > removeLiquidity > send a0
-        /// TODO: WARN: call swap again with remaining a1
+        /// TODO: call swap again with remaining a1
 
         /// this makes APY on this Vault volatile (each exit from vault makes non-optimal swaps, 0.3% fee eaten)
         (assets0, assets1) = getAssetsAmounts(shares);
@@ -260,7 +258,7 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
 
     /// @notice TODO: Currently unused, only to simulate value. Adding slipage makes this usefull.
     function previewMint(uint256 shares) public view override returns (uint256 assets) {
-        convertToAssets(shares);
+        assets = virtualAssets(shares);
     }
 
     /// we need only assets umount up to the 50% LP amount
