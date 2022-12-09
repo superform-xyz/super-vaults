@@ -17,9 +17,40 @@ import "forge-std/console.sol";
 
 contract UniswapV2TokenFactory {
 
+    IUniswapV2Router router;
     constructor() {}
 
     function create(IUniswapV2Pair pair) external {
+
+        uint256 slippage = 30; /// 0.3
+
+        ERC20[] memory tokens = new ERC20[](2);
+
+        ERC20 token0 = ERC20(pair.token0());
+        ERC20 token1 = ERC20(pair.token1());
+
+        tokens[0] = token0;
+        tokens[1] = token1;
+        
+        for (uint256 i = 0; i < tokens.length; i++) {
+
+            string memory name = string(
+                abi.encodePacked("UniV2-", tokens[i].name(), "-ERC4626")
+            ); 
+            string memory symbol = string(
+                abi.encodePacked("UniLP-", tokens[i].symbol())
+            );
+        
+            UniswapV2WrapperERC4626Swap vault = new UniswapV2WrapperERC4626Swap(
+                tokens[i],
+                name,
+                symbol,
+                router,
+                pair,
+                slippage
+        );
+
+        }
 
     }
 }

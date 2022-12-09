@@ -45,9 +45,16 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         pair = pair_;
         router = router_;
 
-        /// TODO: Factory deployment + init pattern to cover token0/token1 instantly
-        token0 = ERC20(pair.token0());
-        token1 = ERC20(pair.token1());
+        address token0_ = pair.token0();
+        address token1_ = pair.token1();
+
+        if (address(asset) == token0_) {
+            token0 = asset;
+            token1 = ERC20(token1_);
+        } else {
+            token0 = ERC20(token0_);
+            token1 = asset;
+        }
 
         slippage = slippage_;
 
@@ -57,14 +64,17 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         ERC20(address(pair)).approve(address(router), type(uint256).max);
     }
 
-    function liquidityRemove(uint256 assets, uint256 shares) internal returns (uint256 assets0, uint256 assets1) { 
+    function liquidityRemove(uint256 assets, uint256 shares)
+        internal
+        returns (uint256 assets0, uint256 assets1)
+    {
         /// now we have DAI virtual amount here passed
         /// TODO: user this amount for allowed slippage checks (for simulated output vs real removeLiquidity t0/t1)
         /// TODO: call swap again with remaining a1
 
         /// this makes APY on this Vault volatile (each exit from vault makes non-optimal swaps, 0.3% fee eaten)
         (assets0, assets1) = getAssetsAmounts(shares);
-    
+
         console.log("totalAssets", totalAssets());
         console.log("withdraw shares", shares);
         console.log("withdraw a0", assets0, "a1", assets1);
@@ -81,9 +91,6 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         );
 
         /// TODO: Re-deposit mechanism
-        /// If we re-deposit, do we mint back shares to user? what about previewWithdraw calculation?
-        /// We first burn shares for liqudity == a0, a1 only to get a0, there should be some 'floating' amounts left
-
         console.log("aA", assets0, "aB", assets1);
     }
 
@@ -109,12 +116,11 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         override
         returns (uint256 shares)
     {
-
         asset.safeTransferFrom(msg.sender, address(this), assets);
 
         swapJoin(assets);
 
-        /// @dev totalAssets holds sum of all UniLP, 
+        /// @dev totalAssets holds sum of all UniLP,
         /// UniLP is non-rebasing, yield accrues on Uniswap pool (you can redeem more t0/t1 for same amount of LP)
         /// TODO: If we want it as Strategy, e.g do something with this LP, then we need to calculate shares, 1:1 won't work
         require((shares = liquidityDeposit()) != 0, "ZERO_SHARES");
@@ -149,7 +155,6 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         address receiver,
         address owner
     ) public override returns (uint256 shares) {
-
         /// how many shares of this wrapper LP we need to burn to get this amount of token0 assets
         /// If user joined with 100 DAI, he owns a claim to 50token0/50token1
         /// this will output required shares to burn for only token0
@@ -176,18 +181,17 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         /// TODO: Explore this exit swap
         // uint256 assetsSwapped = (assets0 + swapExit(assets1));
         // console.log("assetsSwapped safeTransfer", assetsSwapped);
-        
+
         /// NOTE: User "virtually" redeemed a value of assets, as two tokens equal to the virtual assets value
         token0.safeTransfer(receiver, assets0);
         token1.safeTransfer(receiver, assets1);
     }
 
     function redeem(
-        uint256 shares, 
+        uint256 shares,
         address receiver,
         address owner
     ) public override returns (uint256 assets) {
-
         if (msg.sender != owner) {
             uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
 
@@ -228,11 +232,15 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         return pair.balanceOf(address(this));
     }
 
-    function virtualAssets(uint256 shares) public view returns (uint256 assets) {
+    function virtualAssets(uint256 shares)
+        public
+        view
+        returns (uint256 assets)
+    {
         (uint256 a0, uint256 a1) = getAssetsAmounts(shares);
 
-        if (a1 == 0) return 0;
-        
+        if (a1 == 0 || a0 == 0) return 0;
+
         (uint256 resA, uint256 resB) = UniswapV2Library.getReserves(
             address(pair),
             address(token0),
@@ -240,40 +248,62 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         );
 
         /// DAI + DAI amt from USDC swapped to DAI
+        // NOTE: Why getAmountOut here? Why not quote?
         return a0 + UniswapV2Library.getAmountOut(a1, resB, resA);
     }
 
     /// @notice for this many DAI (assets) we get this many shares
-    function previewDeposit(uint256 assets) public view override returns (uint256 shares) {
-        (uint256 resA, uint256 resB) = UniswapV2Library.getReserves(
-            address(pair),
-            address(token0),
-            address(token1)
-        );
+    function previewDeposit(uint256 assets)
+        public
+        view
+        override
+        returns (uint256 shares)
+    {
+        uint256 reserve = _getReserves();
 
-        uint256 swapAmt = UniswapV2Library.getSwapAmount(resA, assets);
+        uint256 swapAmt = UniswapV2Library.getSwapAmount(reserve, assets);
 
         shares = getLiquidityAmountOutFor(assets, swapAmt);
     }
 
     /// @notice TODO: Currently unused, only to simulate value. Adding slipage makes this usefull.
-    function previewMint(uint256 shares) public view override returns (uint256 assets) {
+    function previewMint(uint256 shares)
+        public
+        view
+        override
+        returns (uint256 assets)
+    {
         assets = virtualAssets(shares);
     }
 
     /// we need only assets umount up to the 50% LP amount
     /// how many shares of this wrapper LP we need to burn to get this amount of token0 assets
-    function previewWithdraw(uint256 assets) public view override returns (uint256 shares) {
+    function previewWithdraw(uint256 assets)
+        public
+        view
+        override
+        returns (uint256 shares)
+    {
         return getSharesFromAssets(assets);
     }
 
     /// @notice TODO: Currently unused, only to simulate value. Adding slipage makes this usefull.
-    function previewRedeem(uint256 shares) public view override returns (uint256 assets) {
+    function previewRedeem(uint256 shares)
+        public
+        view
+        override
+        returns (uint256 assets)
+    {
         return convertToAssets(shares);
     }
 
     /// I am burning SHARES, how much of (virtual) ASSETS (dai) do I get (as two token)
-    function convertToAssets(uint256 shares) public view override returns (uint256 assets) {
+    function convertToAssets(uint256 shares)
+        public
+        view
+        override
+        returns (uint256 assets)
+    {
         assets = virtualAssets(shares);
     }
 
@@ -281,46 +311,58 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
     /////////////////////////// UNISWAP CALLS //////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
 
-    function swapJoin(uint256 assets) internal returns (uint256 swapAmt) {
-        (uint256 resA, uint256 resB) = UniswapV2Library.getReserves(
-            address(pair),
-            address(token0),
-            address(token1)
-        );
+    function swapJoin(uint256 assets) internal returns (uint256 amount) {
+        uint256 reserve = _getReserves();
 
-        swapAmt = UniswapV2Library.getSwapAmount(resA, assets);
+        /// NOTE: swapAmt is in USDC (if DAI (assets) is token0)
+        /// resA if asset == token0
+        /// resB if asset == token1
+        amount = UniswapV2Library.getSwapAmount(reserve, assets);
 
-        DexSwap.swap(
-            /// amt to swap
-            swapAmt,
-            /// from asset (DAI)
-            pair.token0(),
-            /// to asset (USDC)
-            pair.token1(),
-            /// pair address
-            address(pair)
-        );
+        _swap(amount);
     }
 
-    function swapExit(uint256 assets) internal returns (uint256 swapAmt) {
-        (uint256 resA, uint256 resB) = UniswapV2Library.getReserves(
-            address(pair),
-            address(token0),
-            address(token1)
-        );
+    function _swap(uint256 amount) internal {
+        if (token0 == asset) {
+            DexSwap.swap(
+                /// amt to swap
+                amount,
+                /// from asset (USDC)
+                pair.token0(),
+                /// to asset (DAI)
+                pair.token1(),
+                /// pair address
+                address(pair)
+            );
+        } else {
+            DexSwap.swap(
+                /// amt to swap
+                amount,
+                /// from asset (USDC)
+                pair.token1(),
+                /// to asset (DAI)
+                pair.token0(),
+                /// pair address
+                address(pair)
+            );
+        }
+    }
 
-        swapAmt = UniswapV2Library.getSwapAmount(resB, assets);
-
-        DexSwap.swap(
-            /// amt to swap
-            swapAmt,
-            /// from asset (USDC)
-            pair.token1(),
-            /// to asset (DAI)
-            pair.token0(),
-            /// pair address
-            address(pair)
-        );
+    /// @notice Selector for reseve of underlying asset
+    function _getReserves() internal view returns (uint256 assetReserves) {
+        if (token0 == asset) {
+            (assetReserves, ) = UniswapV2Library.getReserves(
+                address(pair),
+                address(token0),
+                address(token1)
+            );
+        } else {
+            ( , assetReserves) = UniswapV2Library.getReserves(
+                address(pair),
+                address(token0),
+                address(token1)
+            );
+        }
     }
 
     function getAssetBalance() internal view returns (uint256 a0, uint256 a1) {
@@ -367,17 +409,25 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
     }
 
     /// @notice Take amount of token0 > split to token0/token1 amounts > calculate how much shares to burn
-    function getSharesFromAssets(uint256 assets) public view returns (uint256 poolLpAmount) {
-        
+    function getSharesFromAssets(uint256 assets)
+        public
+        view
+        returns (uint256 poolLpAmount)
+    {
         /// temp naming, need to re-work token0/token1 logic to ensure sorting on reserves anyway
-        (uint256 amountOfDaiToSwapToUSDC, uint256 amountOfUSDCfromDAI) = getSplitAssetAmounts(assets);
+        (
+            uint256 amountOfDaiToSwapToUSDC,
+            uint256 amountOfUSDCfromDAI
+        ) = getSplitAssetAmounts(assets);
 
         console.log("amountOfDaiToSwapToUSDC", amountOfDaiToSwapToUSDC);
         console.log("amountOfUSDCfromDAI", amountOfUSDCfromDAI);
 
-        poolLpAmount = getLiquidityAmountOutFor(amountOfDaiToSwapToUSDC, amountOfUSDCfromDAI);
+        poolLpAmount = getLiquidityAmountOutFor(
+            amountOfDaiToSwapToUSDC,
+            amountOfUSDCfromDAI
+        );
     }
-
 
     /// @notice Take amount of token0 (underlying) > split to token0/token1 (virtual) amounts
     function getSplitAssetAmounts(uint256 assets)
@@ -391,8 +441,15 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
             address(token1)
         );
 
-        uint256 amountOfDaiToSwapToUSDC = UniswapV2Library.getSwapAmount(resA, assets);
-        uint256 amountOfUSDCfromDAI = UniswapV2Library.quote(amountOfDaiToSwapToUSDC, resA, resB);
+        uint256 amountOfDaiToSwapToUSDC = UniswapV2Library.getSwapAmount(
+            resA,
+            assets
+        );
+        uint256 amountOfUSDCfromDAI = UniswapV2Library.quote(
+            amountOfDaiToSwapToUSDC,
+            resA,
+            resB
+        );
 
         assets0 = amountOfDaiToSwapToUSDC;
         assets1 = amountOfUSDCfromDAI;
@@ -412,9 +469,7 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         return (amount * slippage) / slippageFloat;
     }
 
-
     function min(uint256 x, uint256 y) internal pure returns (uint256 z) {
         z = x < y ? x : y;
     }
-
 }
