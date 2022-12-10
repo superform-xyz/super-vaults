@@ -69,8 +69,7 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         returns (uint256 assets0, uint256 assets1)
     {
         /// now we have DAI virtual amount here passed
-        /// TODO: user this amount for allowed slippage checks (for simulated output vs real removeLiquidity t0/t1)
-        /// TODO: call swap again with remaining a1
+        /// TODO: use this amount for allowed slippage checks (for simulated output vs real removeLiquidity t0/t1)
 
         /// this makes APY on this Vault volatile (each exit from vault makes non-optimal swaps, 0.3% fee eaten)
         (assets0, assets1) = getAssetsAmounts(shares);
@@ -90,11 +89,10 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
             block.timestamp + 100
         );
 
-        /// TODO: Re-deposit mechanism
         console.log("aA", assets0, "aB", assets1);
     }
 
-    function liquidityDeposit() internal returns (uint256 li) {
+    function liquidityAdd() internal returns (uint256 li) {
         (uint256 assets0, uint256 assets1) = getAssetBalance();
 
         /// temp implementation, we should call directly on a pair
@@ -123,7 +121,7 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         /// @dev totalAssets holds sum of all UniLP,
         /// UniLP is non-rebasing, yield accrues on Uniswap pool (you can redeem more t0/t1 for same amount of LP)
         /// TODO: If we want it as Strategy, e.g do something with this LP, then we need to calculate shares, 1:1 won't work
-        require((shares = liquidityDeposit()) != 0, "ZERO_SHARES");
+        require((shares = liquidityAdd()) != 0, "ZERO_SHARES");
 
         _mint(receiver, shares);
 
@@ -142,7 +140,7 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
 
         swapJoin(assets);
 
-        shares = liquidityDeposit();
+        shares = liquidityAdd();
 
         _mint(receiver, shares);
 
@@ -331,7 +329,7 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
     function swapJoin(uint256 assets) internal returns (uint256 amount) {
         uint256 reserve = _getReserves();
 
-        /// NOTE: swapAmt is in USDC (if DAI (assets) is token0)
+        /// NOTE: amount is in USDC (if DAI (assets) is token0)
         /// resA if asset == token0
         /// resB if asset == token1
         amount = UniswapV2Library.getSwapAmount(reserve, assets);
