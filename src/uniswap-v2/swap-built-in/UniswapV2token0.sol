@@ -177,14 +177,24 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
         console.log("assets safeTransfer", assets);
+        console.log("assets0 swapJoin", assets0);
+        console.log("assets1 swapJoin", assets1);
 
         /// TODO: Explore this exit swap
-        // uint256 assetsSwapped = (assets0 + swapExit(assets1));
-        // console.log("assetsSwapped safeTransfer", assetsSwapped);
+        uint256 amount = swapExit(assets1);
+
+        console.log("assetsSwapped safeTransfer", amount);
+
+        amount += assets0;
+
+        console.log("assetsSwapped safeTransfer (sum)", amount);
+
+        asset.safeTransfer(receiver, amount);
 
         /// NOTE: User "virtually" redeemed a value of assets, as two tokens equal to the virtual assets value
-        token0.safeTransfer(receiver, assets0);
-        token1.safeTransfer(receiver, assets1);
+        /// NOTE: Add function for that variant of withdraw
+        // token0.safeTransfer(receiver, assets0);
+        // token1.safeTransfer(receiver, assets1);
     }
 
     function redeem(
@@ -211,12 +221,20 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
         /// TODO: Explore this exit swap
-        // uint256 assetsSwapped = (assets0 + swapExit(assets1));
-        // console.log("assetsSwapped safeTransfer", assetsSwapped);
+        uint256 amount = swapExit(assets1);
+        
+        console.log("assetsSwapped safeTransfer", amount);
+
+        amount += assets0;
+
+        console.log("assetsSwapped safeTransfer (sum)", amount);
+
+        asset.safeTransfer(receiver, amount);
 
         /// NOTE: User "virtually" redeemed a value of assets, as two tokens equal to the virtual assets value
-        token0.safeTransfer(receiver, assets0);
-        token1.safeTransfer(receiver, assets1);
+        /// NOTE: Add function for that variant of withdraw
+        // token0.safeTransfer(receiver, assets0);
+        // token1.safeTransfer(receiver, assets1);
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -247,7 +265,6 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
             address(token1)
         );
 
-        /// DAI + DAI amt from USDC swapped to DAI
         // NOTE: Why getAmountOut here? Why not quote?
         return a0 + UniswapV2Library.getAmountOut(a1, resB, resA);
     }
@@ -319,32 +336,59 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         /// resB if asset == token1
         amount = UniswapV2Library.getSwapAmount(reserve, assets);
 
-        _swap(amount);
+        _swap(amount, true);
     }
 
-    function _swap(uint256 amount) internal {
-        if (token0 == asset) {
-            DexSwap.swap(
+    function swapExit(uint256 assets) internal returns (uint256) {
+        return _swap(assets, false);
+    }
+
+
+    function _swap(uint256 amount, bool join) internal returns (uint256 amounts) {
+        if (join) {
+            (address fromToken, address toToken) = _getJoinToken();
+            amounts = DexSwap.swap(
                 /// amt to swap
                 amount,
                 /// from asset (USDC)
-                pair.token0(),
+                fromToken,
                 /// to asset (DAI)
-                pair.token1(),
+                toToken,
                 /// pair address
                 address(pair)
             );
         } else {
-            DexSwap.swap(
+            (address fromToken, address toToken) = _getExitToken();
+            amounts = DexSwap.swap(
                 /// amt to swap
                 amount,
                 /// from asset (USDC)
-                pair.token1(),
+                fromToken,
                 /// to asset (DAI)
-                pair.token0(),
+                toToken,
                 /// pair address
                 address(pair)
             );
+        }
+    }
+
+    function _getExitToken() internal view returns (address t0, address t1) {
+        if (token0 == asset) {
+            t0 = address(token1);
+            t1 = address(token0);
+        } else {
+            t0 = address(token0);
+            t1 = address(token1);
+        }
+    }
+
+    function _getJoinToken() internal view returns (address t0, address t1) {
+        if (token0 == asset) {
+            t0 = address(token0);
+            t1 = address(token1);
+        } else {
+            t0 = address(token1);
+            t1 = address(token0);
         }
     }
 
