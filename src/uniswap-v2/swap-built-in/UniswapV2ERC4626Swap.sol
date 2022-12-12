@@ -181,12 +181,15 @@ contract UniswapV2ERC4626Swap is ERC4626 {
 
         /// TODO: Explore this exit swap
         /// NOTE: IF asset == token0 == swapExit(assets1) else swapExit(assets0)
-        uint256 amount = swapExit(assets0);
+        // uint256 amount = swapExit(assets0);
+
+        /// @dev ideally contract for token0 should know what assets amount to use without conditional checks
+        uint256 amount = asset == token0 ? swapExit(assets1) + assets0 : swapExit(assets0) + assets1;
 
         console.log("assetsSwapped safeTransfer", amount);
 
         /// NOTE: IF asset == token0 == amount+=(assets0) else amount+=(assets1)
-        amount += assets1;
+        // amount += assets1;
 
         console.log("assetsSwapped safeTransfer (sum)", amount);
         console.log("assets available to withdraw:", asset.balanceOf(address(this)));
