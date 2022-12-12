@@ -72,6 +72,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
 
         /// this makes APY on this Vault volatile (each exit from vault makes non-optimal swaps, 0.3% fee eaten)
         (assets0, assets1) = getAssetsAmounts(shares);
+        (address t0, address t1) = _swapTokenOrder();
 
         console.log("totalAssets", totalAssets());
         console.log("withdraw shares", shares);
@@ -93,6 +94,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
 
     function liquidityAdd() internal returns (uint256 li) {
         (uint256 assets0, uint256 assets1) = getAssetBalance();
+        (address t0, address t1) = _swapTokenOrder();
 
         /// temp implementation, we should call directly on a pair
         (, , li) = router.addLiquidity(
@@ -178,14 +180,16 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         console.log("assets1 swapJoin", assets1);
 
         /// TODO: Explore this exit swap
-        uint256 amount = swapExit(assets1);
+        /// NOTE: IF asset == token0 == swapExit(assets1) else swapExit(assets0)
+        uint256 amount = swapExit(assets0);
 
         console.log("assetsSwapped safeTransfer", amount);
 
-        amount += assets0;
+        /// NOTE: IF asset == token0 == amount+=(assets0) else amount+=(assets1)
+        amount += assets1;
 
         console.log("assetsSwapped safeTransfer (sum)", amount);
-
+        console.log("assets available to withdraw:", asset.balanceOf(address(this)));
         asset.safeTransfer(receiver, amount);
 
         /// NOTE: User "virtually" redeemed a value of assets, as two tokens equal to the virtual assets value
@@ -368,6 +372,16 @@ contract UniswapV2ERC4626Swap is ERC4626 {
                 /// pair address
                 address(pair)
             );
+        }
+    }
+
+    function _swapTokenOrder() internal view returns (address t0, address t1) {
+        if (token0 == asset) {
+            t0 = address(token0);
+            t1 = address(token1);
+        } else {
+            t0 = address(token1);
+            t1 = address(token0);
         }
     }
 
