@@ -31,6 +31,11 @@ contract BenqiERC4626ReinvestTest is Test {
     ICERC20 public cToken;
     IComptroller public comptroller;
 
+    uint8 rewardType_;
+    address swapToken;
+    address pair1;
+    address pair2;
+
     constructor() {
         avaxFork = vm.createFork(AVAX_RPC_URL);
         vm.selectFork(avaxFork);
@@ -48,6 +53,11 @@ contract BenqiERC4626ReinvestTest is Test {
         asset = ERC20(vm.envAddress("BENQI_USDC_ASSET"));
         reward = ERC20(vm.envAddress("BENQI_REWARD_QI"));
         cToken = ICERC20(vm.envAddress("BENQI_USDC_CTOKEN"));
+
+        rewardType_ = 0;
+        swapToken = vm.envAddress("BENQI_SWAPTOKEN_USDC");
+        pair1 = vm.envAddress("BENQI_PAIR1_USDC");
+        pair2 = vm.envAddress("BENQI_PAIR2_USDC");
     }
 
     function setUp() public {
@@ -77,6 +87,14 @@ contract BenqiERC4626ReinvestTest is Test {
         );
 
         vm.stopPrank();
+    }
+
+    function testRewards() public {
+        vm.startPrank(manager);
+        vault.setRoute(rewardType_, address(reward), swapToken, pair1, pair2);
+        /// @dev Transfer 1 QI token
+        deal(address(reward), address(vault), 1000000 ether);
+        vault.harvest(rewardType_);
     }
 
     function testDepositWithdraw() public {

@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.14;
+// SPDX-License-Identifier: AGPL-3.0
+pragma solidity ^0.8.14;
 
 import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
@@ -48,8 +48,6 @@ contract VenusERC4626WrapperTest is Test {
             comptroller
         );
 
-        /// Init USDC vault always as fallback
-        /// @dev NOTE: This is neccessary only because we do not have Factory deployment for Venus
         asset = ERC20(VENUS_USDC_ASSET);
         reward = ERC20(VENUS_REWARD_XVS);
         cToken = ICERC20(VENUS_VUSDC_CTOKEN);

@@ -4,7 +4,7 @@ pragma solidity 0.8.14;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
-import {UniswapV2WrapperERC4626Swap} from "../swap-built-in/UniswapV2token0.sol";
+import {UniswapV2ERC4626Swap} from "../swap-built-in/UniswapV2ERC4626Swap.sol";
 
 /// TODO: Add testing for the other Vault
 /// TODO: Factory+init solves it
@@ -25,7 +25,7 @@ contract UniswapV2TestSwap is Test {
 
     string ETH_RPC_URL = vm.envString("ETH_MAINNET_RPC");
 
-    UniswapV2WrapperERC4626Swap public vault;
+    UniswapV2ERC4626Swap public vault;
 
     string name = "UniV2ERC4626WrapperSwapper";
     string symbol = "UFC4626";
@@ -46,7 +46,7 @@ contract UniswapV2TestSwap is Test {
         ethFork = vm.createFork(ETH_RPC_URL);
         vm.selectFork(ethFork);
 
-        vault = new UniswapV2WrapperERC4626Swap(
+        vault = new UniswapV2ERC4626Swap(
             dai,
             name,
             symbol,
@@ -66,7 +66,7 @@ contract UniswapV2TestSwap is Test {
 
     function testDepositWithdraw() public {
         uint256 amount = 100 ether;
-        uint256 amountAdjusted = 55 ether;
+        uint256 amountAdjusted = 95 ether;
 
         vm.startPrank(alice);
 

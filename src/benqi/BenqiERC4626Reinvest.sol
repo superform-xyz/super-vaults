@@ -107,9 +107,7 @@ contract BenqiERC4626Reinvest is ERC4626 {
 
     /// @notice Claims liquidity mining rewards from Benqi and sends it to this Vault
     function harvest(uint8 rewardType_) external {
-        ICERC20[] memory cTokens = new ICERC20[](1);
-        cTokens[0] = cToken;
-
+        
         swapInfo memory swapMap = swapInfoMap[rewardType_];
         address rewardToken = rewardTokenMap[rewardType_];
         ERC20 rewardToken_ = ERC20(rewardToken);

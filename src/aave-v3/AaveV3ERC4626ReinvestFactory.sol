@@ -17,6 +17,9 @@ contract AaveV3ERC4626ReinvestFactory {
     /// @notice Manager for setting swap routes for harvest() per each vault
     address public manager;
 
+    /// @notice Mapping of vaults by asset
+    mapping(address => AaveV3ERC4626Reinvest) public vaults;
+
     /// @notice Emitted when a new ERC4626 vault has been created
     /// @param asset The base asset used by the vault
     /// @param vault The vault that was created
@@ -85,13 +88,15 @@ contract AaveV3ERC4626ReinvestFactory {
             revert AaveV3ERC4626Factory__ATokenNonexistent();
         }
 
-        vault = new AaveV3ERC4626Reinvest{salt: bytes32(0)}(
+        vault = new AaveV3ERC4626Reinvest(
             asset,
             ERC20(aTokenAddress),
             lendingPool,
             rewardsController,
             address(this)
         );
+
+        vaults[address(asset)] = vault;
 
         emit CreateERC4626Reinvest(asset, vault);
     }

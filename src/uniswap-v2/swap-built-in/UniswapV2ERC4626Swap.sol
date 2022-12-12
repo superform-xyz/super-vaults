@@ -16,7 +16,7 @@ import "forge-std/console.sol";
 
 /// @notice Custom ERC4626 Wrapper for UniV2 Pools with built-in swap
 /// https://v2.info.uniswap.org/pair/0xae461ca67b15dc8dc81ce7615e0320da1a9ab8d5 (DAI-USDC LP/PAIR on ETH)
-contract UniswapV2WrapperERC4626Swap is ERC4626 {
+contract UniswapV2ERC4626Swap is ERC4626 {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
@@ -28,7 +28,6 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
     IUniswapV2Pair public immutable pair;
     IUniswapV2Router public immutable router;
 
-    /// For simplicity, we use solmate's ERC20 interface
     ERC20 public token0;
     ERC20 public token1;
 
@@ -220,7 +219,7 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
 
         /// TODO: Explore this exit swap
         uint256 amount = swapExit(assets1);
-        
+
         console.log("assetsSwapped safeTransfer", amount);
 
         amount += assets0;
@@ -341,8 +340,10 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         return _swap(assets, false);
     }
 
-
-    function _swap(uint256 amount, bool join) internal returns (uint256 amounts) {
+    function _swap(uint256 amount, bool join)
+        internal
+        returns (uint256 amounts)
+    {
         if (join) {
             (address fromToken, address toToken) = _getJoinToken();
             amounts = DexSwap.swap(
@@ -399,7 +400,7 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
                 address(token1)
             );
         } else {
-            ( , assetReserves) = UniswapV2Library.getReserves(
+            (, assetReserves) = UniswapV2Library.getReserves(
                 address(pair),
                 address(token0),
                 address(token1)
@@ -457,18 +458,13 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
         returns (uint256 poolLpAmount)
     {
         /// temp naming, need to re-work token0/token1 logic to ensure sorting on reserves anyway
-        (
-            uint256 amountOfDaiToSwapToUSDC,
-            uint256 amountOfUSDCfromDAI
-        ) = getSplitAssetAmounts(assets);
+        /// temp naming, need to re-work token0/token1 logic to ensure sorting on reserves anyway
+        (uint256 assets0, uint256 assets1) = getSplitAssetAmounts(assets);
 
-        console.log("amountOfDaiToSwapToUSDC", amountOfDaiToSwapToUSDC);
-        console.log("amountOfUSDCfromDAI", amountOfUSDCfromDAI);
+        console.log("amountOfDaiToSwapToUSDC", assets0);
+        console.log("amountOfUSDCfromDAI", assets1);
 
-        poolLpAmount = getLiquidityAmountOutFor(
-            amountOfDaiToSwapToUSDC,
-            amountOfUSDCfromDAI
-        );
+        poolLpAmount = getLiquidityAmountOutFor(assets0, assets1);
     }
 
     /// @notice Take amount of token0 (underlying) > split to token0/token1 (virtual) amounts
@@ -483,18 +479,33 @@ contract UniswapV2WrapperERC4626Swap is ERC4626 {
             address(token1)
         );
 
-        uint256 amountOfDaiToSwapToUSDC = UniswapV2Library.getSwapAmount(
-            resA,
-            assets
-        );
-        uint256 amountOfUSDCfromDAI = UniswapV2Library.quote(
-            amountOfDaiToSwapToUSDC,
-            resA,
-            resB
-        );
+        uint256 toSwapForUnderlying = UniswapV2Library.getSwapAmount(
+                _getReserves(), /// either resA or resB
+                assets
+            );
 
-        assets0 = amountOfDaiToSwapToUSDC;
-        assets1 = amountOfUSDCfromDAI;
+        if (token0 == asset) {
+
+            uint256 resultOfSwap = UniswapV2Library.quote(
+                toSwapForUnderlying,
+                resA,
+                resB
+            );
+            
+            assets0 = toSwapForUnderlying;
+            assets1 = resultOfSwap;
+
+        } else {
+
+            uint256 resultOfSwap = UniswapV2Library.quote(
+                toSwapForUnderlying,
+                resB,
+                resA
+            );
+            
+            assets0 = resultOfSwap;
+            assets1 = toSwapForUnderlying;
+        }
     }
 
     ////////////////////////////////////////////////////////////////////////////

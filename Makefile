@@ -109,6 +109,11 @@ deploy-aave2-polygon-wmatic :; forge create --rpc-url $(POLYGON_MAINNET_RPC) \
 #############
 
 # AAVE-V3-AVAX-USDC
+deploy-aave3-avax-factory :; forge create --rpc-url $(AVAX_MAINNET_RPC) \
+				--constructor-args $(AAVEV3_AVAX_LENDINGPOOL) $(AAVEV3_AVAX_REWARDS) $(MANAGER) \
+				--private-key $(PRIVATE_KEY) src/aave-v3/AaveV3ERC4626ReinvestFactory.sol:AaveV3ERC4626ReinvestFactory
+
+# AAVE-V3-AVAX-USDC
 deploy-aave3-avax-usdc :; forge create --rpc-url $(AVAX_MAINNET_RPC) \
 				--constructor-args $(AAVEV3_AVAX_USDC) $(AAVEV3_AVAX_AUSDC) $(AAVEV3_AVAX_LENDINGPOOL) $(AAVEV3_AVAX_REWARDS) $(MANAGER) \
 				--private-key $(PRIVATE_KEY) src/aave-v3/AaveV3ERC4626Reinvest.sol:AaveV3ERC4626Reinvest
