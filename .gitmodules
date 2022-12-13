@@ -19,3 +19,9 @@
 [submodule "lib/v3-core"]
 	path = lib/v3-core
 	url = https://github.com/Uniswap/v3-core
+[submodule "lib/erc4626-tests"]
+	path = lib/erc4626-tests
+	url = https://github.com/a16z/erc4626-tests
+[submodule "lib/superform-contracts"]
+	path = lib/superform-contracts
+	url = https://github.com/superform-xyz/superform-contracts
