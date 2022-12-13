@@ -68,9 +68,10 @@ contract UniswapV2TestSwap is Test {
     function testDepositWithdraw() public {
         
         /// @dev If testing with USDC, use this
-        uint256 amountE6 = 100e6;
-        uint256 amountAdjustedE6 = 95e6;
+        // uint256 amountE6 = 100e6;
+        // uint256 amountAdjustedE6 = 95e6;
 
+        /// @dev Default testing with DAI (e18)
         uint256 amount = 100 ether;
         uint256 amountAdjusted = 95 ether;
 
@@ -81,53 +82,45 @@ contract UniswapV2TestSwap is Test {
         uint256 aliceShareAmount = vault.deposit(amount, alice);
         uint256 previewWithdraw = vault.previewWithdraw(amountAdjusted);
 
-        console.log("alice", aliceShareAmount);
-        console.log(previewWithdraw, "shares to burn, for assets:",  amountAdjusted);
+        console.log("aliceShareAmount", aliceShareAmount);
+        console.log(previewWithdraw, " shares to burn for ", amountAdjusted, " assets");
 
         uint256 sharesBurned = vault.withdraw(amountAdjusted, alice, alice);
+
+        console.log("aliceSharesBurned", sharesBurned);
     }
 
     function testMultipleDepositWithdraw() public {
         uint256 amount = 100 ether;
+        uint256 amountAdjusted = 95 ether;
 
+        /// Step 1: Alice deposits 100 tokens, no withdraw
         vm.startPrank(alice);
-
         dai.approve(address(vault), amount);
-
         uint256 aliceShareAmount = vault.deposit(amount, alice);
-
-        console.log("alice", aliceShareAmount);
-
+        console.log("aliceShareAmount", aliceShareAmount);
         vm.stopPrank();
 
+        /// Step 2: Bob deposits 100 tokens, no withdraw
         vm.startPrank(bob);
-
         dai.approve(address(vault), amount);
-
         uint256 bobShareAmount = vault.deposit(amount, bob);
-
-        console.log("bob", bobShareAmount); 
-
+        console.log("bobShareAmount", bobShareAmount); 
         vm.stopPrank();
        
+        /// Step 3: Alice withdraws 95 tokens
         vm.startPrank(alice);
-
-        uint256 sharesBurned = vault.withdraw(aliceShareAmount, alice, alice);
-
-        // assertEq(aliceShareAmount, sharesBurned);
-
+        uint256 sharesBurned = vault.withdraw(amountAdjusted, alice, alice);
+        console.log("aliceSharesBurned", sharesBurned); 
         vm.stopPrank();
 
+        /// Step 4: Bob withdraws max amount of asset from shares
         vm.startPrank(bob);
+        uint256 assetsToWithdraw = vault.previewRedeem(bobShareAmount);
+        console.log("assetsToWithdraw", assetsToWithdraw);
+        sharesBurned = vault.withdraw(assetsToWithdraw, bob, bob); 
+        console.log("bobSharesBurned", sharesBurned); 
 
-        uint256 previewWithdraw = vault.previewWithdraw(bobShareAmount);
-        uint256 previewDeposit = vault.previewDeposit(amount);
-
-        console.log("prevW", previewWithdraw, "prevD", previewDeposit);
-
-        sharesBurned = vault.withdraw(bobShareAmount, bob, bob);
-
-        // assertEq(bobShareAmount, sharesBurned);
     }
 
     // function testMintRedeem() public {

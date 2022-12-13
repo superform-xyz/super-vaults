@@ -74,9 +74,9 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         /// @dev Values are sorted because we sort if t0/t1 == asset at runtime
         (assets0, assets1) = getAssetsAmounts(shares);
 
-        console.log("totalAssets", totalAssets());
-        console.log("withdraw shares", shares);
-        console.log("withdraw a0", assets0, "a1", assets1);
+        // console.log("totalAssets", totalAssets());
+        // console.log("withdraw shares", shares);
+        // console.log("withdraw a0", assets0, "a1", assets1);
 
         /// temp implementation, we should call directly on a pair
         (assets0, assets1) = router.removeLiquidity(
@@ -89,7 +89,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
             block.timestamp + 100
         );
 
-        console.log("aA", assets0, "aB", assets1);
+        console.log("removeLiq a0", assets0, "a1", assets1);
     }
 
     function liquidityAdd() internal returns (uint256 li) {
@@ -158,7 +158,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         /// this will output required shares to burn for only token0
         shares = previewWithdraw(assets);
 
-        console.log("shares to burn for asset", shares);
+        // console.log("shares to burn for asset", shares);
 
         if (msg.sender != owner) {
             uint256 allowed = allowance[owner][msg.sender];
@@ -173,21 +173,21 @@ contract UniswapV2ERC4626Swap is ERC4626 {
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
-        console.log("assets safeTransfer", assets);
-        console.log("assets0 swapJoin", assets0);
-        console.log("assets1 swapJoin", assets1);
+        // console.log("assets safeTransfer", assets);
+        // console.log("assets0 swapJoin", assets0);
+        // console.log("assets1 swapJoin", assets1);
 
         /// @dev ideally contract for token0/1 should know what assets amount to use without conditional checks, gas overhead
         uint256 amount = asset == token0
             ? swapExit(assets1) + assets0
             : swapExit(assets0) + assets1;
 
-        console.log("assetsSwapped safeTransfer", amount);
         console.log("assetsSwapped safeTransfer (sum)", amount);
-        console.log(
-            "assets available to withdraw:",
-            asset.balanceOf(address(this))
-        );
+        // console.log(
+        //     "assets available to withdraw:",
+        //     asset.balanceOf(address(this))
+        // );
+
         asset.safeTransfer(receiver, amount);
 
         /// NOTE: User "virtually" redeemed a value of assets, as two tokens equal to the virtual assets value
@@ -211,7 +211,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         // Check for rounding error since we round down in previewRedeem.
         require((assets = previewRedeem(shares)) != 0, "ZERO_ASSETS");
 
-        console.log("redeem assets", assets);
+        // console.log("redeem assets", assets);
 
         (uint256 assets0, uint256 assets1) = liquidityRemove(assets, shares);
 
@@ -224,7 +224,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
             ? swapExit(assets1) + assets0
             : swapExit(assets0) + assets1;
 
-        console.log("assetsSwapped safeTransfer", amount);
+        // console.log("assetsSwapped safeTransfer", amount);
         console.log("assetsSwapped safeTransfer (sum)", amount);
 
         asset.safeTransfer(receiver, amount);
@@ -470,8 +470,8 @@ contract UniswapV2ERC4626Swap is ERC4626 {
 
         (uint256 assets0, uint256 assets1) = getSplitAssetAmounts(assets);
 
-        console.log("amountOfDaiToSwapToUSDC", assets0);
-        console.log("amountOfUSDCfromDAI", assets1);
+        // console.log("amountOfToken0ToToken1", assets0);
+        // console.log("amountOfToken1ToToken0", assets1);
 
         poolLpAmount = getLiquidityAmountOutFor(assets0, assets1);
     }
