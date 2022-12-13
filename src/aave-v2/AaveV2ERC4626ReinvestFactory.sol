@@ -23,6 +23,12 @@ contract AaveV2ERC4626ReinvestFactory {
     /// @notice Emitted when harvest has been called for a given aToken vault
     event HarvestERC4626Reinvest(AaveV2ERC4626Reinvest vault);
 
+    /// @notice Emitted when minTokensToReinvest has been updated for a given aToken vault
+    event UpdateMinTokensToReinvest(AaveV2ERC4626Reinvest vault, uint256 minTokensToHarvest);
+
+    /// @notice Emitted when reinvestRewardBps has been updated for a given aToken vault
+    event UpdateReinvestRewardBps(AaveV2ERC4626Reinvest vault, uint256 reinvestRewardBps);
+
     /// -----------------------------------------------------------------------
     /// Errors
     /// -----------------------------------------------------------------------
@@ -109,9 +115,30 @@ contract AaveV2ERC4626ReinvestFactory {
         emit RoutesSetERC4626Reinvest(vault_);
     }
 
+    /**
+     * @notice Update reinvest min threshold
+     * @param newValue threshold
+     */
+    function updateMinTokensToReinvest(AaveV2ERC4626Reinvest vault_, uint256 newValue) external {
+        require(msg.sender == manager, "onlyOwner");
+        emit UpdateMinTokensToReinvest(vault_, newValue);
+        vault_.updateMinTokensToHarvest(newValue);
+    }
+
+    /**
+     * @notice Update reinvest min threshold
+     * @param newValue threshold
+     */
+    function updateReinvestRewardBps(AaveV2ERC4626Reinvest vault_, uint256 newValue) external {
+        require(msg.sender == manager, "onlyOwner");
+        require(newValue <= 150, "reward too high");
+        emit UpdateReinvestRewardBps(vault_, newValue);
+        vault_.updateReinvestRewardBps(newValue);
+    }
+
     /// @notice Harvest rewards from specified vault
-    function harvestFrom(AaveV2ERC4626Reinvest vault_) external {
-        vault_.harvest();
+    function harvestFrom(AaveV2ERC4626Reinvest vault_, uint256 minAmountOut_) external {
+        vault_.harvest(minAmountOut_);
         emit HarvestERC4626Reinvest(vault_);
     }
 

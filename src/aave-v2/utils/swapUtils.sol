@@ -71,6 +71,16 @@ library DexSwap {
         return numerator / (denominator);
     }
 
+    function _getMinAmountOut(uint256 amountIn, uint256 reserveIn, uint256 reserveOut, uint256 _maxSlippage) internal pure returns (uint256 _minAmountOut) {
+        uint256 amountInWithFee = amountIn * 997;
+        uint256 numerator = amountInWithFee * (reserveOut);
+        uint256 denominator = (reserveIn * 1000) + (amountInWithFee);
+        uint256 _amountOut = numerator / (denominator);
+        ///@dev _maxSlippage is per 1000 basis points - 50 is 0.05%, 
+        _minAmountOut = _amountOut - ((_amountOut * _maxSlippage) / 1000);
+    }
+
+
     /**
      * @notice Given two tokens, it'll return the tokens in the right order for the tokens pair
      * @dev TokenA must be different from TokenB, and both shouldn't be address(0), no validations
