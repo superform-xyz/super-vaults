@@ -1,10 +1,10 @@
 # Super-vaults
 
-ERC4626 Wrappers for SuperForm's Vault system. 
+ERC4626 Wrappers/Adapters for SuperForm's multichain Vault system. 
 
 # Build
 
-Repository uses MakeFile to streamline testing operations. You can use `forge install` and other forge naitive commands, but expected execution is achived with `make`.
+Repository uses MakeFile to streamline testing operations. 
 
 Create `.env` file with RPC_URLs, otherwise tests will fail!
 
@@ -14,7 +14,7 @@ Create `.env` file with RPC_URLs, otherwise tests will fail!
 
 `make test`
 
-Or you can `match-contract` 
+Or you can `match-contract` individual test files
 
 `make test-aave` for testing aave
 
@@ -22,12 +22,16 @@ Or you can `match-contract`
 
 `make test-steth` for testing lido's stEth
 
-... (check the Makefile for more)
+(see MakeFile)
 
 # Structure
 
-Each protocol resides inside of a separate directory. For a single protocol we expect to see many different wrappers. Starting from the most basic, allowing only zapIn/zapOut of the non-ERC4626 Vault through the ERC4626 interface, ending on the reinvesting strategies or levaraged position management. If you plan on adding your own wrapper or standalone ERC4626 Vault, PR with the whole directory following established structure.
+Each protocol is hosted inside of a separate directory. For a single protocol we expect to see many different types of ERC4626 Vaults and Wrappers/Adapters. Starting from the most basic, allowing only zapIn/zapOut to the non-ERC4626 Vault through the ERC4626 interface, ending on complex yield focused applications. If you plan on adding your own wrapper or standalone ERC4626 Vault, create a PR with the whole directory and follow existing root directory structure, for example
 
-# Disclaimer
-
-This is still work in progress. There are on-going standarization efforts for this repository with an end goal of providing all the neccessary toolkit and templates for working with ERC4626.
+    .
+    ├── protocol-name
+      ├── interface
+      ├── test
+      ├── vault-implementation-1
+      ├── vault-implementation-2
+      ├── ExampleVault.sol
