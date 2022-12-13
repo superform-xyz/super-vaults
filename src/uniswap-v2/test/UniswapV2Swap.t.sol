@@ -47,7 +47,7 @@ contract UniswapV2TestSwap is Test {
         vm.selectFork(ethFork);
 
         vault = new UniswapV2ERC4626Swap(
-            usdc,
+            dai,
             name,
             symbol,
             router,
@@ -59,19 +59,24 @@ contract UniswapV2TestSwap is Test {
         bob = address(0x2);
         manager = msg.sender;
 
-        deal(address(usdc), alice, ONE_THOUSAND_E18 * 10);
-        deal(address(usdc), bob, ONE_THOUSAND_E18 * 10);
+        deal(address(dai), alice, ONE_THOUSAND_E18 * 10);
+        deal(address(dai), bob, ONE_THOUSAND_E18 * 10);
 
         deal(address(usdc), alice, 1000e6 * 10);
     }
 
     function testDepositWithdraw() public {
-        uint256 amount = 100e6;
-        uint256 amountAdjusted = 95e6;
+        
+        /// @dev If testing with USDC, use this
+        uint256 amountE6 = 100e6;
+        uint256 amountAdjustedE6 = 95e6;
+
+        uint256 amount = 100 ether;
+        uint256 amountAdjusted = 95 ether;
 
         vm.startPrank(alice);
 
-        usdc.approve(address(vault), amount);
+        dai.approve(address(vault), amount);
 
         uint256 aliceShareAmount = vault.deposit(amount, alice);
         uint256 previewWithdraw = vault.previewWithdraw(amountAdjusted);
@@ -87,7 +92,7 @@ contract UniswapV2TestSwap is Test {
 
         vm.startPrank(alice);
 
-        usdc.approve(address(vault), amount);
+        dai.approve(address(vault), amount);
 
         uint256 aliceShareAmount = vault.deposit(amount, alice);
 
@@ -97,7 +102,7 @@ contract UniswapV2TestSwap is Test {
 
         vm.startPrank(bob);
 
-        usdc.approve(address(vault), amount);
+        dai.approve(address(vault), amount);
 
         uint256 bobShareAmount = vault.deposit(amount, bob);
 
@@ -132,7 +137,7 @@ contract UniswapV2TestSwap is Test {
     //     /// Init vault neccessary to avoid return 0; for every call, forever
     //     /// TODO: Deploymen of UniswapV2WrapperERC4626Swap should happen from factory
     //     vm.startPrank(bob);
-    //     usdc.approve(address(vault), amountInit);
+    //     dai.approve(address(vault), amountInit);
     //     vault.deposit(amountInit, bob);
     //     vm.stopPrank();
     //     /// BACK TO REGULAR FLOW
@@ -141,7 +146,7 @@ contract UniswapV2TestSwap is Test {
 
     //     uint256 assetsToApprove = vault.previewMint(amountOfSharesToMint);
 
-    //     usdc.approve(address(vault), assetsToApprove);
+    //     dai.approve(address(vault), assetsToApprove);
 
     //     uint256 aliceAssetsMinted = vault.mint(amountOfSharesToMint, alice);
     //     console.log("alice", aliceAssetsMinted);

@@ -14,8 +14,9 @@ import {DexSwap} from "../utils/swapUtils.sol";
 
 import "forge-std/console.sol";
 
-/// @notice Custom ERC4626 Wrapper for UniV2 Pools with built-in swap
-/// https://v2.info.uniswap.org/pair/0xae461ca67b15dc8dc81ce7615e0320da1a9ab8d5 (DAI-USDC LP/PAIR on ETH)
+/// @notice WIP: ERC4626 UniswapV2 Adapter - Allows exit & join to UniswapV2 LP Pools from ERC4626 interface
+/// Uses virtual price to calculate exit/entry amounts (slippage is yet not considered, TODO: invariant)
+/// Example Pool: https://v2.info.uniswap.org/pair/0xae461ca67b15dc8dc81ce7615e0320da1a9ab8d5 (DAI-USDC LP/PAIR on ETH)
 contract UniswapV2ERC4626Swap is ERC4626 {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
@@ -67,12 +68,11 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         internal
         returns (uint256 assets0, uint256 assets1)
     {
-        /// now we have DAI virtual amount here passed
+        /// now we have asset (t0 || t1) virtual amount passed as arg
         /// TODO: use this amount for allowed slippage checks (for simulated output vs real removeLiquidity t0/t1)
 
-        /// this makes APY on this Vault volatile (each exit from vault makes non-optimal swaps, 0.3% fee eaten)
+        /// @dev Values are sorted because we sort if t0/t1 == asset at runtime
         (assets0, assets1) = getAssetsAmounts(shares);
-        (address t0, address t1) = _swapTokenOrder();
 
         console.log("totalAssets", totalAssets());
         console.log("withdraw shares", shares);
@@ -94,7 +94,6 @@ contract UniswapV2ERC4626Swap is ERC4626 {
 
     function liquidityAdd() internal returns (uint256 li) {
         (uint256 assets0, uint256 assets1) = getAssetBalance();
-        (address t0, address t1) = _swapTokenOrder();
 
         /// temp implementation, we should call directly on a pair
         (, , li) = router.addLiquidity(
@@ -109,7 +108,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         );
     }
 
-    /// User gives N amount of an underlying asset (DAI)
+    /// @notice receives tokenX of UniV2 pair and mints shares of this vault for deposited tokenX/Y into UniV2 pair
     function deposit(uint256 assets, address receiver)
         public
         override
@@ -121,7 +120,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
 
         /// @dev totalAssets holds sum of all UniLP,
         /// UniLP is non-rebasing, yield accrues on Uniswap pool (you can redeem more t0/t1 for same amount of LP)
-        /// TODO: If we want it as Strategy, e.g do something with this LP, then we need to calculate shares, 1:1 won't work
+        /// NOTE: If we want it as Strategy, e.g do something with this LP, then we need to calculate shares, 1:1 won't work
         require((shares = liquidityAdd()) != 0, "ZERO_SHARES");
 
         _mint(receiver, shares);
@@ -148,16 +147,15 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         emit Deposit(msg.sender, receiver, assets, shares);
     }
 
-    /// @dev burns shares from owner and sends exactly assets of underlying tokens to receiver.
+    /// @notice burns shares from owner and sends exactly assets of underlying tokens to receiver.
     function withdraw(
-        uint256 assets, /// token0 amount (we need to get it from token0 & token1 in LP)
+        uint256 assets,
         address receiver,
         address owner
     ) public override returns (uint256 shares) {
         /// how many shares of this wrapper LP we need to burn to get this amount of token0 assets
         /// If user joined with 100 DAI, he owns a claim to 50token0/50token1
         /// this will output required shares to burn for only token0
-        /// should we simulate full split here?
         shares = previewWithdraw(assets);
 
         console.log("shares to burn for asset", shares);
@@ -179,20 +177,17 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         console.log("assets0 swapJoin", assets0);
         console.log("assets1 swapJoin", assets1);
 
-        /// TODO: Explore this exit swap
-        /// NOTE: IF asset == token0 == swapExit(assets1) else swapExit(assets0)
-        // uint256 amount = swapExit(assets0);
-
-        /// @dev ideally contract for token0 should know what assets amount to use without conditional checks
-        uint256 amount = asset == token0 ? swapExit(assets1) + assets0 : swapExit(assets0) + assets1;
+        /// @dev ideally contract for token0/1 should know what assets amount to use without conditional checks, gas overhead
+        uint256 amount = asset == token0
+            ? swapExit(assets1) + assets0
+            : swapExit(assets0) + assets1;
 
         console.log("assetsSwapped safeTransfer", amount);
-
-        /// NOTE: IF asset == token0 == amount+=(assets0) else amount+=(assets1)
-        // amount += assets1;
-
         console.log("assetsSwapped safeTransfer (sum)", amount);
-        console.log("assets available to withdraw:", asset.balanceOf(address(this)));
+        console.log(
+            "assets available to withdraw:",
+            asset.balanceOf(address(this))
+        );
         asset.safeTransfer(receiver, amount);
 
         /// NOTE: User "virtually" redeemed a value of assets, as two tokens equal to the virtual assets value
@@ -225,12 +220,11 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
         /// TODO: Explore this exit swap
-        uint256 amount = swapExit(assets1);
+        uint256 amount = asset == token0
+            ? swapExit(assets1) + assets0
+            : swapExit(assets0) + assets1;
 
         console.log("assetsSwapped safeTransfer", amount);
-
-        amount += assets0;
-
         console.log("assetsSwapped safeTransfer (sum)", amount);
 
         asset.safeTransfer(receiver, amount);
@@ -245,7 +239,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
     ////////////////////////////// ACCOUNTING //////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
 
-    /// totalAssets virtualAssets should grow with fees accrued to lp tokens held by this vault
+    /// @notice totalAssets virtualAssets should grow with fees accrued to lp tokens held by this vault
     function totalAssets() public view override returns (uint256) {
         return pairBalance();
     }
@@ -254,6 +248,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         return pair.balanceOf(address(this));
     }
 
+    /// @notice calculate value of shares of this vault as the sum of t0/t1 of UniV2 pair simulated as t0 or t1 total amount after swap
     function virtualAssets(uint256 shares)
         public
         view
@@ -318,7 +313,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         return convertToAssets(shares);
     }
 
-    /// I am burning SHARES, how much of (virtual) ASSETS (dai) do I get (as two token)
+    /// I am burning SHARES, how much of (virtual) ASSETS (tokenX) do I get (in sum of both tokens)
     function convertToAssets(uint256 shares)
         public
         view
@@ -332,10 +327,12 @@ contract UniswapV2ERC4626Swap is ERC4626 {
     /////////////////////////// UNISWAP CALLS //////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
 
+    /// @notice directional swap from asset to opposite token (asset != tokenX) TODO: consolidate Join/Exit
+    /// calculates optimal (for current block) amount of token0/token1 to deposit to Uni Pool and splits provided assets according to formula
     function swapJoin(uint256 assets) internal returns (uint256 amount) {
         uint256 reserve = _getReserves();
 
-        /// NOTE: amount is in USDC (if DAI (assets) is token0)
+        /// NOTE:
         /// resA if asset == token0
         /// resB if asset == token1
         amount = UniswapV2Library.getSwapAmount(reserve, assets);
@@ -343,10 +340,13 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         _swap(amount, true);
     }
 
+    /// @notice directional swap from asset to opposite token (asset != tokenX) TODO: consolidate Join/Exit
+    /// exit is in opposite direction to Join but we don't need to calculate splitting, just swap provided assets, check happen in withdraw/redeem
     function swapExit(uint256 assets) internal returns (uint256) {
         return _swap(assets, false);
     }
 
+    /// @notice low level swap to either get tokenY opposite to asset (tokenX) or to get asset (tokenX) from removed liquidity tokenY
     function _swap(uint256 amount, bool join)
         internal
         returns (uint256 amounts)
@@ -356,9 +356,9 @@ contract UniswapV2ERC4626Swap is ERC4626 {
             amounts = DexSwap.swap(
                 /// amt to swap
                 amount,
-                /// from asset (USDC)
+                /// from asset
                 fromToken,
-                /// to asset (DAI)
+                /// to asset
                 toToken,
                 /// pair address
                 address(pair)
@@ -368,9 +368,9 @@ contract UniswapV2ERC4626Swap is ERC4626 {
             amounts = DexSwap.swap(
                 /// amt to swap
                 amount,
-                /// from asset (USDC)
+                /// from asset
                 fromToken,
-                /// to asset (DAI)
+                /// to asset
                 toToken,
                 /// pair address
                 address(pair)
@@ -378,16 +378,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         }
     }
 
-    function _swapTokenOrder() internal view returns (address t0, address t1) {
-        if (token0 == asset) {
-            t0 = address(token0);
-            t1 = address(token1);
-        } else {
-            t0 = address(token1);
-            t1 = address(token0);
-        }
-    }
-
+    /// @notice Sort function for this Vault Uniswap pair exit operation
     function _getExitToken() internal view returns (address t0, address t1) {
         if (token0 == asset) {
             t0 = address(token1);
@@ -398,6 +389,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         }
     }
 
+    /// @notice Sort function for this Vault Uniswap pair join operation
     function _getJoinToken() internal view returns (address t0, address t1) {
         if (token0 == asset) {
             t0 = address(token0);
@@ -425,12 +417,13 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         }
     }
 
+    /// @notice transfer assets from this contract balance to the pair contract TODO: security review, used in deposit
     function getAssetBalance() internal view returns (uint256 a0, uint256 a1) {
         a0 = token0.balanceOf(address(this));
         a1 = token1.balanceOf(address(this));
     }
 
-    /// For requested 100 UniLp tokens, how much tok0/1 we need to give?
+    /// @notice for requested 100 UniLp tokens, how much tok0/1 we need to give?
     function getAssetsAmounts(uint256 poolLpAmount)
         public
         view
@@ -474,8 +467,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         view
         returns (uint256 poolLpAmount)
     {
-        /// temp naming, need to re-work token0/token1 logic to ensure sorting on reserves anyway
-        /// temp naming, need to re-work token0/token1 logic to ensure sorting on reserves anyway
+
         (uint256 assets0, uint256 assets1) = getSplitAssetAmounts(assets);
 
         console.log("amountOfDaiToSwapToUSDC", assets0);
@@ -497,29 +489,26 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         );
 
         uint256 toSwapForUnderlying = UniswapV2Library.getSwapAmount(
-                _getReserves(), /// either resA or resB
-                assets
-            );
+            _getReserves(), /// either resA or resB
+            assets
+        );
 
         if (token0 == asset) {
-
             uint256 resultOfSwap = UniswapV2Library.quote(
                 toSwapForUnderlying,
                 resA,
                 resB
             );
-            
+
             assets0 = toSwapForUnderlying;
             assets1 = resultOfSwap;
-
         } else {
-
             uint256 resultOfSwap = UniswapV2Library.quote(
                 toSwapForUnderlying,
                 resB,
                 resA
             );
-            
+
             assets0 = resultOfSwap;
             assets1 = toSwapForUnderlying;
         }
