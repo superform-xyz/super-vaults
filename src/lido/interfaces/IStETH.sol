@@ -14,7 +14,11 @@ interface IStETH {
 
     function sharesOf(address) external view returns (uint256);
 
+    function userSharesInCustody(address) external view returns (uint256);
+
     function getPooledEthByShares(uint256) external view returns (uint256);
+
+    function getPooledAvaxByShares(uint256) external view returns (uint256);
 
     function balanceOf(address) external view returns (uint256);
 }
