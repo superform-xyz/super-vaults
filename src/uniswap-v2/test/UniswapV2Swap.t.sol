@@ -1,15 +1,11 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.14;
+// SPDX-License-Identifier: AGPL-3.0
+pragma solidity ^0.8.14;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {UniswapV2ERC4626Swap} from "../swap-built-in/UniswapV2ERC4626Swap.sol";
-
-/// TODO: Add testing for the other Vault
-/// TODO: Factory+init solves it
-// import {UniswapV2WrapperERC4626Swap} from "../double-sided/swap-built-in/UniswapV2token1.sol";
-
+import {UniswapV2ERC4626PoolFactory} from "../swap-built-in/UniswapV2ERC4626PoolFactory.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 import {IUniswapV2Pair} from "../interfaces/IUniswapV2Pair.sol";
@@ -26,15 +22,16 @@ contract UniswapV2TestSwap is Test {
     string ETH_RPC_URL = vm.envString("ETH_MAINNET_RPC");
 
     UniswapV2ERC4626Swap public vault;
+    UniswapV2ERC4626PoolFactory public factory;
 
-    string name = "UniV2ERC4626WrapperSwapper";
-    string symbol = "UFC4626";
-    ERC20 public dai = ERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
-    ERC20 public usdc = ERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+    string name = "UniV2-ERC4626";
+    string symbol = "Uni4626";
+    ERC20 public asset = ERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
     IUniswapV2Pair public pair =
         IUniswapV2Pair(0xAE461cA67B15dc8dc81CE7615e0320dA1A9aB8D5);
     IUniswapV2Router public router =
         IUniswapV2Router(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
+    ERC20 public alternativeAsset = ERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
 
     address public alice;
     address public bob;
@@ -46,23 +43,38 @@ contract UniswapV2TestSwap is Test {
         ethFork = vm.createFork(ETH_RPC_URL);
         vm.selectFork(ethFork);
 
+        /// @dev Default Vault for tests
         vault = new UniswapV2ERC4626Swap(
-            dai,
+            asset,
             name,
             symbol,
             router,
             pair,
             slippage
         );
+
+        /// @dev Create new pair vaults from factory.create(pair);
+        factory = new UniswapV2ERC4626PoolFactory(
+            router
+        );
         
         alice = address(0x1);
         bob = address(0x2);
         manager = msg.sender;
 
-        deal(address(dai), alice, ONE_THOUSAND_E18 * 10);
-        deal(address(dai), bob, ONE_THOUSAND_E18 * 10);
+        deal(address(asset), alice, ONE_THOUSAND_E18 * 10);
+        deal(address(asset), bob, ONE_THOUSAND_E18 * 10);
 
-        deal(address(usdc), alice, 1000e6 * 10);
+        deal(address(alternativeAsset), alice, 1000e6 * 10);
+    }
+
+    function testFactoryDeploy() public {
+        vm.startPrank(manager);
+
+        (UniswapV2ERC4626Swap v0, UniswapV2ERC4626Swap v1) = factory.create(pair);
+
+        console.log("v0 name", v0.name(), "v0 symbol", v0.symbol());
+        console.log("v1 name", v1.name(), "v1 symbol", v1.symbol());
     }
 
     function testDepositWithdraw() public {
@@ -77,7 +89,7 @@ contract UniswapV2TestSwap is Test {
 
         vm.startPrank(alice);
 
-        dai.approve(address(vault), amount);
+        asset.approve(address(vault), amount);
 
         uint256 aliceShareAmount = vault.deposit(amount, alice);
         uint256 previewWithdraw = vault.previewWithdraw(amountAdjusted);
@@ -96,14 +108,14 @@ contract UniswapV2TestSwap is Test {
 
         /// Step 1: Alice deposits 100 tokens, no withdraw
         vm.startPrank(alice);
-        dai.approve(address(vault), amount);
+        asset.approve(address(vault), amount);
         uint256 aliceShareAmount = vault.deposit(amount, alice);
         console.log("aliceShareAmount", aliceShareAmount);
         vm.stopPrank();
 
         /// Step 2: Bob deposits 100 tokens, no withdraw
         vm.startPrank(bob);
-        dai.approve(address(vault), amount);
+        asset.approve(address(vault), amount);
         uint256 bobShareAmount = vault.deposit(amount, bob);
         console.log("bobShareAmount", bobShareAmount); 
         vm.stopPrank();
@@ -120,37 +132,38 @@ contract UniswapV2TestSwap is Test {
         console.log("assetsToWithdraw", assetsToWithdraw);
         sharesBurned = vault.withdraw(assetsToWithdraw, bob, bob); 
         console.log("bobSharesBurned", sharesBurned); 
+        vm.stopPrank();
 
+        /// Step 5: Alice withdraws max amount of asset from remaining shares
+        vm.startPrank(alice);
+        assetsToWithdraw = vault.previewRedeem(vault.balanceOf(alice));
+        console.log("assetsToWithdraw", assetsToWithdraw);
+        sharesBurned = vault.withdraw(assetsToWithdraw, alice, alice);
+        console.log("aliceSharesBurned", sharesBurned);
     }
 
-    // function testMintRedeem() public {
-    //     uint256 amountInit = 1 ether;
-    //     uint256 amountOfSharesToMint = 44335667953475;
+    function testMintRedeem() public {
+        uint256 amountOfSharesToMint = 44323816369031;
 
-    //     /// Init vault neccessary to avoid return 0; for every call, forever
-    //     /// TODO: Deploymen of UniswapV2WrapperERC4626Swap should happen from factory
-    //     vm.startPrank(bob);
-    //     dai.approve(address(vault), amountInit);
-    //     vault.deposit(amountInit, bob);
-    //     vm.stopPrank();
-    //     /// BACK TO REGULAR FLOW
+        vm.startPrank(alice);
 
-    //     vm.startPrank(alice);
+        uint256 assetsToApprove = vault.previewMint(amountOfSharesToMint);
 
-    //     uint256 assetsToApprove = vault.previewMint(amountOfSharesToMint);
+        asset.approve(address(vault), assetsToApprove);
 
-    //     dai.approve(address(vault), assetsToApprove);
+        uint256 aliceAssetsMinted = vault.mint(amountOfSharesToMint, alice);
+        console.log("aliceAssetsMinted", aliceAssetsMinted);
 
-    //     uint256 aliceAssetsMinted = vault.mint(amountOfSharesToMint, alice);
-    //     console.log("alice", aliceAssetsMinted);
+        uint256 aliceBalanceOfShares = vault.balanceOf(alice);
+        console.log("aliceBalanceOfShares", aliceBalanceOfShares);
 
-    //     uint256 aliceBalanceOfShares = vault.balanceOf(alice);
-    //     console.log("aliceBalanceOfShares", aliceBalanceOfShares);
-    //     uint256 alicePreviewRedeem = vault.previewRedeem(aliceBalanceOfShares);
-    //     console.log("alicePreviewRedeem", alicePreviewRedeem);
+        /// TODO: Verify calculation, because it demands more shares than the ones minted for same asset
+        /// @dev not used for redemption
+        uint256 alicePreviewRedeem = vault.previewWithdraw(aliceAssetsMinted);
+        console.log("alicePreviewRedeem", alicePreviewRedeem);
         
-    //     uint256 sharesBurned = vault.redeem(alicePreviewRedeem, alice, alice);
-    //     console.log("sharesBurned", sharesBurned);
-    // }
+        uint256 sharesBurned = vault.redeem(vault.balanceOf(alice), alice, alice);
+        console.log("sharesBurned", sharesBurned);
+    }
 
 }
