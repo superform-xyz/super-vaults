@@ -220,7 +220,7 @@ contract VenusERC4626Reinvest is ERC4626 {
         virtual
         returns (string memory vaultName)
     {
-        vaultName = string.concat("ERC4626-Wrapped Venus- ", asset_.symbol());
+        vaultName = string.concat("ERC4626-Wrapped Venus-", asset_.symbol());
     }
 
     function _vaultSymbol(ERC20 asset_)

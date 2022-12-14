@@ -47,12 +47,11 @@ test-benqi-staking :; forge test --match-contract BenqiERC4626StakingTest -vvv
 
 # VENUS-BSC-USDC
 deploy-venus-usdc :; forge create --rpc-url $(BSC_MAINNET_RPC) \
-				--constructor-args $(VENUS_USDC_ASSET) $(VENUS_REWARD_XVS) $(VENUS_VUSDC_CTOKEN) $(VENUS_COMPTROLLER) \
-				 $(VENUS_SWAPTOKEN_USDC) $(VENUS_PAIR1_USDC) $(VENUS_PAIR2_USDC) $(MANAGER) \
+				--constructor-args $(VENUS_USDC_ASSET) $(VENUS_REWARD_XVS) $(VENUS_VUSDC_CTOKEN) $(VENUS_COMPTROLLER) $(MANAGER) \
 				--private-key $(PRIVATE_KEY) src/venus/VenusERC4626Reinvest.sol:VenusERC4626Reinvest
 
 # VENUS-BSC-BUSD
-deploy-venus-dai :; forge create --rpc-url $(BSC_MAINNET_RPC) \
+deploy-venus-busd :; forge create --rpc-url $(BSC_MAINNET_RPC) \
 				--constructor-args $(VENUS_BUSD_ASSET) $(VENUS_REWARD_XVS) \
 				 $(VENUS_BUSD_CTOKEN) $(VENUS_COMPTROLLER) \
 				 $(VENUS_SWAPTOKEN_BUSD) $(VENUS_PAIR1_BUSD) $(VENUS_PAIR2_BUSD) $(MANAGER) \

@@ -84,22 +84,40 @@ contract VenusERC4626WrapperTest is Test {
     }
 
     function testDepositWithdrawUSDC() public {
-        uint256 amount = 100 ether;
+        uint256 amount = 10 ether;
 
         vm.startPrank(alice);
 
         uint256 aliceUnderlyingAmount = amount;
+        uint256 aliceBalanceBeforeDeposit = asset.balanceOf(alice);
 
         asset.approve(address(vault), aliceUnderlyingAmount);
+
         assertEq(asset.allowance(alice, address(vault)), aliceUnderlyingAmount);
 
         uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
+
+        console.log("aliceShareAmount", aliceShareAmount);
+
         uint256 aliceAssetsToWithdraw = vault.convertToAssets(aliceShareAmount);
-        assertEq(aliceUnderlyingAmount, aliceShareAmount);
+
+        console.log("aliceAssetsToWithdraw", aliceAssetsToWithdraw);
+
         assertEq(vault.totalSupply(), aliceShareAmount);
         assertEq(vault.balanceOf(alice), aliceShareAmount);
 
-        vault.withdraw(aliceAssetsToWithdraw, alice, alice);
+        uint256 aliceBalanceBeforeWithdraw = asset.balanceOf(alice);
+        uint256 expectedAssetsAfterWithdraw = aliceBalanceBeforeWithdraw + aliceAssetsToWithdraw;
+        console.log("aliceBalanceBeforeWithdraw", aliceBalanceBeforeWithdraw);
+
+        uint256 aliceSharesBurned = vault.withdraw(aliceAssetsToWithdraw, alice, alice);
+        uint256 aliceBalanceAfterWithdraw = asset.balanceOf(alice);
+
+        console.log("aliceBalanceBeforeDeposit", aliceBalanceBeforeDeposit);
+        console.log("aliceBalanceAfterWithdraw", aliceBalanceAfterWithdraw);
+
+        assertEq(aliceSharesBurned, aliceShareAmount);
+        assertEq(expectedAssetsAfterWithdraw, aliceBalanceAfterWithdraw);
     }
 
     function testDepositWithdrawBUSD() public {
