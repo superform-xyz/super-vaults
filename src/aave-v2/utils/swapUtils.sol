@@ -35,16 +35,23 @@ library DexSwap {
      */
     function swap(
         uint256 amountIn,
+        /// uint256 amountOutMin == expected amountOut2 out of above amountIn - slippage, this needs to be off-chain because we need to use reserve0/1 read before sending harvest() transaction
         address fromToken,
         address toToken,
         address pairToken
     ) internal returns (uint256) {
         IPair pair = IPair(pairToken);
         (address token0, ) = sortTokens(fromToken, toToken);
+        /// bot can manipulate reserve0 & reserve1 from which we get amountOut2, in other words for same amountIn we can get less than expected amountOut2
+        /// @dev this is where we can check amountOut2 >= minAmountOut, swap is made against current reserves state
+        /// exactly what router does https://github.com/Uniswap/v2-periphery/blob/0335e8f7e1bd1e8d8329fd300aea2ef2f36dd19f/contracts/UniswapV2Router02.sol#L231
+        /// if now amountOut2 < minAmountOut, we can revert before transfer and accept also "worst-than-perfect execution" (which probably bots will try to exploit)
+        /// rationale: it works because reserves in the next block than sent transaction can be different (or, manipulated by bots)
         (uint112 reserve0, uint112 reserve1, ) = pair.getReserves();
         if (token0 != fromToken) (reserve0, reserve1) = (reserve1, reserve0);
         uint256 amountOut1 = 0;
         uint256 amountOut2 = getAmountOut(amountIn, reserve0, reserve1);
+        /// require(amountOut2 <= minAmountOut, "slippage too high"")
         if (token0 != fromToken)
             (amountOut1, amountOut2) = (amountOut2, amountOut1);
         ERC20(fromToken).safeTransfer(address(pair), amountIn);

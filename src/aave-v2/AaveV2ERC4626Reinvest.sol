@@ -370,6 +370,9 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
 
             ERC20(SwapInfo.token).approve(SwapInfo.pair2, swapTokenAmount); 
 
+            /// swapTokenAmount = UniswapV2Library.getAmountsOut() * slippage allowed
+            /// .swap also takes _minAmount calculated from previous swap
+        
             swapTokenAmount = DexSwap.swap(
                 swapTokenAmount,
                 SwapInfo.token, // from received token
