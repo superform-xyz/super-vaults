@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
 
-import {AaveV2ERC4626Reinvest} from "./AaveV2ERC4626Reinvest.sol";
+import {AaveV2ERC4626Reinvest2} from "./AaveV2ERC4626Reinvest2.sol";
 import {IAaveMining} from "./aave/IAaveMining.sol";
 import {ILendingPool} from "./aave/ILendingPool.sol";
 
@@ -18,10 +18,16 @@ contract AaveV2ERC4626ReinvestFactory {
     event CreateERC4626Reinvest(ERC20 indexed asset, ERC4626 vault);
 
     /// @notice Emitted when swap routes have been set for a given aToken vault
-    event RoutesSetERC4626Reinvest(AaveV2ERC4626Reinvest vault);
+    event RoutesSetERC4626Reinvest(AaveV2ERC4626Reinvest2 vault);
 
     /// @notice Emitted when harvest has been called for a given aToken vault
-    event HarvestERC4626Reinvest(AaveV2ERC4626Reinvest vault);
+    event HarvestERC4626Reinvest(AaveV2ERC4626Reinvest2 vault);
+
+    /// @notice Emitted when minTokensToReinvest has been updated for a given aToken vault
+    event UpdateMinTokensToReinvest(AaveV2ERC4626Reinvest2 vault, uint256 minTokensToHarvest);
+
+    /// @notice Emitted when reinvestRewardBps has been updated for a given aToken vault
+    event UpdateReinvestRewardBps(AaveV2ERC4626Reinvest2 vault, uint256 reinvestRewardBps);
 
     /// -----------------------------------------------------------------------
     /// Errors
@@ -83,7 +89,7 @@ contract AaveV2ERC4626ReinvestFactory {
             revert AaveV2ERC4626Factory__ATokenNonexistent();
         }
 
-        vault = new AaveV2ERC4626Reinvest{salt: bytes32(0)}(
+        vault = new AaveV2ERC4626Reinvest2{salt: bytes32(0)}(
             asset,
             ERC20(aTokenAddress),
             aaveMining,
@@ -98,7 +104,7 @@ contract AaveV2ERC4626ReinvestFactory {
     /// @notice Set swap routes for selling rewards
     /// @dev Centralizes setRoute on all createERC4626 deployments
     function setRoute(
-        AaveV2ERC4626Reinvest vault_,
+        AaveV2ERC4626Reinvest2 vault_,
         address token,
         address pair1,
         address pair2
@@ -109,9 +115,30 @@ contract AaveV2ERC4626ReinvestFactory {
         emit RoutesSetERC4626Reinvest(vault_);
     }
 
+    /**
+     * @notice Update reinvest min threshold
+     * @param newValue threshold
+     */
+    function updateMinTokensToReinvest(AaveV2ERC4626Reinvest2 vault_, uint256 newValue) external {
+        require(msg.sender == manager, "onlyOwner");
+        emit UpdateMinTokensToReinvest(vault_, newValue);
+        vault_.updateMinTokensToHarvest(newValue);
+    }
+
+    /**
+     * @notice Update reinvest min threshold
+     * @param newValue threshold
+     */
+    function updateReinvestRewardBps(AaveV2ERC4626Reinvest2 vault_, uint256 newValue) external {
+        require(msg.sender == manager, "onlyOwner");
+        require(newValue <= 150, "reward too high");
+        emit UpdateReinvestRewardBps(vault_, newValue);
+        vault_.updateReinvestRewardBps(newValue);
+    }
+
     /// @notice Harvest rewards from specified vault
-    function harvestFrom(AaveV2ERC4626Reinvest vault_) external {
-        vault_.harvest();
+    function harvestFrom(AaveV2ERC4626Reinvest2 vault_, uint256 minAmountOut_) external {
+        vault_.harvest(minAmountOut_);
         emit HarvestERC4626Reinvest(vault_);
     }
 
