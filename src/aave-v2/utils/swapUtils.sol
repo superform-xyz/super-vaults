@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.14;
 
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";

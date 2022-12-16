@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.14;
+// SPDX-License-Identifier: AGPL-3.0
+pragma solidity ^0.8.14;
 
 import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
