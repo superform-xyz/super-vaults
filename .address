@@ -154,6 +154,8 @@ BENQI_SWAPTOKEN_DAI=
 BENQI_PAIR1_DAI=
 BENQI_PAIR2_DAI=
 
+BENQI_sAVAX_ASSET=0x2b2C81e08f1Af8835a78Bb2A90AE924ACE0eA4bE
+
 ############################################
 ### ALPACA BSC REINVEST CONFIG #############
 ############################################

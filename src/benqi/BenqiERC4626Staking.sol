@@ -41,7 +41,7 @@ contract BenqiERC4626Staking is ERC4626 {
         address wavax_,
         address sAvax_,
         address tradeJoePool_
-    ) ERC4626(ERC20(wavax_), "ERC4626-Wrapped stETH", "wLstETH") {
+    ) ERC4626(ERC20(wavax_), "ERC4626-Wrapped sAVAX", "wLsAVAX") {
         sAVAX = IStETH(sAvax_);
         wavax = IWETH(wavax_);
         traderJoePool = IPair(tradeJoePool_);
@@ -55,7 +55,8 @@ contract BenqiERC4626Staking is ERC4626 {
     //////////////////////////////////////////////////////////////*/
 
     function beforeWithdraw(uint256 assets, uint256) internal override {
-        uint256 amount = DexSwap.swap(assets,address(sAVAX),address(wavax),address(traderJoePool));
+        uint256 sAVAXAssets = sAVAX.getSharesByPooledAvax(assets);
+        uint256 amount = DexSwap.swap(sAVAXAssets,address(sAVAX),address(wavax),address(traderJoePool));
         console.log("amount", amount);
     }
 
@@ -142,15 +143,15 @@ contract BenqiERC4626Staking is ERC4626 {
 
         beforeWithdraw(assets, shares);
 
-        wavax.withdraw(wavax.balanceOf(address(this)));
+        assets = wavax.balanceOf(address(this));
 
-        console.log("eth balance withdraw", address(this).balance);
+        console.log("weth balance withdraw", assets);
 
         _burn(owner, shares);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
-        SafeTransferLib.safeTransferETH(receiver, address(this).balance);
+        asset.safeTransfer(receiver, assets);
     }
 
     function redeem(
@@ -168,13 +169,13 @@ contract BenqiERC4626Staking is ERC4626 {
         require((assets = previewRedeem(shares)) != 0, "ZERO_ASSETS");
 
         beforeWithdraw(assets, shares);
-
-        wavax.withdraw(wavax.balanceOf(address(this)));
+        assets = wavax.balanceOf(address(this));
+        
         _burn(owner, shares);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
-        SafeTransferLib.safeTransferETH(receiver, assets);
+        asset.safeTransfer(receiver, assets);
     }
 
     /// @dev payable mint() is difficult to implement, probably should be dropped fully
@@ -187,9 +188,8 @@ contract BenqiERC4626Staking is ERC4626 {
     //     afterDeposit(msg.value, shares);
     // }
 
-    /// Pure/Native ETH as AUM. Rebasing! We can make wstEth as underlying a separate implementation
     function totalAssets() public view virtual override returns (uint256) {
-        return sAVAX.balanceOf(address(this));
+        return sAVAX.getPooledAvaxByShares(sAVAX.balanceOf(address(this)));
     }
 
     function convertToShares(uint256 assets)
