@@ -12,7 +12,7 @@ import {DexSwap} from "./utils/swapUtils.sol";
 
 /// @title AaveV2ERC4626Reinvest - extended implementation of yield-daddy @author zefram.eth
 /// @dev Reinvests rewards accrued for higher APY
-contract AaveV2ERC4626Reinvest2 is ERC4626 {
+contract AaveV2ERC4626ReinvestIncentive is ERC4626 {
     
     address public immutable manager;
     address public rewardToken;
