@@ -98,6 +98,9 @@ contract AaveV3ERC4626ReinvestFactory {
 
         vaults[address(asset)] = vault;
 
+        /// @dev TODO: Seed initial deposit, requires approve to factory
+        // init(vault, initAmount);
+
         emit CreateERC4626Reinvest(asset, vault);
     }
 

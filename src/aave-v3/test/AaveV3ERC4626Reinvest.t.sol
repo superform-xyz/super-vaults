@@ -12,6 +12,7 @@ import {IRewardsController} from "../../aave-v3/external/IRewardsController.sol"
 import {IPool} from "../external/IPool.sol";
 
 contract AaveV3ERC4626ReinvestTest is Test {
+    
     ////////////////////////////////////////
 
     address public manager;
