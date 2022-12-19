@@ -12,9 +12,12 @@ import {DexSwap} from "./utils/swapUtils.sol";
 
 /// @title AaveV3ERC4626Reinvest - extended implementation of yield-daddy @author zefram.eth
 /// @dev Reinvests rewards accrued for higher APY
-/// @notice ERC4626 wrapper for Aave V3 with reward reinvesting
+/// @notice ERC4626 wrapper for Aave V3 with rewards reinvesting
 contract AaveV3ERC4626Reinvest is ERC4626 {
+    /// @notice Manager for setting swap routes for harvest()
     address public manager;
+
+    /// @notice Check if rewards have been set before harvest() and setRoutes()
     bool public rewardsSet;
 
     /// -----------------------------------------------------------------------
@@ -61,10 +64,10 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
     IRewardsController public immutable rewardsController;
 
     /// @notice The Aave reward tokens for a pool
-    ERC20[] public rewardTokens;
+    address[] public rewardTokens;
 
     /// @notice Map rewardToken to its swapInfo for harvest
-    mapping(ERC20 => swapInfo) public swapInfoMap;
+    mapping(address => swapInfo) public swapInfoMap;
 
     /// @notice Pointer to swapInfo
     swapInfo public SwapInfo;
@@ -91,6 +94,8 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
         aToken = aToken_;
         lendingPool = lendingPool_;
         rewardsController = rewardsController_;
+
+        /// For all SuperForm AAVE wrappers Factory contract is the manager for the Routes
         manager = manager_;
 
         /// TODO: tighter checks
@@ -109,7 +114,7 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
         tokens = rewardsController.getRewardsByAsset(address(aToken));
 
         for (uint256 i = 0; i < tokens.length; i++) {
-            rewardTokens.push(ERC20(tokens[i]));
+            rewardTokens.push(tokens[i]);
         }
 
         rewardsSet = true;
@@ -117,36 +122,28 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
 
     /// @notice Set swap routes for selling rewards
     /// @dev Set route for each rewardToken separately
+    /// @dev Setting wrong addresses here will revert harvest() calls
     function setRoutes(
-        ERC20 rewardToken,
+        address rewardToken,
         address token,
         address pair1,
         address pair2
     ) external {
         require(msg.sender == manager, "onlyOwner");
-        require(rewardsSet, "rewards not set"); /// @dev Soft-check. Should check per token.
+        require(rewardsSet, "rewards not set"); /// @dev Soft-check
 
         for (uint256 i = 0; i < rewardTokens.length; i++) {
             /// @dev if rewardToken given as arg matches any rewardToken found by setRewards()
             ///      set route for that token
             if (rewardTokens[i] == rewardToken) {
                 swapInfoMap[rewardToken] = swapInfo(token, pair1, pair2);
-
-                swapInfo memory swapInfo_ = swapInfoMap[rewardToken];
-
-                rewardTokens[i].approve(swapInfo_.pair1, type(uint256).max); /// max approves address
-
-                /// TODO: add condition to check if other approve is even needed
-                ERC20(swapInfo_.token).approve(
-                    swapInfo_.pair2,
-                    type(uint256).max
-                );
             }
         }
     }
 
-    /// @notice Claims liquidity mining rewards from Aave and sends it to rewardRecipient
+    /// @notice Claims liquidity mining rewards from Aave and sends it to this Vault
     function harvest() external {
+        /// @dev Wrapper exists only for single aToken
         address[] memory assets = new address[](1);
         assets[0] = address(aToken);
 
@@ -163,11 +160,17 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
         }
     }
 
+    /// @notice Swap reward token for underlying asset
     function swapRewards(address rewardToken, uint256 earned) internal {
-        swapInfo memory swapMap = swapInfoMap[ERC20(rewardToken)];
-        /// If one swap needed (high liquidity pair) - set swapInfo.token0/token/pair2 to 0x
+        /// @dev Used just for approve
+        ERC20 rewardToken_ = ERC20(rewardToken);
+
+        swapInfo memory swapMap = swapInfoMap[rewardToken];
+
         /// @dev Swap AAVE-Fork token for asset
         if (swapMap.token == address(asset)) {
+            rewardToken_.approve(swapMap.pair1, earned); /// approve only available rewards
+
             DexSwap.swap(
                 earned, /// REWARDS amount to swap
                 rewardToken, // from REWARD-TOKEN
@@ -176,12 +179,16 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
             );
             /// If two swaps needed
         } else {
+            rewardToken_.approve(swapMap.pair1, earned); /// approve only available rewards
+
             uint256 swapTokenAmount = DexSwap.swap(
                 earned,
                 rewardToken, // from AAVE-Fork
                 swapMap.token, /// to intermediary token with high liquidity (no direct pools)
                 swapMap.pair1 /// pairToken (pool)
             );
+
+            ERC20(swapMap.token).approve(swapMap.pair2, swapTokenAmount);
 
             swapTokenAmount = DexSwap.swap(
                 swapTokenAmount,
@@ -192,8 +199,22 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
         }
 
         /// reinvest() without minting (no asset.totalSupply() increase == profit)
-        /// afterDeposit just makes totalAssets() aToken's balance growth (to be distributed back to share owners)
         afterDeposit(asset.balanceOf(address(this)), 0);
+    }
+
+    /// @notice Check how much rewards are available to claim, useful before harvest()
+    function getAllRewardsAccrued()
+        external
+        view
+        returns (address[] memory rewardList, uint256[] memory claimedAmounts)
+    {
+        address[] memory assets = new address[](1);
+        assets[0] = address(aToken);
+
+        (rewardList, claimedAmounts) = rewardsController.getAllUserRewards(
+            assets,
+            address(this)
+        );
     }
 
     /// -----------------------------------------------------------------------

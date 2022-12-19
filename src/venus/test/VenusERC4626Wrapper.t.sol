@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.14;
+// SPDX-License-Identifier: AGPL-3.0
+pragma solidity ^0.8.14;
 
 import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
@@ -45,14 +45,9 @@ contract VenusERC4626WrapperTest is Test {
             ERC20(vm.envAddress("VENUS_USDC_ASSET")),
             ERC20(vm.envAddress("VENUS_REWARD_XVS")),
             ICERC20(vm.envAddress("VENUS_VUSDC_CTOKEN")),
-            comptroller,
-            "VENUS_SWAPTOKEN_USDC",
-            "VENUS_PAIR1_USDC",
-            "VENUS_PAIR2_USDC"
+            comptroller
         );
 
-        /// Init USDC vault always as fallback
-        /// @dev NOTE: This is neccessary only because we do not have Factory deployment for Venus
         asset = ERC20(VENUS_USDC_ASSET);
         reward = ERC20(VENUS_REWARD_XVS);
         cToken = ICERC20(VENUS_VUSDC_CTOKEN);
@@ -62,10 +57,7 @@ contract VenusERC4626WrapperTest is Test {
         ERC20 underylyingAsset,
         ERC20 reward_,
         ICERC20 cToken_,
-        IComptroller comptroller_,
-        string memory swapToken,
-        string memory pair1,
-        string memory pair2
+        IComptroller comptroller_
     ) public {
         vm.startPrank(manager);
 
@@ -78,9 +70,6 @@ contract VenusERC4626WrapperTest is Test {
             reward_,
             cToken_,
             comptroller_,
-            vm.envAddress(swapToken),
-            vm.envAddress(pair1),
-            vm.envAddress(pair2),
             manager
         );
 
@@ -95,22 +84,40 @@ contract VenusERC4626WrapperTest is Test {
     }
 
     function testDepositWithdrawUSDC() public {
-        uint256 amount = 100 ether;
+        uint256 amount = 10 ether;
 
         vm.startPrank(alice);
 
         uint256 aliceUnderlyingAmount = amount;
+        uint256 aliceBalanceBeforeDeposit = asset.balanceOf(alice);
 
         asset.approve(address(vault), aliceUnderlyingAmount);
+
         assertEq(asset.allowance(alice, address(vault)), aliceUnderlyingAmount);
 
         uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
+
+        console.log("aliceShareAmount", aliceShareAmount);
+
         uint256 aliceAssetsToWithdraw = vault.convertToAssets(aliceShareAmount);
-        assertEq(aliceUnderlyingAmount, aliceShareAmount);
+
+        console.log("aliceAssetsToWithdraw", aliceAssetsToWithdraw);
+
         assertEq(vault.totalSupply(), aliceShareAmount);
         assertEq(vault.balanceOf(alice), aliceShareAmount);
 
-        vault.withdraw(aliceAssetsToWithdraw, alice, alice);
+        uint256 aliceBalanceBeforeWithdraw = asset.balanceOf(alice);
+        uint256 expectedAssetsAfterWithdraw = aliceBalanceBeforeWithdraw + aliceAssetsToWithdraw;
+        console.log("aliceBalanceBeforeWithdraw", aliceBalanceBeforeWithdraw);
+
+        uint256 aliceSharesBurned = vault.withdraw(aliceAssetsToWithdraw, alice, alice);
+        uint256 aliceBalanceAfterWithdraw = asset.balanceOf(alice);
+
+        console.log("aliceBalanceBeforeDeposit", aliceBalanceBeforeDeposit);
+        console.log("aliceBalanceAfterWithdraw", aliceBalanceAfterWithdraw);
+
+        assertEq(aliceSharesBurned, aliceShareAmount);
+        assertEq(expectedAssetsAfterWithdraw, aliceBalanceAfterWithdraw);
     }
 
     function testDepositWithdrawBUSD() public {
@@ -118,10 +125,7 @@ contract VenusERC4626WrapperTest is Test {
             ERC20(vm.envAddress("VENUS_BUSD_ASSET")),
             ERC20(vm.envAddress("VENUS_REWARD_XVS")),
             ICERC20(vm.envAddress("VENUS_BUSD_CTOKEN")),
-            comptroller,
-            "VENUS_SWAPTOKEN_BUSD",
-            "VENUS_PAIR1_BUSD",
-            "VENUS_PAIR2_BUSD"
+            comptroller
         );
 
         uint256 amount = 100 ether;
@@ -143,29 +147,35 @@ contract VenusERC4626WrapperTest is Test {
     }
 
     function testHarvest() public {
+        uint256 amount = 100 ether;
+
         setVault(
             ERC20(vm.envAddress("VENUS_USDC_ASSET")),
             ERC20(vm.envAddress("VENUS_REWARD_XVS")),
             ICERC20(vm.envAddress("VENUS_VUSDC_CTOKEN")),
-            comptroller,
-            "VENUS_SWAPTOKEN_USDC",
-            "VENUS_PAIR1_USDC",
-            "VENUS_PAIR2_USDC"
+            comptroller
         );
 
-        uint256 amount = 100 ether;
+        vm.startPrank(manager);
+        vault.setRoute(
+            VENUS_SWAPTOKEN_USDC,
+            VENUS_PAIR1_USDC,
+            VENUS_PAIR2_USDC
+        );
+        vm.stopPrank();
 
         vm.startPrank(alice);
 
         uint256 aliceUnderlyingAmount = amount;
 
         asset.approve(address(vault), aliceUnderlyingAmount);
-        uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
+        vault.deposit(aliceUnderlyingAmount, alice);
 
         console.log("totalAssets before harvest", vault.totalAssets());
 
-        deal(address(reward), address(vault), 1000 ether);
-        assertEq(reward.balanceOf(address(vault)), 1000 ether);
+        deal(address(reward), address(vault), 1 ether);
+        assertEq(reward.balanceOf(address(vault)), 1 ether);
+        
         vault.harvest();
         assertEq(reward.balanceOf(address(vault)), 0);
 
