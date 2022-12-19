@@ -7,4 +7,6 @@ interface IAaveMining {
         uint256 amount,
         address to
     ) external returns (uint256);
+
+    function getUserUnclaimedRewards(address user) external view returns (uint256);
 }
