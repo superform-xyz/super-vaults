@@ -5,7 +5,6 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 import {ICERC20} from "./ICERC20.sol";
 
-
 /// @notice Get up to date cToken data without mutating state.
 /// @author Transmissions11 (https://github.com/transmissions11/libcompound)
 library LibCompound {
@@ -31,16 +30,14 @@ library LibCompound {
         require(borrowRateMantissa <= 0.0005e16, "RATE_TOO_HIGH"); // Same as borrowRateMaxMantissa in CTokenInterfaces.sol
 
         uint256 interestAccumulated =
-            borrowRateMantissa * block.number - accrualBlockNumberPrior.mulWadDown(borrowsPrior);
+            (borrowRateMantissa * (block.number - accrualBlockNumberPrior)).mulWadDown(borrowsPrior);
 
         uint256 totalReserves = cToken.reserveFactorMantissa().mulWadDown(interestAccumulated) + reservesPrior;
         uint256 totalBorrows = interestAccumulated + borrowsPrior;
         uint256 totalSupply = cToken.totalSupply();
 
-        return
-            totalSupply == 0
+        return totalSupply == 0
             ? cToken.initialExchangeRateMantissa()
-            : totalCash + totalBorrows - totalReserves.divWadDown(totalSupply);
+            : (totalCash + totalBorrows - totalReserves).divWadDown(totalSupply);
     }
 }
-

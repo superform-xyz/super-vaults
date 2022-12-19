@@ -10,6 +10,7 @@ Allows to deposit into Uniswap V2 Pool by 'yanking' both token0 and token1 from 
 
 ### Both contracts are WIP / Experimental phase
 
+TODO: Uniswap Reserves Manipulation - critical fix!
 TODO: Slippage / invariant for deposit/withdraw flow
 
 # Design notes

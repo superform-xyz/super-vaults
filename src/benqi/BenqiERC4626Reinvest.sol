@@ -74,8 +74,8 @@ contract BenqiERC4626Reinvest is ERC4626 {
     /// -----------------------------------------------------------------------
 
     constructor(
-        ERC20 asset_, // underlying
-        ICERC20 cToken_, // compound concept of a share
+        ERC20 asset_,
+        ICERC20 cToken_,
         IComptroller comptroller_,
         address manager_
     ) ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_)) {
@@ -90,7 +90,7 @@ contract BenqiERC4626Reinvest is ERC4626 {
 
     /// @notice Set swap routes for selling rewards
     /// @notice Set type of reward we are harvesting and selling
-    /// @dev 0 = QiToken, 1 = AVAX
+    /// @dev 0 = BenqiToken, 1 = AVAX
     /// @dev Setting wrong addresses here will revert harvest() calls
     function setRoute(
         uint8 rewardType_,
@@ -238,7 +238,7 @@ contract BenqiERC4626Reinvest is ERC4626 {
         virtual
         returns (string memory vaultName)
     {
-        vaultName = string.concat("ERC4626-Wrapped Benqi - ", asset_.symbol());
+        vaultName = string.concat("ERC4626-Wrapped Benqi-", asset_.symbol());
     }
 
     function _vaultSymbol(ERC20 asset_)

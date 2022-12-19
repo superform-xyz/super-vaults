@@ -9,7 +9,7 @@ update:; forge update
 
 # Build & test
 build  :; forge build
-test   :; forge test --no-match-contract rEthTest\|stEthSwapTest -vvv # skip rEthTest*.*Test TODO: slot check
+test   :; forge test --no-match-contract rEthTest\|stEthSwapTest -vvv
 clean  :; forge clean
 snapshot :; forge snapshot
 fmt    :; forge fmt && forge fmt test/
@@ -18,7 +18,7 @@ fmt    :; forge fmt && forge fmt test/
 test-aave :; forge test --match-contract Aave* -vvv
 test-compound :; forge test --match-contract CompoundV2* -vvv
 test-steth :; forge test --match-contract stEth.*Test -vvv
-test-steth-swap :; forge test --match-contract stEthSwap.*Test -vvv # fix & extend
+test-steth-swap :; forge test --match-contract stEthSwap.*Test -vvv
 test-stmatic :; forge test --match-contract stMatic.*Test -vvv
 test-uniswapV2 :; forge test --match-contract UniswapV2Test -vvv
 test-uniswapV2swap :; forge test --match-contract UniswapV2TestSwap -vvv
@@ -53,26 +53,17 @@ deploy-venus-usdc :; forge create --rpc-url $(BSC_MAINNET_RPC) \
 # VENUS-BSC-BUSD
 deploy-venus-busd :; forge create --rpc-url $(BSC_MAINNET_RPC) \
 				--constructor-args $(VENUS_BUSD_ASSET) $(VENUS_REWARD_XVS) \
-				 $(VENUS_BUSD_CTOKEN) $(VENUS_COMPTROLLER) \
-				 $(VENUS_SWAPTOKEN_BUSD) $(VENUS_PAIR1_BUSD) $(VENUS_PAIR2_BUSD) $(MANAGER) \
+				 $(VENUS_BUSD_CTOKEN) $(VENUS_COMPTROLLER) $(MANAGER) \
 				--private-key $(PRIVATE_KEY) src/venus/VenusERC4626Reinvest.sol:VenusERC4626Reinvest
-
-
-# Already deployed (check status)
-#deploy-alpaca :; forge create --rpc-url $(BSC_MAINNET_RPC) \
-#				--constructor-args "" "" 18 1000 \ 
-#				--private-key $(PRIVATE_KEY) src/current/aave-v2/AaveV2StrategyWrapperNoHarvester:AaveV2StrategyWrapperNoHarvester
-
-
-# USDC/WBNB https://pancakeswap.finance/info/pools/0x16b9a82891338f9ba80e2d6970fdda79d1eb0dae
-#deploy-pancakeswap :; forge create --rpc-url $(BSC_MAINNET_RPC) \
-#				--constructor-args "" "" 18 1000 \ 
-#				--private-key $(PRIVATE_KEY) src/current/aave-v2/AaveV2StrategyWrapperNoHarvester:AaveV2StrategyWrapperNoHarvester
-
 
 ##############
 ### POLYGON ##
 ##############
+
+# AAVE-V3-POLYGON-FACTORY
+deploy-aave3-polygon-factory :; forge create --rpc-url $(POLYGON_MAINNET_RPC) \
+				--constructor-args $(AAVEV3_POLYGON_LENDINGPOOL) $(AAVEV3_POLYGON_REWARDS) $(MANAGER) \
+				--private-key $(PRIVATE_KEY) src/aave-v3/AaveV3ERC4626ReinvestFactory.sol:AaveV3ERC4626ReinvestFactory
 
 # AAVE-V3-POLY-USDC
 deploy-aave3-polygon-dai :; forge create --rpc-url $(POLYGON_MAINNET_RPC) \
@@ -84,6 +75,11 @@ deploy-aave3-polygon-usdc :; forge create --rpc-url $(POLYGON_MAINNET_RPC) \
 				--constructor-args $(AAVEV3_POLYGON_USDC) $(AAVEV3_POLYGON_AUSDC) $(AAVEV3_POLYGON_LENDINGPOOL) $(AAVEV3_POLYGON_REWARDS) $(MANAGER) \
 				--private-key $(PRIVATE_KEY) src/aave-v3/AaveV3ERC4626Reinvest.sol:AaveV3ERC4626Reinvest
 
+# AAVE-V2-POLYGON-FACTORY
+deploy-aave2-polygon-factory :; forge create --rpc-url $(POLYGON_MAINNET_RPC) \
+				--constructor-args $(AAVEV2_POLYGON_REWARDS) $(AAVEV2_POLYGON_LENDINGPOOL) $(AAVEV2_POLYGON_REWARDTOKEN) $(MANAGER) \
+				--private-key $(PRIVATE_KEY) src/aave-v2/AaveV2ERC4626ReinvestFactory.sol:AaveV2ERC4626ReinvestFactory
+
 # AAVE-V2-POLY-DAI
 deploy-aave2-polygon-dai :; forge create --rpc-url $(POLYGON_MAINNET_RPC) \
 				--constructor-args $(AAVEV2_POLYGON_DAI) $(AAVEV2_POLYGON_ADAI) $(AAVEV2_POLYGON_REWARDS) $(AAVEV2_POLYGON_LENDINGPOOL) $(AAVEV2_POLYGON_REWARDTOKEN) $(MANAGER) \
@@ -94,23 +90,12 @@ deploy-aave2-polygon-wmatic :; forge create --rpc-url $(POLYGON_MAINNET_RPC) \
 				--constructor-args $(AAVEV2_POLYGON_WMATIC) $(AAVEV2_POLYGON_AWMATIC) $(AAVEV2_POLYGON_REWARDS) $(AAVEV2_POLYGON_LENDINGPOOL) $(AAVEV2_POLYGON_REWARDTOKEN) $(MANAGER) \
 				--private-key $(PRIVATE_KEY) src/aave-v2/AaveV2ERC4626Reinvest.sol:AaveV2ERC4626Reinvest
 
-# WMATIC/USDC (ERC20)
-# deploy-arrakis-poly :; forge create --rpc-url $(POLYGON_MAINNET_RPC) \
-# 				--constructor-args "" "" 18 1000 \ 
-# 				--private-key $(PRIVATE_KEY) src/current/aave-v2/AaveV2StrategyWrapperNoHarvester:AaveV2StrategyWrapperNoHarvester
- 
-
-# WMATIC/USDC (ERC20) https://quickswap.exchange/#/analytics/v2/pair/0x6e7a5fafcec6bb1e78bae2a1f0b612012bf14827
-# deploy-quickswap-poly :; forge create --rpc-url $(POLYGON_MAINNET_RPC) \
-# 				--constructor-args "" "" 18 1000 \ 
-# 				--private-key $(PRIVATE_KEY) src/current/aave-v2/AaveV2StrategyWrapperNoHarvester:AaveV2StrategyWrapperNoHarvester
-
 
 #############
 ### AVAX ####
 #############
 
-# AAVE-V3-AVAX-USDC
+# AAVE-V3-AVAX-FACTORY
 deploy-aave3-avax-factory :; forge create --rpc-url $(AVAX_MAINNET_RPC) \
 				--constructor-args $(AAVEV3_AVAX_LENDINGPOOL) $(AAVEV3_AVAX_REWARDS) $(MANAGER) \
 				--private-key $(PRIVATE_KEY) src/aave-v3/AaveV3ERC4626ReinvestFactory.sol:AaveV3ERC4626ReinvestFactory
@@ -124,6 +109,12 @@ deploy-aave3-avax-usdc :; forge create --rpc-url $(AVAX_MAINNET_RPC) \
 deploy-aave3-avax-dai :; forge create --rpc-url $(AVAX_MAINNET_RPC) \
 				--constructor-args $(AAVEV3_AVAX_DAI) $(AAVEV3_AVAX_ADAI) $(AAVEV3_AVAX_LENDINGPOOL) $(AAVEV3_AVAX_REWARDS) $(MANAGER) \
 				--private-key $(PRIVATE_KEY) src/aave-v3/AaveV3ERC4626Reinvest.sol:AaveV3ERC4626Reinvest
+
+# AAVE-V2-AVAX-FACTORY
+deploy-aave2-avax-factory :; forge create --rpc-url $(AVAX_MAINNET_RPC) \
+				--constructor-args $(AAVEV2_AVAX_REWARDS) $(AAVEV2_AVAX_LENDINGPOOL) $(AAVEV2_AVAX_REWARDTOKEN) $(MANAGER) \
+				--private-key $(PRIVATE_KEY) src/aave-v2/AaveV2ERC4626ReinvestFactory.sol:AaveV2ERC4626ReinvestFactory
+
 
 # AAVE-V2-AVAX-DAI
 deploy-aave2-avax-dai :; forge create --rpc-url $(AVAX_MAINNET_RPC) \
@@ -145,14 +136,15 @@ deploy-benqi-wavax :; forge create --rpc-url $(AVAX_MAINNET_RPC) \
 				--constructor-args $(BENQI_WAVAX_ASSET) $(BENQI_REWARD_QI) $(BENQI_WAVAX_CETHER) $(BENQI_COMPTROLLER) $(MANAGER) \
 				--private-key $(PRIVATE_KEY) src/benqi/BenqiNativeERC4626Reinvest.sol:BenqiNativeERC4626Reinvest
 
-# deploy-traderjoe-avax :; forge create --rpc-url $(AVAX_MAINNET_RPC) \
-# 				--constructor-args "" "" 18 1000 \ 
-# 				--private-key $(PRIVATE_KEY) src/current/aave-v2/AaveV2StrategyWrapperNoHarvester:AaveV2StrategyWrapperNoHarvester
-
 
 ###############
 ### ARBITRUM ##
 ###############
+
+# AAVE-V3-ARBITRUM-FACTORY
+deploy-aave3-arbitrum-factory :; forge create --rpc-url $(ARBITRUM_MAINNET_RPC) \
+				--constructor-args $(AAVEV3_ARBITRUM_LENDINGPOOL) $(AAVEV3_ARBITRUM_REWARDS) $(MANAGER) \
+				--private-key $(PRIVATE_KEY) src/aave-v3/AaveV3ERC4626ReinvestFactory.sol:AaveV3ERC4626ReinvestFactory
 
 # AAVE-V3-ARB-DAI
 deploy-aave3-arbitrum-dai :; forge create --rpc-url $(ARBITRUM_MAINNET_RPC) \
@@ -164,15 +156,14 @@ deploy-aave3-arbitrum-usdc :; forge create --rpc-url $(ARBITRUM_MAINNET_RPC) \
 				--constructor-args $(AAVEV3_ARBITRUM_USDC) $(AAVEV3_ARBITRUM_AUSDC) $(AAVEV3_ARBITRUM_LENDINGPOOL) $(AAVEV3_ARBITRUM_REWARDS) $(MANAGER) \
 				--private-key $(PRIVATE_KEY) src/aave-v3/AaveV3ERC4626Reinvest.sol:AaveV3ERC4626Reinvest
 
-
-# deploy-sushi-arbitrum :; forge create --rpc-url $(ARBITRUM_MAINNET_RPC) \
-# 				--constructor-args "" "" 18 1000 \ 
-# 				--private-key $(PRIVATE_KEY) src/current/aave-v2/AaveV2StrategyWrapperNoHarvester:AaveV2StrategyWrapperNoHarvester
-
-
 ###############
 ### OPTIMISM ##
 ###############
+
+# AAVE-V3-OPTIMISM-FACTORY
+deploy-aave3-optimism-factory :; forge create --rpc-url $(OPTIMISM_MAINNET_RPC) \
+				--constructor-args $(AAVEV3_OPTIMISM_LENDINGPOOL) $(AAVEV3_OPTIMISM_REWARDS) $(MANAGER) \
+				--private-key $(PRIVATE_KEY) src/aave-v3/AaveV3ERC4626ReinvestFactory.sol:AaveV3ERC4626ReinvestFactory
 
 # AAVE-V3-OPT-DAI
 deploy-aave3-optimism-dai :; forge create --rpc-url $(OPTIMISM_MAINNET_RPC) \
@@ -187,7 +178,3 @@ deploy-aave3-optimism-usdc :; forge create --rpc-url $(OPTIMISM_MAINNET_RPC) \
 ###############
 ### FANTOM ####
 ###############
-
-# deploy-spookyswap-fantom :; forge create --rpc-url $(FTM_MAINNET_RPC) \
-# 				--constructor-args "" "" 18 1000 \ 
-# 				--private-key $(PRIVATE_KEY) src/current/aave-v2/AaveV2StrategyWrapperNoHarvester:AaveV2StrategyWrapperNoHarvester

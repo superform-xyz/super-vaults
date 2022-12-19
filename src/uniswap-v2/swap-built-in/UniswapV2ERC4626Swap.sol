@@ -15,7 +15,7 @@ import {DexSwap} from "../utils/swapUtils.sol";
 import "forge-std/console.sol";
 
 /// @notice WIP: ERC4626 UniswapV2 Adapter - Allows exit & join to UniswapV2 LP Pools from ERC4626 interface
-/// Uses virtual price to calculate exit/entry amounts (slippage is yet not considered, TODO: invariant)
+/// Uses virtual price to calculate exit/entry amounts - WHICH IS CURRENTLY FULLY EXPOSED TO ON-CHAIN MANIPULATION :)
 /// Example Pool: https://v2.info.uniswap.org/pair/0xae461ca67b15dc8dc81ce7615e0320da1a9ab8d5 (DAI-USDC LP/PAIR on ETH)
 contract UniswapV2ERC4626Swap is ERC4626 {
     using SafeTransferLib for ERC20;
@@ -74,10 +74,6 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         /// @dev Values are sorted because we sort if t0/t1 == asset at runtime
         (assets0, assets1) = getAssetsAmounts(shares);
 
-        // console.log("totalAssets", totalAssets());
-        // console.log("withdraw shares", shares);
-        // console.log("withdraw a0", assets0, "a1", assets1);
-
         /// temp implementation, we should call directly on a pair
         (assets0, assets1) = router.removeLiquidity(
             address(token0),
@@ -89,7 +85,6 @@ contract UniswapV2ERC4626Swap is ERC4626 {
             block.timestamp + 100
         );
 
-        console.log("removeLiq a0", assets0, "a1", assets1);
     }
 
     function liquidityAdd() internal returns (uint256 li) {
@@ -158,8 +153,6 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         /// this will output required shares to burn for only token0
         shares = previewWithdraw(assets);
 
-        // console.log("shares to burn for asset", shares);
-
         if (msg.sender != owner) {
             uint256 allowed = allowance[owner][msg.sender];
 
@@ -173,20 +166,10 @@ contract UniswapV2ERC4626Swap is ERC4626 {
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
-        // console.log("assets safeTransfer", assets);
-        // console.log("assets0 swapJoin", assets0);
-        // console.log("assets1 swapJoin", assets1);
-
         /// @dev ideally contract for token0/1 should know what assets amount to use without conditional checks, gas overhead
         uint256 amount = asset == token0
             ? swapExit(assets1) + assets0
             : swapExit(assets0) + assets1;
-
-        console.log("assetsSwapped safeTransfer (sum)", amount);
-        // console.log(
-        //     "assets available to withdraw:",
-        //     asset.balanceOf(address(this))
-        // );
 
         asset.safeTransfer(receiver, amount);
 
@@ -211,21 +194,16 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         // Check for rounding error since we round down in previewRedeem.
         require((assets = previewRedeem(shares)) != 0, "ZERO_ASSETS");
 
-        // console.log("redeem assets", assets);
-
         (uint256 assets0, uint256 assets1) = liquidityRemove(assets, shares);
 
         _burn(owner, shares);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
-        /// TODO: Explore this exit swap
+        /// @dev ideally contract for token0/1 should know what assets amount to use without conditional checks, gas overhead
         uint256 amount = asset == token0
             ? swapExit(assets1) + assets0
             : swapExit(assets0) + assets1;
-
-        // console.log("assetsSwapped safeTransfer", amount);
-        console.log("assetsSwapped safeTransfer (sum)", amount);
 
         asset.safeTransfer(receiver, amount);
 
@@ -249,6 +227,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
     }
 
     /// @notice calculate value of shares of this vault as the sum of t0/t1 of UniV2 pair simulated as t0 or t1 total amount after swap
+    /// NOTE: This is vulnerable to manipulation of getReserves! TODO: Add on-chain oracle checks
     function virtualAssets(uint256 shares)
         public
         view
@@ -264,7 +243,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
             address(token1)
         );
 
-        // NOTE: Why getAmountOut here? Why not quote?
+        // NOTE: VULNERABLE!
         return a0 + UniswapV2Library.getAmountOut(a1, resB, resA);
     }
 
@@ -469,9 +448,6 @@ contract UniswapV2ERC4626Swap is ERC4626 {
     {
 
         (uint256 assets0, uint256 assets1) = getSplitAssetAmounts(assets);
-
-        // console.log("amountOfToken0ToToken1", assets0);
-        // console.log("amountOfToken1ToToken0", assets1);
 
         poolLpAmount = getLiquidityAmountOutFor(assets0, assets1);
     }
