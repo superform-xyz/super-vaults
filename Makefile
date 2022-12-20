@@ -105,18 +105,6 @@ deploy-arrakis-poly-usdc :; forge create --rpc-url $(POLYGON_MAINNET_RPC) \
 				--constructor-args $(ARRAKIS_USDC_MATIC_GUNI_POOL) "Arrakis WMATIC/USDC LP Vault" "aLP4626" false $(ARRAKIS_ROUTER_CONFIG) 50 \
 				--private-key $(PRIVATE_KEY) src/arrakis/Arrakis_Non_Native_LP_Vault.sol:ArrakisNonNativeVault
 
-# WMATIC/USDC (ERC20)
-# deploy-arrakis-poly :; forge create --rpc-url $(POLYGON_MAINNET_RPC) \
-# 				--constructor-args "" "" 18 1000 \ 
-# 				--private-key $(PRIVATE_KEY) src/current/aave-v2/AaveV2StrategyWrapperNoHarvester:AaveV2StrategyWrapperNoHarvester
- 
-
-# WMATIC/USDC (ERC20) https://quickswap.exchange/#/analytics/v2/pair/0x6e7a5fafcec6bb1e78bae2a1f0b612012bf14827
-# deploy-quickswap-poly :; forge create --rpc-url $(POLYGON_MAINNET_RPC) \
-# 				--constructor-args "" "" 18 1000 \ 
-# 				--private-key $(PRIVATE_KEY) src/current/aave-v2/AaveV2StrategyWrapperNoHarvester:AaveV2StrategyWrapperNoHarvester
-
-
 #############
 ### AVAX ####
 #############
@@ -140,7 +128,6 @@ deploy-aave3-avax-dai :; forge create --rpc-url $(AVAX_MAINNET_RPC) \
 deploy-aave2-avax-factory :; forge create --rpc-url $(AVAX_MAINNET_RPC) \
 				--constructor-args $(AAVEV2_AVAX_REWARDS) $(AAVEV2_AVAX_LENDINGPOOL) $(AAVEV2_AVAX_REWARDTOKEN) $(MANAGER) \
 				--private-key $(PRIVATE_KEY) src/aave-v2/AaveV2ERC4626ReinvestFactory.sol:AaveV2ERC4626ReinvestFactory
-
 
 # AAVE-V2-AVAX-DAI
 deploy-aave2-avax-dai :; forge create --rpc-url $(AVAX_MAINNET_RPC) \
