@@ -90,6 +90,32 @@ deploy-aave2-polygon-wmatic :; forge create --rpc-url $(POLYGON_MAINNET_RPC) \
 				--constructor-args $(AAVEV2_POLYGON_WMATIC) $(AAVEV2_POLYGON_AWMATIC) $(AAVEV2_POLYGON_REWARDS) $(AAVEV2_POLYGON_LENDINGPOOL) $(AAVEV2_POLYGON_REWARDTOKEN) $(MANAGER) \
 				--private-key $(PRIVATE_KEY) src/aave-v2/AaveV2ERC4626Reinvest.sol:AaveV2ERC4626Reinvest
 
+# ARRAKIS-POLY-USDC-WMATIC-FACTORY
+deploy-arrakis-poly-factory :; forge create --rpc-url $(POLYGON_MAINNET_RPC) \
+				--constructor-args $(ARRAKIS_ROUTER_CONFIG) \
+				--private-key $(PRIVATE_KEY) src/arrakis/Arrakis_Factory.sol:ArrakisFactory
+
+# ARRAKIS-POLY-WMATIC
+deploy-arrakis-poly-wmatic :; forge create --rpc-url $(POLYGON_MAINNET_RPC) \
+				--constructor-args $(ARRAKIS_USDC_MATIC_GUNI_POOL) "Arrakis WMATIC/USDC LP Vault" "aLP4626" true $(ARRAKIS_ROUTER_CONFIG) 50 \
+				--private-key $(PRIVATE_KEY) src/arrakis/Arrakis_Non_Native_LP_Vault.sol:ArrakisNonNativeVault
+
+# ARRAKIS-POLY-USDC
+deploy-arrakis-poly-usdc :; forge create --rpc-url $(POLYGON_MAINNET_RPC) \
+				--constructor-args $(ARRAKIS_USDC_MATIC_GUNI_POOL) "Arrakis WMATIC/USDC LP Vault" "aLP4626" false $(ARRAKIS_ROUTER_CONFIG) 50 \
+				--private-key $(PRIVATE_KEY) src/arrakis/Arrakis_Non_Native_LP_Vault.sol:ArrakisNonNativeVault
+
+# WMATIC/USDC (ERC20)
+# deploy-arrakis-poly :; forge create --rpc-url $(POLYGON_MAINNET_RPC) \
+# 				--constructor-args "" "" 18 1000 \ 
+# 				--private-key $(PRIVATE_KEY) src/current/aave-v2/AaveV2StrategyWrapperNoHarvester:AaveV2StrategyWrapperNoHarvester
+ 
+
+# WMATIC/USDC (ERC20) https://quickswap.exchange/#/analytics/v2/pair/0x6e7a5fafcec6bb1e78bae2a1f0b612012bf14827
+# deploy-quickswap-poly :; forge create --rpc-url $(POLYGON_MAINNET_RPC) \
+# 				--constructor-args "" "" 18 1000 \ 
+# 				--private-key $(PRIVATE_KEY) src/current/aave-v2/AaveV2StrategyWrapperNoHarvester:AaveV2StrategyWrapperNoHarvester
+
 
 #############
 ### AVAX ####
@@ -128,14 +154,18 @@ deploy-aave2-avax-wavax :; forge create --rpc-url $(AVAX_MAINNET_RPC) \
 
 # BENQI-AVAX-USDC
 deploy-benqi-usdc :; forge create --rpc-url $(AVAX_MAINNET_RPC) \
-				--constructor-args $(BENQI_USDC_ASSET) $(BENQI_REWARD_QI) $(BENQI_USDC_CTOKEN) $(BENQI_COMPTROLLER) $(MANAGER) \
+				--constructor-args $(BENQI_USDC_ASSET) $(BENQI_REWARD_QI) $(BENQI_USDC_CTOKEN) $(MANAGER) \
 				--private-key $(PRIVATE_KEY) src/benqi/BenqiERC4626Reinvest.sol:BenqiERC4626Reinvest
 
 # BENQI-AVAX-WAVAX (native)
 deploy-benqi-wavax :; forge create --rpc-url $(AVAX_MAINNET_RPC) \
-				--constructor-args $(BENQI_WAVAX_ASSET) $(BENQI_REWARD_QI) $(BENQI_WAVAX_CETHER) $(BENQI_COMPTROLLER) $(MANAGER) \
+				--constructor-args $(BENQI_WAVAX_ASSET) $(BENQI_REWARD_QI) $(BENQI_WAVAX_CETHER) $(MANAGER) \
 				--private-key $(PRIVATE_KEY) src/benqi/BenqiNativeERC4626Reinvest.sol:BenqiNativeERC4626Reinvest
 
+# BENQI-AVAX-sAVAX (liquid staking)
+deploy-benqi-savax :; forge create --rpc-url $(AVAX_MAINNET_RPC) \
+				--constructor-args $(BENQI_WAVAX_ASSET) $(BENQI_sAVAX_ASSET) $(BENQI_WAVAX_SAVAX_POOL) \
+				--private-key $(PRIVATE_KEY) src/benqi/BenqiERC4626Staking.sol:BenqiERC4626Staking
 
 ###############
 ### ARBITRUM ##
