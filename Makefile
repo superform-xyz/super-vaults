@@ -24,6 +24,7 @@ test-uniswapV2 :; forge test --match-contract UniswapV2Test -vvv
 test-uniswapV2swap :; forge test --match-contract UniswapV2TestSwap -vvv
 test-reth :; forge test --match-contract rEthTest -vvv
 test-arrakis :; forge test --match-contract Arrakis_LP_Test -vvv
+test-geist :; forge test --match-contract GeistERC4626ReinvestTest -vvv
 
 # Reinvest test
 test-venus-reinvest :; forge test --match-contract VenusERC4626WrapperTest -vvv
@@ -141,7 +142,7 @@ deploy-aave2-avax-wavax :; forge create --rpc-url $(AVAX_MAINNET_RPC) \
 
 # BENQI-AVAX-USDC
 deploy-benqi-usdc :; forge create --rpc-url $(AVAX_MAINNET_RPC) \
-				--constructor-args $(BENQI_USDC_ASSET) $(BENQI_REWARD_QI) $(BENQI_USDC_CTOKEN) $(MANAGER) \
+				--constructor-args $(BENQI_USDC_ASSET) $(BENQI_USDC_CTOKEN) $(BENQI_COMPTROLLER) $(MANAGER) \
 				--private-key $(PRIVATE_KEY) src/benqi/BenqiERC4626Reinvest.sol:BenqiERC4626Reinvest
 
 # BENQI-AVAX-WAVAX (native)
@@ -195,3 +196,43 @@ deploy-aave3-optimism-usdc :; forge create --rpc-url $(OPTIMISM_MAINNET_RPC) \
 ###############
 ### FANTOM ####
 ###############
+
+# GEIST-FTM-DAI
+deploy-geist-ftm-dai :; forge create --rpc-url $(FTM_MAINNET_RPC) \
+				--constructor-args $(GEIST_DAI_ASSET) $(GEIST_DAI_ATOKEN) $(GEIST_REWARDS_DISTRIBUTION) $(GEIST_LENDINGPOOL) $(GEIST_REWARD_TOKEN) $(MANAGER) \
+				--private-key $(PRIVATE_KEY) src/geist/GeistERC4626Reinvest.sol:GeistERC4626Reinvest
+
+# GEIST-FTM-USDC
+deploy-geist-ftm-usdc :; forge create --rpc-url $(FTM_MAINNET_RPC) \
+				--constructor-args $(GEIST_USDC_ASSET) $(GEIST_USDC_ATOKEN) $(GEIST_REWARDS_DISTRIBUTION) $(GEIST_LENDINGPOOL) $(GEIST_REWARD_TOKEN) $(MANAGER) \
+				--private-key $(PRIVATE_KEY) src/geist/GeistERC4626Reinvest.sol:GeistERC4626Reinvest
+
+# GEIST-FTM-USDT
+deploy-geist-ftm-usdt :; forge create --rpc-url $(FTM_MAINNET_RPC) \
+				--constructor-args $(GEIST_USDT_ASSET) $(GEIST_USDT_ATOKEN) $(GEIST_REWARDS_DISTRIBUTION) $(GEIST_LENDINGPOOL) $(GEIST_REWARD_TOKEN) $(MANAGER) \
+				--private-key $(PRIVATE_KEY) src/geist/GeistERC4626Reinvest.sol:GeistERC4626Reinvest
+
+# GEIST-FTM-MIM
+deploy-geist-ftm-mim :; forge create --rpc-url $(FTM_MAINNET_RPC) \
+				--constructor-args $(GEIST_MIM_ASSET) $(GEIST_MIM_ATOKEN) $(GEIST_REWARDS_DISTRIBUTION) $(GEIST_LENDINGPOOL) $(GEIST_REWARD_TOKEN) $(MANAGER) \
+				--private-key $(PRIVATE_KEY) src/geist/GeistERC4626Reinvest.sol:GeistERC4626Reinvest
+
+# GEIST-FTM-WETH
+deploy-geist-ftm-weth :; forge create --rpc-url $(FTM_MAINNET_RPC) \
+				--constructor-args $(GEIST_WETH_ASSET) $(GEIST_WETH_ATOKEN) $(GEIST_REWARDS_DISTRIBUTION) $(GEIST_LENDINGPOOL) $(GEIST_REWARD_TOKEN) $(MANAGER) \
+				--private-key $(PRIVATE_KEY) src/geist/GeistERC4626Reinvest.sol:GeistERC4626Reinvest
+
+# GEIST-FTM-WFTM
+deploy-geist-ftm-wftm :; forge create --rpc-url $(FTM_MAINNET_RPC) \
+				--constructor-args $(GEIST_FTM_ASSET) $(GEIST_FTM_ATOKEN) $(GEIST_REWARDS_DISTRIBUTION) $(GEIST_LENDINGPOOL) $(GEIST_REWARD_TOKEN) $(MANAGER) \
+				--private-key $(PRIVATE_KEY) src/geist/GeistERC4626Reinvest.sol:GeistERC4626Reinvest
+
+# GEIST-FTM-CRV
+deploy-geist-ftm-crv :; forge create --rpc-url $(FTM_MAINNET_RPC) \
+				--constructor-args $(GEIST_CRV_ASSET) $(GEIST_CRV_ATOKEN) $(GEIST_REWARDS_DISTRIBUTION) $(GEIST_LENDINGPOOL) $(GEIST_REWARD_TOKEN) $(MANAGER) \
+				--private-key $(PRIVATE_KEY) src/geist/GeistERC4626Reinvest.sol:GeistERC4626Reinvest
+
+# GEIST-FTM-WBTC
+deploy-geist-ftm-wbtc :; forge create --rpc-url $(FTM_MAINNET_RPC) \
+				--constructor-args $(GEIST_WBTC_ASSET) $(GEIST_WBTC_ATOKEN) $(GEIST_REWARDS_DISTRIBUTION) $(GEIST_LENDINGPOOL) $(GEIST_REWARD_TOKEN) $(MANAGER) \
+				--private-key $(PRIVATE_KEY) src/geist/GeistERC4626Reinvest.sol:GeistERC4626Reinvest
