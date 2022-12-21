@@ -141,7 +141,7 @@ deploy-aave2-avax-wavax :; forge create --rpc-url $(AVAX_MAINNET_RPC) \
 
 # BENQI-AVAX-USDC
 deploy-benqi-usdc :; forge create --rpc-url $(AVAX_MAINNET_RPC) \
-				--constructor-args $(BENQI_USDC_ASSET) $(BENQI_REWARD_QI) $(BENQI_USDC_CTOKEN) $(MANAGER) \
+				--constructor-args $(BENQI_USDC_ASSET) $(BENQI_USDC_CTOKEN) $(BENQI_COMPTROLLER) $(MANAGER) \
 				--private-key $(PRIVATE_KEY) src/benqi/BenqiERC4626Reinvest.sol:BenqiERC4626Reinvest
 
 # BENQI-AVAX-WAVAX (native)
