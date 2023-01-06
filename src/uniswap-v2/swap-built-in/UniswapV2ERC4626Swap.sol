@@ -60,7 +60,6 @@ contract UniswapV2ERC4626Swap is ERC4626 {
             token1 = asset;
         }
 
-
         /// TODO: Approve management
         token0.approve(address(router), type(uint256).max);
         token1.approve(address(router), type(uint256).max);
@@ -87,11 +86,9 @@ contract UniswapV2ERC4626Swap is ERC4626 {
             address(this),
             block.timestamp + 100
         );
-
     }
 
-    function liquidityAdd() internal returns (uint256 li) {
-        (uint256 assets0, uint256 assets1) = getAssetBalance();
+    function liquidityAdd(uint256 assets0, uint256 assets1) internal returns (uint256 li) {
 
         /// temp implementation, we should call directly on a pair
         (, , li) = router.addLiquidity(
@@ -112,22 +109,22 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         override
         returns (uint256 shares)
     {
-        // uint firstShares = previewDeposit(getSlippage(assets));
-        // console.log("firstShares", firstShares);
+        /// @dev can be manipulated before making deposit() call
+        shares = previewDeposit(assets);
+
         /// 100% of tokenX/Y is transferred to this contract
         asset.safeTransferFrom(msg.sender, address(this), assets);
 
-        /// swap from 100% to ~50% of tokenX/Y 
+        /// swap from 100% to ~50% of tokenX/Y
         /// NOTE: Can be manipulated if caller manipulated reserves before deposit() call
-        uint256 diffAmount = swapJoin(assets); /// @dev we should compare against oracle here
-        
+        (uint256 a0, uint256 a1) = swapJoin(assets); /// NOTE: Secure swap by minAmountOut from Oracle
+
+        uint256 uniShares = liquidityAdd(a0, a1);
+
         /// @dev totalAssets holds sum of all UniLP,
         /// UniLP is non-rebasing, yield accrues on Uniswap pool (you can redeem more t0/t1 for same amount of LP)
         /// NOTE: If we want it as Strategy, e.g do something with this LP, then we need to calculate shares, 1:1 won't work
-        require((shares = liquidityAdd()) != 0, "ZERO_SHARES");
-        console.log("sharesLiq", shares);
-        console.log("sharesPreviw", previewDeposit(assets));
-        require((shares >= previewDeposit(assets)), "SHARES_AMOUNT_OUT"); /// @dev check shares output against oracle
+        require((uniShares >= shares), "SHARES_AMOUNT_OUT"); /// NOTE: reserve manipulation in context of LP seems not to lead to value loss for user?
 
         _mint(receiver, shares);
 
@@ -139,14 +136,17 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         override
         returns (uint256 assets)
     {
-        /// TODO To implement previewMint calculations
         assets = previewMint(shares);
 
         asset.safeTransferFrom(msg.sender, address(this), assets);
 
-        swapJoin(assets);
+        (uint256 a0, uint256 a1) = swapJoin(assets);
 
-        shares = liquidityAdd();
+        /// TODO Same checks as in deposit
+        shares = liquidityAdd(a0, a1);
+        // console.log("uniShares", uniShares);
+        // console.log("shares", shares);
+        // require((uniShares >= shares), "SHARES_AMOUNT_OUT");
 
         _mint(receiver, shares);
 
@@ -261,9 +261,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         override
         returns (uint256 shares)
     {
-        shares = getSharesFromAssets(assets);
-        uint fees = getSlippage(shares);
-        return shares - fees;
+        return getSharesFromAssets(assets);
     }
 
     /// @notice TODO: Currently unused, only to simulate value. Adding slipage makes this usefull.
@@ -313,55 +311,46 @@ contract UniswapV2ERC4626Swap is ERC4626 {
 
     /// @notice directional swap from asset to opposite token (asset != tokenX) TODO: consolidate Join/Exit
     /// calculates optimal (for current block) amount of token0/token1 to deposit to Uni Pool and splits provided assets according to formula
-    function swapJoin(uint256 assets) internal returns (uint256 amount) {
+    function swapJoin(uint256 assets)
+        internal
+        returns (uint256 amount0, uint256 amount1)
+    {
         uint256 reserve = _getReserves();
-
         /// NOTE:
         /// resA if asset == token0
         /// resB if asset == token1
-        amount = UniswapV2Library.getSwapAmount(reserve, assets);
+        uint256 amountToSwap = UniswapV2Library.getSwapAmount(reserve, assets);
 
-        /// amount + assets = full amount of assets to deposit to Uni Pool
-
-        _swap(amount, true);
+        (address fromToken, address toToken) = _getJoinToken();
+        /// NOTE: amount0 == amount of token other than asset to deposit
+        amount1 = DexSwap.swap(
+            /// amt to swap
+            amountToSwap,
+            /// from asset
+            fromToken,
+            /// to asset
+            toToken,
+            /// pair address
+            address(pair)
+        );
+        /// NOTE: amount1 == amount of underlying asset after swap to required asset
+        amount0 = assets - amountToSwap;
     }
 
     /// @notice directional swap from asset to opposite token (asset != tokenX) TODO: consolidate Join/Exit
-    /// exit is in opposite direction to Join but we don't need to calculate splitting, just swap provided assets, check happen in withdraw/redeem
-    function swapExit(uint256 assets) internal returns (uint256) {
-        return _swap(assets, false);
-    }
-
-    /// @notice low level swap to either get tokenY opposite to asset (tokenX) or to get asset (tokenX) from removed liquidity tokenY
-    function _swap(uint256 amount, bool join)
-        internal
-        returns (uint256 amounts)
-    {
-        if (join) {
-            (address fromToken, address toToken) = _getJoinToken();
-            amounts = DexSwap.swap(
-                /// amt to swap
-                amount,
-                /// from asset
-                fromToken,
-                /// to asset
-                toToken,
-                /// pair address
-                address(pair)
-            );
-        } else {
-            (address fromToken, address toToken) = _getExitToken();
-            amounts = DexSwap.swap(
-                /// amt to swap
-                amount,
-                /// from asset
-                fromToken,
-                /// to asset
-                toToken,
-                /// pair address
-                address(pair)
-            );
-        }
+    /// exit is in opposite direction to Join but we don't need to calculate splitting, just swap provided assets, check happens in withdraw/redeem
+    function swapExit(uint256 assets) internal returns (uint256 amounts) {
+        (address fromToken, address toToken) = _getExitToken();
+        amounts = DexSwap.swap(
+            /// amt to swap
+            assets,
+            /// from asset
+            fromToken,
+            /// to asset
+            toToken,
+            /// pair address
+            address(pair)
+        );
     }
 
     /// @notice Sort function for this Vault Uniswap pair exit operation
@@ -453,7 +442,6 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         view
         returns (uint256 poolLpAmount)
     {
-
         (uint256 assets0, uint256 assets1) = getSplitAssetAmounts(assets);
 
         poolLpAmount = getLiquidityAmountOutFor(assets0, assets1);
@@ -504,18 +492,15 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         return prices;
     }
 
-    function getSafeExchangeRate(uint256 v2amount) public view returns (uint256 diff) {
-    }
+    function getSafeExchangeRate(uint256 v2amount)
+        public
+        view
+        returns (uint256 diff)
+    {}
 
     ////////////////////////////////////////////////////////////////////////////
     /////////////////////////// SLIPPAGE MGMT //////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
-
-    // function setSlippage(uint256 amount) external {
-    //     require(msg.sender == manager, "owner");
-    //     require(amount < 10000 && amount > 9000); /// 10% max slippage
-    //     slippage = amount;
-    // }
 
     /// NOTE: Unwanted behavior of double counting fee because of the twap implementation
     function getSlippage(uint256 amount) internal view returns (uint256) {
