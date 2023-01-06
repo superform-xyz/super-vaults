@@ -25,7 +25,8 @@ contract UniswapV2ERC4626Swap is ERC4626 {
 
     address public immutable manager;
 
-    uint256 public fee;
+    /// NOTE: Hardcoded workaround for slippage on liquidityAdd/liquidityRemove - 0.4% (4000/1000000)
+    uint256 public fee = 4000;
     uint256 public immutable slippageFloat = 1000000;
 
     IUniswapV2Pair public immutable pair;
@@ -81,8 +82,8 @@ contract UniswapV2ERC4626Swap is ERC4626 {
             address(token0),
             address(token1),
             shares,
-            assets0 - getSlippage(assets0),
-            assets1 - getSlippage(assets1),
+            assets0 - getSlippage(assets0), /// NOTE: This offers no protection. whole amt needs to verified by external oracle
+            assets1 - getSlippage(assets1), /// NOTE: This offers no protection. whole amt needs to verified by external oracle
             address(this),
             block.timestamp + 100
         );
@@ -96,8 +97,8 @@ contract UniswapV2ERC4626Swap is ERC4626 {
             address(token1),
             assets0,
             assets1,
-            assets0 - getSlippage(assets0),
-            assets1 - getSlippage(assets1),
+            assets0 - getSlippage(assets0), /// NOTE: This offers no protection. whole amt needs to verified by external oracle
+            assets1 - getSlippage(assets1), /// NOTE: This offers no protection. whole amt needs to verified by external oracle
             address(this),
             block.timestamp + 100
         );
@@ -119,6 +120,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         /// NOTE: Can be manipulated if caller manipulated reserves before deposit() call
         (uint256 a0, uint256 a1) = swapJoin(assets); /// NOTE: Secure swap by minAmountOut from Oracle
 
+        /// NOTE: Pool reserve could be manipulated
         uint256 uniShares = liquidityAdd(a0, a1);
 
         /// @dev totalAssets holds sum of all UniLP,
@@ -126,6 +128,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         /// NOTE: If we want it as Strategy, e.g do something with this LP, then we need to calculate shares, 1:1 won't work
         require((uniShares >= shares), "SHARES_AMOUNT_OUT"); /// NOTE: reserve manipulation in context of LP seems not to lead to value loss for user?
 
+        /// NOTE: Users may be leaving some shares unasigned on Vault balance
         _mint(receiver, shares);
 
         emit Deposit(msg.sender, receiver, assets, shares);
@@ -143,10 +146,12 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         (uint256 a0, uint256 a1) = swapJoin(assets);
 
         /// TODO Same checks as in deposit
-        shares = liquidityAdd(a0, a1);
-        // console.log("uniShares", uniShares);
-        // console.log("shares", shares);
-        // require((uniShares >= shares), "SHARES_AMOUNT_OUT");
+        uint256 uniShares = liquidityAdd(a0, a1);
+        console.log("uniShares", uniShares);
+        console.log("shares", shares);
+
+        /// NOTE: PreviewMint needs to output reasonable 
+        require((uniShares >= shares), "SHARES_AMOUNT_OUT");
 
         _mint(receiver, shares);
 
@@ -233,27 +238,6 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         return pair.balanceOf(address(this));
     }
 
-    /// @notice calculate value of shares of this vault as the sum of t0/t1 of UniV2 pair simulated as t0 or t1 total amount after swap
-    /// NOTE: This is vulnerable to manipulation of getReserves! TODO: Add on-chain oracle checks
-    function virtualAssets(uint256 shares)
-        public
-        view
-        returns (uint256 assets)
-    {
-        (uint256 a0, uint256 a1) = getAssetsAmounts(shares);
-
-        if (a1 == 0 || a0 == 0) return 0;
-
-        (uint256 resA, uint256 resB) = UniswapV2Library.getReserves(
-            address(pair),
-            address(token0),
-            address(token1)
-        );
-
-        // NOTE: VULNERABLE!
-        return a0 + UniswapV2Library.getAmountOut(a1, resB, resA);
-    }
-
     /// @notice for this many DAI (assets) we get this many shares
     function previewDeposit(uint256 assets)
         public
@@ -264,14 +248,15 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         return getSharesFromAssets(assets);
     }
 
-    /// @notice TODO: Currently unused, only to simulate value. Adding slipage makes this usefull.
+    /// @notice for this many shares/uniLp we need to pay at least this many assets
     function previewMint(uint256 shares)
         public
         view
         override
         returns (uint256 assets)
     {
-        assets = virtualAssets(shares);
+        /// NOTE: Ensure this covers liquidity requested for a block!
+        assets = mintAssets(shares);
     }
 
     /// we need only assets umount up to the 50% LP amount
@@ -291,8 +276,9 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         view
         override
         returns (uint256 assets)
-    {
-        return convertToAssets(shares);
+    {   
+        /// NOTE: FIX THIS: Because we add slipage for mint() here it means extra funds to redeemer, needs separate virtualAssets() than mint()
+        return redeemAssets(shares);
     }
 
     /// I am burning SHARES, how much of (virtual) ASSETS (tokenX) do I get (in sum of both tokens)
@@ -302,7 +288,62 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         override
         returns (uint256 assets)
     {
-        assets = virtualAssets(shares);
+        assets = redeemAssets(shares);
+    }
+
+    /// @notice calculate value of shares of this vault as the sum of t0/t1 of UniV2 pair simulated as t0 or t1 total amount after swap
+    /// NOTE: This is vulnerable to manipulation of getReserves! TODO: Add on-chain oracle checks
+    function mintAssets(uint256 shares)
+        public
+        view
+        returns (uint256 assets)
+    {
+        /// NOTE: a0 doesn't include fees
+        (uint256 a0, uint256 a1) = getAssetsAmounts(shares);
+
+        if (a1 == 0 || a0 == 0) return 0;
+
+        (uint256 resA, uint256 resB) = UniswapV2Library.getReserves(
+            address(pair),
+            address(token0),
+            address(token1)
+        );
+
+        // NOTE: VULNERABLE!
+        return a0 + UniswapV2Library.getAmountOut(a1, resB, resA);
+    }
+
+    /// @notice separate from mintAssets virtual assets calculation from shares, but with omitted slippage to stop overwithdraw from Vault's balance
+    function redeemAssets(uint256 shares)
+        public
+        view
+        returns (uint256 assets)
+    {
+        
+        /// get xy=k here, where x=ra0,y=ra1
+        (uint256 reserveA, uint256 reserveB) = UniswapV2Library.getReserves(
+            address(pair),
+            address(token0),
+            address(token1)
+        );
+
+        /// shares of uni pair contract
+        uint256 pairSupply = pair.totalSupply();
+        /// amount of token0 to provide to receive poolLpAmount
+        uint256 a0 = (reserveA * shares) / pairSupply;
+        /// amount of token1 to provide to receive poolLpAmount
+        uint256 a1 = (reserveB * shares) / pairSupply;
+
+        if (a1 == 0 || a0 == 0) return 0;
+
+        (uint256 resA, uint256 resB) = UniswapV2Library.getReserves(
+            address(pair),
+            address(token0),
+            address(token1)
+        );
+
+        // NOTE: VULNERABLE!
+        return a0 + UniswapV2Library.getAmountOut(a1, resB, resA);
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -322,7 +363,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         uint256 amountToSwap = UniswapV2Library.getSwapAmount(reserve, assets);
 
         (address fromToken, address toToken) = _getJoinToken();
-        /// NOTE: amount0 == amount of token other than asset to deposit
+        /// NOTE: amount1 == amount of token other than asset to deposit
         amount1 = DexSwap.swap(
             /// amt to swap
             amountToSwap,
@@ -333,7 +374,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
             /// pair address
             address(pair)
         );
-        /// NOTE: amount1 == amount of underlying asset after swap to required asset
+        /// NOTE: amount0 == amount of underlying asset after swap to required asset
         amount0 = assets - amountToSwap;
     }
 
@@ -392,7 +433,6 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         }
     }
 
-    /// @notice transfer assets from this contract balance to the pair contract TODO: security review, used in deposit
     function getAssetBalance() internal view returns (uint256 a0, uint256 a1) {
         a0 = token0.balanceOf(address(this));
         a1 = token1.balanceOf(address(this));
@@ -412,10 +452,16 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         );
         /// shares of uni pair contract
         uint256 pairSupply = pair.totalSupply();
+
         /// amount of token0 to provide to receive poolLpAmount
-        assets0 = (reserveA * poolLpAmount) / pairSupply;
+        uint256 assets0_ = (reserveA * poolLpAmount) / pairSupply;
+        assets0 = assets0_ + getSlippage(assets0_);
+        // console.log("assets0", assets0, "assets0_", assets0_);
+
         /// amount of token1 to provide to receive poolLpAmount
-        assets1 = (reserveB * poolLpAmount) / pairSupply;
+        uint256 assets1_ = (reserveB * poolLpAmount) / pairSupply;
+        assets1 = assets1_ + getSlippage(assets1_);
+        // console.log("assets1", assets1, "assets1_", assets1_);
     }
 
     function getLiquidityAmountOutFor(uint256 assets0, uint256 assets1)
