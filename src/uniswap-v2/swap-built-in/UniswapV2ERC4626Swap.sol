@@ -10,6 +10,8 @@ import {IUniswapV2Pair} from "../interfaces/IUniswapV2Pair.sol";
 import {IUniswapV2Router} from "../interfaces/IUniswapV2Router.sol";
 import {UniswapV2Library} from "../utils/UniswapV2Library.sol";
 
+import {IUniswapV3Pool} from "../interfaces/IUniswapV3.sol";
+
 import {DexSwap} from "../utils/swapUtils.sol";
 
 import "forge-std/console.sol";
@@ -23,11 +25,12 @@ contract UniswapV2ERC4626Swap is ERC4626 {
 
     address public immutable manager;
 
-    uint256 public slippage;
-    uint256 public immutable slippageFloat = 10000;
+    uint256 public fee;
+    uint256 public immutable slippageFloat = 1000000;
 
     IUniswapV2Pair public immutable pair;
     IUniswapV2Router public immutable router;
+    IUniswapV3Pool public immutable oracle;
 
     ERC20 public token0;
     ERC20 public token1;
@@ -38,12 +41,13 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         string memory symbol_,
         IUniswapV2Router router_,
         IUniswapV2Pair pair_,
-        uint256 slippage_
+        IUniswapV3Pool oracle_
     ) ERC4626(asset_, name_, symbol_) {
         manager = msg.sender;
 
         pair = pair_;
         router = router_;
+        oracle = oracle_;
 
         address token0_ = pair.token0();
         address token1_ = pair.token1();
@@ -56,7 +60,6 @@ contract UniswapV2ERC4626Swap is ERC4626 {
             token1 = asset;
         }
 
-        slippage = slippage_;
 
         /// TODO: Approve management
         token0.approve(address(router), type(uint256).max);
@@ -109,14 +112,22 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         override
         returns (uint256 shares)
     {
+        // uint firstShares = previewDeposit(getSlippage(assets));
+        // console.log("firstShares", firstShares);
+        /// 100% of tokenX/Y is transferred to this contract
         asset.safeTransferFrom(msg.sender, address(this), assets);
 
-        swapJoin(assets);
-
+        /// swap from 100% to ~50% of tokenX/Y 
+        /// NOTE: Can be manipulated if caller manipulated reserves before deposit() call
+        uint256 diffAmount = swapJoin(assets); /// @dev we should compare against oracle here
+        
         /// @dev totalAssets holds sum of all UniLP,
         /// UniLP is non-rebasing, yield accrues on Uniswap pool (you can redeem more t0/t1 for same amount of LP)
         /// NOTE: If we want it as Strategy, e.g do something with this LP, then we need to calculate shares, 1:1 won't work
         require((shares = liquidityAdd()) != 0, "ZERO_SHARES");
+        console.log("sharesLiq", shares);
+        console.log("sharesPreviw", previewDeposit(assets));
+        require((shares >= previewDeposit(assets)), "SHARES_AMOUNT_OUT"); /// @dev check shares output against oracle
 
         _mint(receiver, shares);
 
@@ -219,10 +230,6 @@ contract UniswapV2ERC4626Swap is ERC4626 {
 
     /// @notice totalAssets virtualAssets should grow with fees accrued to lp tokens held by this vault
     function totalAssets() public view override returns (uint256) {
-        return pairBalance();
-    }
-
-    function pairBalance() public view returns (uint256) {
         return pair.balanceOf(address(this));
     }
 
@@ -254,11 +261,9 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         override
         returns (uint256 shares)
     {
-        uint256 reserve = _getReserves();
-
-        uint256 swapAmt = UniswapV2Library.getSwapAmount(reserve, assets);
-
-        shares = getLiquidityAmountOutFor(assets, swapAmt);
+        shares = getSharesFromAssets(assets);
+        uint fees = getSlippage(shares);
+        return shares - fees;
     }
 
     /// @notice TODO: Currently unused, only to simulate value. Adding slipage makes this usefull.
@@ -315,6 +320,8 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         /// resA if asset == token0
         /// resB if asset == token1
         amount = UniswapV2Library.getSwapAmount(reserve, assets);
+
+        /// amount + assets = full amount of assets to deposit to Uni Pool
 
         _swap(amount, true);
     }
@@ -470,7 +477,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         );
 
         if (token0 == asset) {
-            uint256 resultOfSwap = UniswapV2Library.quote(
+            uint256 resultOfSwap = UniswapV2Library.getAmountOut(
                 toSwapForUnderlying,
                 resA,
                 resB
@@ -479,7 +486,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
             assets0 = toSwapForUnderlying;
             assets1 = resultOfSwap;
         } else {
-            uint256 resultOfSwap = UniswapV2Library.quote(
+            uint256 resultOfSwap = UniswapV2Library.getAmountOut(
                 toSwapForUnderlying,
                 resB,
                 resA
@@ -490,18 +497,29 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         }
     }
 
+    function getOraclePrice() public view returns (int56[] memory) {
+        uint32[] memory secondsAgo = new uint32[](1);
+        secondsAgo[0] = 1;
+        (int56[] memory prices, ) = oracle.observe(secondsAgo);
+        return prices;
+    }
+
+    function getSafeExchangeRate(uint256 v2amount) public view returns (uint256 diff) {
+    }
+
     ////////////////////////////////////////////////////////////////////////////
     /////////////////////////// SLIPPAGE MGMT //////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
 
-    function setSlippage(uint256 amount) external {
-        require(msg.sender == manager, "owner");
-        require(amount < 10000 && amount > 9000); /// 10% max slippage
-        slippage = amount;
-    }
+    // function setSlippage(uint256 amount) external {
+    //     require(msg.sender == manager, "owner");
+    //     require(amount < 10000 && amount > 9000); /// 10% max slippage
+    //     slippage = amount;
+    // }
 
+    /// NOTE: Unwanted behavior of double counting fee because of the twap implementation
     function getSlippage(uint256 amount) internal view returns (uint256) {
-        return (amount * slippage) / slippageFloat;
+        return (amount * fee) / slippageFloat;
     }
 
     function min(uint256 x, uint256 y) internal pure returns (uint256 z) {
