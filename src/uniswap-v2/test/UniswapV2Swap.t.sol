@@ -100,12 +100,15 @@ contract UniswapV2TestSwap is Test {
         asset.approve(address(vault), amount);
 
         uint256 aliceShareAmount = vault.deposit(amount, alice);
-        uint256 previewWithdraw = vault.previewWithdraw(amountAdjusted);
+        uint256 aliceShareBalance = vault.balanceOf(alice);
+        uint256 aliceAssetsToWithdraw = vault.previewRedeem(aliceShareAmount);
+        uint256 previewWithdraw = vault.previewWithdraw(aliceAssetsToWithdraw);
 
         console.log("aliceShareAmount", aliceShareAmount);
-        console.log(previewWithdraw, " shares to burn for ", amountAdjusted, " assets");
+        console.log("aliceShareBalance", aliceShareBalance);
+        console.log(previewWithdraw, "shares to burn for", aliceAssetsToWithdraw, "assets");
 
-        uint256 sharesBurned = vault.withdraw(amountAdjusted, alice, alice);
+        uint256 sharesBurned = vault.withdraw(aliceAssetsToWithdraw, alice, alice);
 
         console.log("aliceSharesBurned", sharesBurned);
     }
@@ -151,11 +154,19 @@ contract UniswapV2TestSwap is Test {
     }
 
     function testMintRedeem() public {
+        /// NOTE:   uniShares          44367471942413
+        /// we "overmint" shares to avoid revert, all is returned to the user
+        /// previewMint() returns a correct amount of assets required to be approved to receive this
+        /// as MINIMAL amount of shares. where function differs is that if user was to run calculations
+        /// himself, directly against UniswapV2 Pair, calculations would output smaller number of assets
+        /// required for that amountOfSharesToMint, that is because UniV2 Pair doesn't need to swapJoin()
         uint256 amountOfSharesToMint = 44323816369031;
 
         vm.startPrank(alice);
 
+        /// NOTE: In case of this ERC4626 adapter, its highly advisable to ALWAYS call previewMint() before mint()
         uint256 assetsToApprove = vault.previewMint(amountOfSharesToMint);
+        console.log("aliceAssetsToApprove", assetsToApprove);
 
         asset.approve(address(vault), assetsToApprove);
 
@@ -169,9 +180,14 @@ contract UniswapV2TestSwap is Test {
         /// @dev not used for redemption
         uint256 alicePreviewRedeem = vault.previewWithdraw(aliceAssetsMinted);
         console.log("alicePreviewRedeem", alicePreviewRedeem);
-        
-        uint256 sharesBurned = vault.redeem(vault.balanceOf(alice), alice, alice);
+        //   aliceBalanceOfShares 44367471942413
+        //   alicePreviewRedeem   44367200251203
+        // alice has more shares than previewRedeem asks for to get assetsMinted
+        uint256 sharesBurned = vault.redeem(alicePreviewRedeem, alice, alice);
         console.log("sharesBurned", sharesBurned);
+
+        aliceBalanceOfShares = vault.balanceOf(alice);
+        console.log("aliceBalanceOfShares2", aliceBalanceOfShares);
     }
 
 }

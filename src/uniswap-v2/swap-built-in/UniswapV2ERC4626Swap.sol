@@ -25,7 +25,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
 
     address public immutable manager;
 
-    /// NOTE: Hardcoded workaround for slippage on liquidityAdd/liquidityRemove - 0.4% (4000/1000000)
+    /// NOTE: Hardcoded workaround to ensure execution within changing pair reserves - 0.4% (4000/1000000)
     uint256 public fee = 4000;
     uint256 public immutable slippageFloat = 1000000;
 
@@ -89,8 +89,10 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         );
     }
 
-    function liquidityAdd(uint256 assets0, uint256 assets1) internal returns (uint256 li) {
-
+    function liquidityAdd(uint256 assets0, uint256 assets1)
+        internal
+        returns (uint256 li)
+    {
         /// temp implementation, we should call directly on a pair
         (, , li) = router.addLiquidity(
             address(token0),
@@ -121,6 +123,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         (uint256 a0, uint256 a1) = swapJoin(assets); /// NOTE: Secure swap by minAmountOut from Oracle
 
         /// NOTE: Pool reserve could be manipulated
+        /// @dev What severity? It seems that attacker wouldn't gain anything because we operate on 1:1 uniShares : shares
         uint256 uniShares = liquidityAdd(a0, a1);
 
         /// @dev totalAssets holds sum of all UniLP,
@@ -150,10 +153,10 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         console.log("uniShares", uniShares);
         console.log("shares", shares);
 
-        /// NOTE: PreviewMint needs to output reasonable 
+        /// NOTE: PreviewMint needs to output reasonable
         require((uniShares >= shares), "SHARES_AMOUNT_OUT");
 
-        _mint(receiver, shares);
+        _mint(receiver, uniShares);
 
         emit Deposit(msg.sender, receiver, assets, shares);
     }
@@ -164,9 +167,6 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         address receiver,
         address owner
     ) public override returns (uint256 shares) {
-        /// how many shares of this wrapper LP we need to burn to get this amount of token0 assets
-        /// If user joined with 100 DAI, he owns a claim to 50token0/50token1
-        /// this will output required shares to burn for only token0
         shares = previewWithdraw(assets);
 
         if (msg.sender != owner) {
@@ -188,11 +188,6 @@ contract UniswapV2ERC4626Swap is ERC4626 {
             : swapExit(assets0) + assets1;
 
         asset.safeTransfer(receiver, amount);
-
-        /// NOTE: User "virtually" redeemed a value of assets, as two tokens equal to the virtual assets value
-        /// NOTE: Add function for that variant of withdraw
-        // token0.safeTransfer(receiver, assets0);
-        // token1.safeTransfer(receiver, assets1);
     }
 
     function redeem(
@@ -222,11 +217,6 @@ contract UniswapV2ERC4626Swap is ERC4626 {
             : swapExit(assets0) + assets1;
 
         asset.safeTransfer(receiver, amount);
-
-        /// NOTE: User "virtually" redeemed a value of assets, as two tokens equal to the virtual assets value
-        /// NOTE: Add function for that variant of withdraw
-        // token0.safeTransfer(receiver, assets0);
-        // token1.safeTransfer(receiver, assets1);
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -249,6 +239,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
     }
 
     /// @notice for this many shares/uniLp we need to pay at least this many assets
+    /// @dev adds slippage for overapproval to cover eventual reserve fluctuation, value is returned to user in full
     function previewMint(uint256 shares)
         public
         view
@@ -276,8 +267,8 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         view
         override
         returns (uint256 assets)
-    {   
-        /// NOTE: FIX THIS: Because we add slipage for mint() here it means extra funds to redeemer, needs separate virtualAssets() than mint()
+    {
+        /// NOTE: Because we add slipage for mint() here it means extra funds to redeemer, needs separate virtualAssets() than mint()
         return redeemAssets(shares);
     }
 
@@ -293,13 +284,24 @@ contract UniswapV2ERC4626Swap is ERC4626 {
 
     /// @notice calculate value of shares of this vault as the sum of t0/t1 of UniV2 pair simulated as t0 or t1 total amount after swap
     /// NOTE: This is vulnerable to manipulation of getReserves! TODO: Add on-chain oracle checks
-    function mintAssets(uint256 shares)
-        public
-        view
-        returns (uint256 assets)
-    {
-        /// NOTE: a0 doesn't include fees
-        (uint256 a0, uint256 a1) = getAssetsAmounts(shares);
+    function mintAssets(uint256 shares) public view returns (uint256 assets) {
+        (uint256 reserveA, uint256 reserveB) = UniswapV2Library.getReserves(
+            address(pair),
+            address(token0),
+            address(token1)
+        );
+        /// shares of uni pair contract
+        uint256 pairSupply = pair.totalSupply();
+
+        /// amount of token0 to provide to receive poolLpAmount
+        uint256 assets0_ = (reserveA * shares) / pairSupply;
+        uint256 a0 = assets0_ + getSlippage(assets0_);
+        // console.log("assets0", assets0, "assets0_", assets0_);
+
+        /// amount of token1 to provide to receive poolLpAmount
+        uint256 assets1_ = (reserveB * shares) / pairSupply;
+        uint256 a1 = assets1_ + getSlippage(assets1_);
+        // console.log("assets1", assets1, "assets1_", assets1_);
 
         if (a1 == 0 || a0 == 0) return 0;
 
@@ -314,12 +316,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
     }
 
     /// @notice separate from mintAssets virtual assets calculation from shares, but with omitted slippage to stop overwithdraw from Vault's balance
-    function redeemAssets(uint256 shares)
-        public
-        view
-        returns (uint256 assets)
-    {
-        
+    function redeemAssets(uint256 shares) public view returns (uint256 assets) {
         /// get xy=k here, where x=ra0,y=ra1
         (uint256 reserveA, uint256 reserveB) = UniswapV2Library.getReserves(
             address(pair),
@@ -454,32 +451,10 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         uint256 pairSupply = pair.totalSupply();
 
         /// amount of token0 to provide to receive poolLpAmount
-        uint256 assets0_ = (reserveA * poolLpAmount) / pairSupply;
-        assets0 = assets0_ + getSlippage(assets0_);
-        // console.log("assets0", assets0, "assets0_", assets0_);
+        assets0 = (reserveA * poolLpAmount) / pairSupply;
 
         /// amount of token1 to provide to receive poolLpAmount
-        uint256 assets1_ = (reserveB * poolLpAmount) / pairSupply;
-        assets1 = assets1_ + getSlippage(assets1_);
-        // console.log("assets1", assets1, "assets1_", assets1_);
-    }
-
-    function getLiquidityAmountOutFor(uint256 assets0, uint256 assets1)
-        public
-        view
-        returns (uint256 poolLpAmount)
-    {
-        uint256 pairSupply = pair.totalSupply();
-
-        (uint256 reserveA, uint256 reserveB) = UniswapV2Library.getReserves(
-            address(pair),
-            address(token0),
-            address(token1)
-        );
-        poolLpAmount = min(
-            ((assets0 * pairSupply) / reserveA),
-            (assets1 * pairSupply) / reserveB
-        );
+        assets1 = (reserveB * poolLpAmount) / pairSupply;
     }
 
     /// @notice Take amount of token0 > split to token0/token1 amounts > calculate how much shares to burn
@@ -529,6 +504,24 @@ contract UniswapV2ERC4626Swap is ERC4626 {
             assets0 = resultOfSwap;
             assets1 = toSwapForUnderlying;
         }
+    }
+
+    function getLiquidityAmountOutFor(uint256 assets0, uint256 assets1)
+        public
+        view
+        returns (uint256 poolLpAmount)
+    {
+        uint256 pairSupply = pair.totalSupply();
+
+        (uint256 reserveA, uint256 reserveB) = UniswapV2Library.getReserves(
+            address(pair),
+            address(token0),
+            address(token1)
+        );
+        poolLpAmount = min(
+            ((assets0 * pairSupply) / reserveA),
+            (assets1 * pairSupply) / reserveB
+        );
     }
 
     function getOraclePrice() public view returns (int56[] memory) {
