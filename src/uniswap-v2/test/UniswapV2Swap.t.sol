@@ -161,7 +161,7 @@ contract UniswapV2TestSwap is Test {
         /// himself, directly against UniswapV2 Pair, calculations would output smaller number of assets
         /// required for that amountOfSharesToMint, that is because UniV2 Pair doesn't need to swapJoin()
         uint256 amountOfSharesToMint = 44323816369031;
-
+        console.log("amountOfSharesToMint", amountOfSharesToMint);
         vm.startPrank(alice);
 
         /// NOTE: In case of this ERC4626 adapter, its highly advisable to ALWAYS call previewMint() before mint()
