@@ -17,6 +17,7 @@ fmt    :; forge fmt && forge fmt test/
 # General test
 test-aave :; forge test --match-contract Aave* -vvv
 test-compound :; forge test --match-contract CompoundV2* -vvv
+test-compound-v3 :; forge test --match-contract CompoundV3* -vvv
 test-steth :; forge test --match-contract stEth.*Test -vvv
 test-steth-swap :; forge test --match-contract stEthSwap.*Test -vvv
 test-stmatic :; forge test --match-contract stMatic.*Test -vvv
