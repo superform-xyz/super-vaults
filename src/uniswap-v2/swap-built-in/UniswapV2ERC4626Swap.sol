@@ -120,7 +120,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         (uint256 a0, uint256 a1) = swapJoinProtected(assets, minSwapOut);
 
         uint256 uniShares = liquidityAdd(a0, a1);
-
+        
         require(uniShares >= minSharesOut, "UniswapV2ERC4626Swap: minSharesOut");
 
         _mint(receiver, shares);
