@@ -106,14 +106,40 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         );
     }
 
+    /// @notice deposit function taking additional protection parameters for execution
+    function deposit(
+        uint256 assets,
+        address receiver,
+        uint256 minSharesOut, /// @dev calculated off-chain, "secure" deposit function. could be using tick-like calculations?
+        uint256 minSwapOut /// @dev calculated off-chain, "secure" deposit function. 
+    ) public returns (uint256 shares) {
+        require((shares = previewDeposit(assets)) >= minSharesOut, "UniswapV2ERC4626Swap: minSharesOut");
+
+        asset.safeTransferFrom(msg.sender, address(this), assets);
+
+        (uint256 a0, uint256 a1) = swapJoinProtected(assets, minSwapOut);
+
+        uint256 uniShares = liquidityAdd(a0, a1);
+
+        require(uniShares >= minSharesOut, "UniswapV2ERC4626Swap: minSharesOut");
+
+        _mint(receiver, shares);
+
+        emit Deposit(msg.sender, receiver, assets, shares);
+    }
+
     /// @notice receives tokenX of UniV2 pair and mints shares of this vault for deposited tokenX/Y into UniV2 pair
+    /// @dev unsecure deposit function, trusting external asset reserves
+    /// NOTE: At this point, what good does it to have strict ERC4626 deposit if its so prone to manipulation?
+    /// @notice Caller can calculate shares through previewDeposit and trust previewDeposit returned value to revert here
+    /// any minSharesOut check should be performed by the caller and his contract (TODO: Can we provide low/high bounds for shares?)
     function deposit(uint256 assets, address receiver)
         public
         override
         returns (uint256 shares)
     {
         /// @dev can be manipulated before making deposit() call
-        shares = previewDeposit(assets);
+        // shares = previewDeposit(assets);
 
         /// 100% of tokenX/Y is transferred to this contract
         asset.safeTransferFrom(msg.sender, address(this), assets);
@@ -129,10 +155,14 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         /// @dev totalAssets holds sum of all UniLP,
         /// UniLP is non-rebasing, yield accrues on Uniswap pool (you can redeem more t0/t1 for same amount of LP)
         /// NOTE: If we want it as Strategy, e.g do something with this LP, then we need to calculate shares, 1:1 won't work
-        require((uniShares >= shares), "SHARES_AMOUNT_OUT"); /// NOTE: reserve manipulation in context of LP seems not to lead to value loss for user?
+        /// NOTE: If we already trust previewDeposit, swapJoin is secured?
+        require((uniShares >= (shares = previewDeposit(assets))), "SHARES_AMOUNT_OUT"); /// NOTE: reserve manipulation in context of LP seems not to lead to value loss for user?
 
+        // (uint256 lowBound, uint256 highBound) = getAvgPriceBound();
+        // require((uniShares >= lowBound && uniShares <= highBound), "SHARES_AMOUNT_OUT");
+        
         /// NOTE: Users may be leaving some shares unasigned on Vault balance
-        _mint(receiver, shares);
+        _mint(receiver, uniShares);
 
         emit Deposit(msg.sender, receiver, assets, shares);
     }
@@ -346,6 +376,29 @@ contract UniswapV2ERC4626Swap is ERC4626 {
     ////////////////////////////////////////////////////////////////////////////
     /////////////////////////// UNISWAP CALLS //////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
+
+    function swapJoinProtected(uint256 assets, uint256 minAmountOut) internal returns (uint256 amount0, uint256 amount1) {
+        uint256 reserve = _getReserves();
+        /// NOTE:
+        /// resA if asset == token0
+        /// resB if asset == token1
+        uint256 amountToSwap = UniswapV2Library.getSwapAmount(reserve, assets);
+
+        (address fromToken, address toToken) = _getJoinToken();
+        /// NOTE: amount1 == amount of token other than asset to deposit
+        amount1 = DexSwap.swap(
+            /// amt to swap
+            amountToSwap,
+            /// from asset
+            fromToken,
+            /// to asset
+            toToken,
+            /// pair address
+            address(pair)
+        );
+        /// NOTE: amount0 == amount of underlying asset after swap to required asset
+        amount0 = assets - amountToSwap;        
+    }
 
     /// @notice directional swap from asset to opposite token (asset != tokenX) TODO: consolidate Join/Exit
     /// calculates optimal (for current block) amount of token0/token1 to deposit to Uni Pool and splits provided assets according to formula
