@@ -111,6 +111,11 @@ contract UniswapV2TestSwap is Test {
         uint256 sharesBurned = vault.withdraw(aliceAssetsToWithdraw, alice, alice);
 
         console.log("aliceSharesBurned", sharesBurned);
+        console.log("aliceShareBalance", vault.balanceOf(alice));
+
+        aliceAssetsToWithdraw = vault.previewRedeem(vault.balanceOf(alice));
+
+        console.log("assetsLeftover", aliceAssetsToWithdraw);
     }
 
     function testMultipleDepositWithdraw() public {
