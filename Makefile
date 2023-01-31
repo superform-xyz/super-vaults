@@ -1,7 +1,7 @@
 # include .env file and export its env vars
 # (-include to ignore error if it does not exist)
 -include .env
--include .addresses
+-include .address
 
 # deps
 install:; forge install
@@ -41,6 +41,10 @@ test-uniswapV2swap-withdraw :; forge test --match-contract UniswapV2TestSwap --m
 
 # Benqi-Staking tests
 test-benqi-staking :; forge test --match-contract BenqiERC4626StakingTest -vvv
+
+# KYCDao4626 tests
+test-kycdao :; forge test --match-contract kycDAO4626Test -vvv
+
 
 ####################
 ### BINANCE CHAIN ##
