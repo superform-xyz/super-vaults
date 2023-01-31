@@ -6,10 +6,10 @@ import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
-import {KYCDAO} from "./interfaces/IKycValidity.sol";
+import {IKycValidity} from "./interfaces/IKycValidity.sol";
 
 /// @notice NFT-gated ERC-4626 using KYCDAO
-/// @author ZeroPoint Labs
+/// @dev https://docs.kycdao.xyz/smartcontracts/evm/
 contract kycDAO4626 is ERC4626 {
 
     IKycValidity public kycValidity;
