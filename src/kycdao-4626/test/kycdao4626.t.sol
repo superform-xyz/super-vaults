@@ -91,12 +91,8 @@ contract kycDAO4626Test is Test {
         _wmatic.approve(address(vault), underlyingAmount);
         assertEq(_wmatic.allowance(alice, address(vault)), underlyingAmount);
 
-        uint256 expectedSharesFromAssets = vault.convertToShares(
-            underlyingAmount
-        );
-
         vm.expectRevert(kycDAO4626.NO_VALID_KYC_TOKEN.selector);
-        uint256 shareAmount = vault.deposit(underlyingAmount, alice);
+        vault.deposit(underlyingAmount, alice);
     }
 
     function testRevertMint() public {
@@ -109,6 +105,6 @@ contract kycDAO4626Test is Test {
         _wmatic.approve(address(vault), expectedAssetFromShares);
 
         vm.expectRevert(kycDAO4626.NO_VALID_KYC_TOKEN.selector);
-        uint256 assetAmount = vault.mint(sharesMint, alice);
+        vault.mint(sharesMint, alice);
     }
 }
