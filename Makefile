@@ -38,6 +38,7 @@ test-aaveV3-harvest :; forge test --match-contract AaveV3ERC4626ReinvestTest --m
 
 # Uniswap tests
 test-uniswapV2swap-withdraw :; forge test --match-contract UniswapV2TestSwap --match-test testDepositWithdraw -vvv
+test-uniswapV2swap-localhost :; forge test --match-contract UniswapV2TestSwapLocalHost -vvv
 
 # Benqi-Staking tests
 test-benqi-staking :; forge test --match-contract BenqiERC4626StakingTest -vvv
