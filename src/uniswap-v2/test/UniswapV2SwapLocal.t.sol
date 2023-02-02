@@ -51,8 +51,6 @@ contract UniswapV2TestSwapLocalHost is Test {
     address public bob;
     address public manager;
 
-    uint24 public fee = 3000; /// 0.3
-
     function setUp() public {
         weth = new WETH();
         token0 = new MockERC20("Test0", "TST0", 18);
@@ -75,12 +73,20 @@ contract UniswapV2TestSwapLocalHost is Test {
         address oracleFactory_ = deployCode(
             "src/uniswap-v2/build/UniswapV3Factory.json"
         );
+
         oracleFactory = IUniswapV3Factory(oracleFactory_);
 
-        /// @dev NOTE: Raise an issue with foundry, that may be library linking problem in UniV3Pair constructor
-        /// @dev Mocked only know (may remove oracle anyways)
-        // address oracle_ = deployCode("src/uniswap-v2/build/UniswapV3Pool.json");
-        oracle = IUniswapV3Pool(address(0x1337));
+        console.log("UniswapV2FactoryAddress", address(uniFactory));
+        console.log("UniswapV2Router02Address", address(uniRouter));
+
+        /// @dev NOTE: deployCode() does not work with UniswapV3Pool?
+        /// temp oracle is probably to be removed
+        address oracle_ = oracleFactory.createPool(
+            address(token0),
+            address(token1),
+            3000
+        );
+        oracle = IUniswapV3Pool(oracle_);
 
         pair = IUniswapV2Pair(
             uniFactory.createPair(address(token0), address(token1))
@@ -103,15 +109,13 @@ contract UniswapV2TestSwapLocalHost is Test {
         bob = address(0x2);
         manager = msg.sender;
 
-        // seedLiquidity();
+        deal(address(asset), alice, ONE_THOUSAND_E18 * 10);
+        deal(address(asset), bob, ONE_THOUSAND_E18 * 10);
+
+        seedLiquidity();
     }
 
-    function testGetAddresses() public {
-        console.log("UniswapV2FactoryAddress", address(uniFactory));
-        console.log("UniswapV2Router02Address", address(uniRouter));
-    }
-
-    function testSeedLiquidity() public {
+    function seedLiquidity() public {
         for (uint256 i = 0; i < 100; i++) {
             uint256 amount = 10000e18;
 
@@ -132,7 +136,7 @@ contract UniswapV2TestSwapLocalHost is Test {
             /// Each deposit will differ a little bit (TODO: better random)
             uint256 randPctg = i + (1 % 900);
             uint256 randAmount = (amount * randPctg) / 1000;
-            console.log("poolUser", poolUser, "randAmount", randAmount);
+            // console.log("poolUser", poolUser, "randAmount", randAmount);
 
             /// Big initial liquidity
             if (i == 0) {
@@ -156,127 +160,164 @@ contract UniswapV2TestSwapLocalHost is Test {
         }
     }
 
-    // function testFactoryDeploy() public {
-    //     vm.startPrank(manager);
+    function makeSomeSwaps() public {
+        for (uint256 i = 0; i < 100; i++) {
+            uint256 amount = 1000e18;
 
-    //     (
-    //         UniswapV2ERC4626Swap v0,
-    //         UniswapV2ERC4626Swap v1,
-    //         address oracle_
-    //     ) = factory.create(pair, fee);
+            /// @dev generate pseudo random address for 100 deposits into pool
+            address poolUser = address(
+                uint160(
+                    uint256(
+                        keccak256(abi.encodePacked(i, blockhash(block.number)))
+                    )
+                )
+            );
 
-    //     console.log("v0 name", v0.name(), "v0 symbol", v0.symbol());
-    //     console.log("v1 name", v1.name(), "v1 symbol", v1.symbol());
-    // }
+            vm.startPrank(poolUser);
 
-    // function testDepositWithdraw() public {
-    //     uint256 amount = 100 ether;
-    //     vm.startPrank(alice);
+            /// mint token0 and token1
+            token0.mint(poolUser, amount);
+            token1.mint(poolUser, amount);
 
-    //     asset.approve(address(vault), amount);
+            /// Each deposit will differ a little bit (TODO: better random)
+            uint256 randPctg = i + (1 % 900);
+            uint256 randAmount = (amount * randPctg) / 1000;
+            // console.log("poolUser", poolUser, "randAmount", randAmount);
 
-    //     uint256 aliceShareAmount = vault.deposit(amount, alice);
-    //     uint256 aliceShareBalance = vault.balanceOf(alice);
-    //     uint256 aliceAssetsToWithdraw = vault.previewRedeem(aliceShareAmount);
-    //     uint256 previewWithdraw = vault.previewWithdraw(aliceAssetsToWithdraw);
+            /// Big initial liquidity
+            if (i == 0) {
+                randAmount = amount;
+            }
 
-    //     console.log("aliceShareAmount", aliceShareAmount);
-    //     console.log("aliceShareBalance", aliceShareBalance);
-    //     console.log(
-    //         previewWithdraw,
-    //         "shares to burn for",
-    //         aliceAssetsToWithdraw,
-    //         "assets"
-    //     );
+            /// add liquidity to pair
+            token0.approve(address(uniRouter), randAmount);
+            token1.approve(address(uniRouter), randAmount);
 
-    //     uint256 sharesBurned = vault.withdraw(
-    //         aliceAssetsToWithdraw,
-    //         alice,
-    //         alice
-    //     );
+            /// swap tokens
 
-    //     console.log("aliceSharesBurned", sharesBurned);
-    //     console.log("aliceShareBalance", vault.balanceOf(alice));
+            address[] memory path = new address[](2);
+            path[0] = address(token0);
+            path[1] = address(token1);
 
-    //     aliceAssetsToWithdraw = vault.previewRedeem(vault.balanceOf(alice));
+            uniRouter.swapExactTokensForTokens(
+                randAmount,
+                1,
+                path,
+                poolUser,
+                block.timestamp
+            );
 
-    //     console.log("assetsLeftover", aliceAssetsToWithdraw);
-    // }
+            vm.stopPrank();
+        }
+    }
 
-    // function testMultipleDepositWithdraw() public {
-    //     uint256 amount = 100 ether;
-    //     uint256 amountAdjusted = 95 ether;
+    function testDepositWithdrawSimulation() public {
+        uint256 amount = 100 ether;
+        vm.startPrank(alice);
 
-    //     /// Step 1: Alice deposits 100 tokens, no withdraw
-    //     vm.startPrank(alice);
-    //     asset.approve(address(vault), amount);
-    //     uint256 aliceShareAmount = vault.deposit(amount, alice);
-    //     console.log("aliceShareAmount", aliceShareAmount);
-    //     vm.stopPrank();
+        asset.approve(address(vault), amount);
 
-    //     /// Step 2: Bob deposits 100 tokens, no withdraw
-    //     vm.startPrank(bob);
-    //     asset.approve(address(vault), amount);
-    //     uint256 bobShareAmount = vault.deposit(amount, bob);
-    //     console.log("bobShareAmount", bobShareAmount);
-    //     vm.stopPrank();
+        /// @dev Get values before deposit
+        uint256 startBalance = asset.balanceOf(alice);
+        /// for Y assets we get X shares
+        uint256 previewDepositInit = vault.previewDeposit(amount);
+        /// for X shares we get Y assets
+        uint256 previewRedeemInit = vault.previewRedeem(previewDepositInit);
 
-    //     /// Step 3: Alice withdraws 95 tokens
-    //     vm.startPrank(alice);
-    //     uint256 sharesBurned = vault.withdraw(amountAdjusted, alice, alice);
-    //     console.log("aliceSharesBurned", sharesBurned);
-    //     vm.stopPrank();
+        /// @dev Deposit
+        uint256 aliceShareAmount = vault.deposit(amount, alice);
+        uint256 aliceShareBalance = vault.balanceOf(alice);
 
-    //     /// Step 4: Bob withdraws max amount of asset from shares
-    //     vm.startPrank(bob);
-    //     uint256 assetsToWithdraw = vault.previewRedeem(bobShareAmount);
-    //     console.log("assetsToWithdraw", assetsToWithdraw);
-    //     sharesBurned = vault.withdraw(assetsToWithdraw, bob, bob);
-    //     console.log("bobSharesBurned", sharesBurned);
-    //     vm.stopPrank();
+        assertGe(aliceShareAmount, previewDepositInit);
+        assertEq(aliceShareAmount, aliceShareBalance);
+        assertEq(asset.balanceOf(alice), (startBalance - amount));
 
-    //     /// Step 5: Alice withdraws max amount of asset from remaining shares
-    //     vm.startPrank(alice);
-    //     assetsToWithdraw = vault.previewRedeem(vault.balanceOf(alice));
-    //     console.log("assetsToWithdraw", assetsToWithdraw);
-    //     sharesBurned = vault.withdraw(assetsToWithdraw, alice, alice);
-    //     console.log("aliceSharesBurned", sharesBurned);
-    // }
+        /// @dev Simulate yield on UniswapV2Pair
+        vm.stopPrank();
+        makeSomeSwaps();
+        vm.startPrank(alice);
 
-    // function testMintRedeem() public {
-    //     /// NOTE:   uniShares          44367471942413
-    //     /// we "overmint" shares to avoid revert, all is returned to the user
-    //     /// previewMint() returns a correct amount of assets required to be approved to receive this
-    //     /// as MINIMAL amount of shares. where function differs is that if user was to run calculations
-    //     /// himself, directly against UniswapV2 Pair, calculations would output smaller number of assets
-    //     /// required for that amountOfSharesToMint, that is because UniV2 Pair doesn't need to swapJoin()
-    //     uint256 amountOfSharesToMint = 44323816369031;
-    //     console.log("amountOfSharesToMint", amountOfSharesToMint);
-    //     vm.startPrank(alice);
+        /// for X shares we get Y assets
+        uint256 aliceAssetsToWithdraw = vault.previewRedeem(aliceShareAmount);
+        /// for Y assets we need X shares (to burn)
+        uint256 aliceSharesToBurn = vault.previewWithdraw(
+            aliceAssetsToWithdraw
+        );
+        console.log("aliceSharesToBurn", aliceSharesToBurn);
 
-    //     /// NOTE: In case of this ERC4626 adapter, its highly advisable to ALWAYS call previewMint() before mint()
-    //     uint256 assetsToApprove = vault.previewMint(amountOfSharesToMint);
-    //     console.log("aliceAssetsToApprove", assetsToApprove);
+        /// alice should be able to withdraw more assets than she deposited
+        assertGe(aliceAssetsToWithdraw, previewRedeemInit);
 
-    //     asset.approve(address(vault), assetsToApprove);
+        uint256 sharesBurned = vault.withdraw(
+            aliceAssetsToWithdraw,
+            alice,
+            alice
+        );
 
-    //     uint256 aliceAssetsMinted = vault.mint(amountOfSharesToMint, alice);
-    //     console.log("aliceAssetsMinted", aliceAssetsMinted);
+        assertGe(asset.balanceOf(alice), startBalance);
+        assertGe((startBalance + aliceAssetsToWithdraw), startBalance);
+        assertLe(sharesBurned, aliceSharesToBurn);
 
-    //     uint256 aliceBalanceOfShares = vault.balanceOf(alice);
-    //     console.log("aliceBalanceOfShares", aliceBalanceOfShares);
+        console.log("aliceSharesBurned", sharesBurned);
+        console.log("aliceShareBalance", vault.balanceOf(alice));
 
-    //     /// TODO: Verify calculation, because it demands more shares than the ones minted for same asset
-    //     /// @dev not used for redemption
-    //     uint256 alicePreviewRedeem = vault.previewWithdraw(aliceAssetsMinted);
-    //     console.log("alicePreviewRedeem", alicePreviewRedeem);
-    //     //   aliceBalanceOfShares 44367471942413
-    //     //   alicePreviewRedeem   44367200251203
-    //     // alice has more shares than previewRedeem asks for to get assetsMinted
-    //     uint256 sharesBurned = vault.redeem(alicePreviewRedeem, alice, alice);
-    //     console.log("sharesBurned", sharesBurned);
+        aliceAssetsToWithdraw = vault.previewRedeem(vault.balanceOf(alice));
 
-    //     aliceBalanceOfShares = vault.balanceOf(alice);
-    //     console.log("aliceBalanceOfShares2", aliceBalanceOfShares);
-    // }
+        console.log("assetsLeftover", aliceAssetsToWithdraw);
+
+        sharesBurned = vault.withdraw(vault.balanceOf(alice), alice, alice);
+    }
+
+    function testMintRedeemSimulation() public {
+        /// NOTE:   uniShares          44367471942413
+        /// we "overmint" shares to avoid revert, all is returned to the user
+        /// previewMint() returns a correct amount of assets required to be approved to receive this
+        /// as MINIMAL amount of shares. where function differs is that if user was to run calculations
+        /// himself, directly against UniswapV2 Pair, calculations would output smaller number of assets
+        /// required for that amountOfSharesToMint, that is because UniV2 Pair doesn't need to swapJoin()
+        uint256 amountOfSharesToMint = 44323816369031;
+        console.log("amountOfSharesToMint", amountOfSharesToMint);
+        vm.startPrank(alice);
+
+        /// @dev Get values before deposit
+        uint256 startBalance = asset.balanceOf(alice);
+
+        /// NOTE: In case of this ERC4626 adapter, its highly advisable to ALWAYS call previewMint() before mint()
+        uint256 assetsToApprove = vault.previewMint(amountOfSharesToMint);
+        console.log("aliceAssetsToApprove", assetsToApprove);
+
+        asset.approve(address(vault), assetsToApprove);
+
+        uint256 aliceAssetsMinted = vault.mint(amountOfSharesToMint, alice);
+        console.log("aliceAssetsMinted", aliceAssetsMinted);
+
+        /// @dev Simulate yield on UniswapV2Pair
+        vm.stopPrank();
+        makeSomeSwaps();
+        vm.startPrank(alice);
+        
+        uint256 aliceBalanceOfShares = vault.balanceOf(alice);
+        console.log("aliceBalanceOfShares", aliceBalanceOfShares);
+
+        assertGe(aliceAssetsMinted, assetsToApprove);
+        assertGe(aliceBalanceOfShares, amountOfSharesToMint);
+        assertEq(asset.balanceOf(alice), (startBalance - assetsToApprove));
+
+        uint256 aliceAssetsToWithdraw = vault.previewRedeem(vault.balanceOf(alice));
+        console.log("aliceAssetsToWithdraw", aliceAssetsToWithdraw);
+
+        uint256 aliceSharesToBurn = vault.previewWithdraw(aliceAssetsToWithdraw);
+        console.log("aliceSharesToBurn", aliceSharesToBurn);
+
+        uint256 assetsReceived = vault.redeem(aliceSharesToBurn, alice, alice);
+        console.log("assetsReceived", assetsReceived);
+
+        assertGe(asset.balanceOf(alice), startBalance);
+        assertGe((startBalance + aliceAssetsToWithdraw), startBalance);
+
+        aliceBalanceOfShares = vault.balanceOf(alice);
+        console.log("sharesLeftover", aliceBalanceOfShares);
+
+        assetsReceived = vault.redeem(aliceBalanceOfShares, alice, alice);
+    }
 }

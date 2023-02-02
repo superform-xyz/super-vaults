@@ -17,7 +17,7 @@ import {DexSwap} from "../utils/swapUtils.sol";
 import "forge-std/console.sol";
 
 /// @notice WIP: ERC4626 UniswapV2 Adapter - Allows exit & join to UniswapV2 LP Pools from ERC4626 interface
-/// Uses virtual price to calculate exit/entry amounts - WHICH IS CURRENTLY FULLY EXPOSED TO ON-CHAIN MANIPULATION :)
+/// Uses virtual price to calculate exit/entry amounts, which is vulnerable to pool reserve manipulation without usage of protected functions
 /// Example Pool: https://v2.info.uniswap.org/pair/0xae461ca67b15dc8dc81ce7615e0320da1a9ab8d5 (DAI-USDC LP/PAIR on ETH)
 contract UniswapV2ERC4626Swap is ERC4626 {
     using SafeTransferLib for ERC20;
@@ -67,12 +67,10 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         ERC20(address(pair)).approve(address(router), type(uint256).max);
     }
 
-    function liquidityRemove(uint256 assets, uint256 shares)
+    function liquidityRemove(uint256, uint256 shares)
         internal
         returns (uint256 assets0, uint256 assets1)
     {
-        /// now we have asset (t0 || t1) virtual amount passed as arg
-        /// TODO: use this amount for allowed slippage checks (for simulated output vs real removeLiquidity t0/t1)
 
         /// @dev Values are sorted because we sort if t0/t1 == asset at runtime
         (assets0, assets1) = getAssetsAmounts(shares);
@@ -316,7 +314,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         override
         returns (uint256 assets)
     {
-        /// NOTE: Because we add slipage for mint() here it means extra funds to redeemer, needs separate virtualAssets() than mint()
+        /// NOTE: Because we add slipage for mint() here it means extra funds to redeemer.
         return redeemAssets(shares);
     }
 
@@ -331,7 +329,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
     }
 
     /// @notice calculate value of shares of this vault as the sum of t0/t1 of UniV2 pair simulated as t0 or t1 total amount after swap
-    /// NOTE: This is vulnerable to manipulation of getReserves! TODO: Add on-chain oracle checks
+    /// NOTE: This is vulnerable to manipulation of getReserves!
     function mintAssets(uint256 shares) public view returns (uint256 assets) {
         (uint256 reserveA, uint256 reserveB) = UniswapV2Library.getReserves(
             address(pair),
@@ -567,19 +565,6 @@ contract UniswapV2ERC4626Swap is ERC4626 {
             (assets1 * pairSupply) / reserveB
         );
     }
-
-    function getOraclePrice() public view returns (int56[] memory) {
-        uint32[] memory secondsAgo = new uint32[](1);
-        secondsAgo[0] = 1;
-        (int56[] memory prices, ) = oracle.observe(secondsAgo);
-        return prices;
-    }
-
-    function getSafeExchangeRate(uint256 v2amount)
-        public
-        view
-        returns (uint256 diff)
-    {}
 
     ////////////////////////////////////////////////////////////////////////////
     /////////////////////////// SLIPPAGE MGMT //////////////////////////////////
