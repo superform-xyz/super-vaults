@@ -136,7 +136,6 @@ contract UniswapV2TestSwapLocalHost is Test {
             /// Each deposit will differ a little bit (TODO: better random)
             uint256 randPctg = i + (1 % 900);
             uint256 randAmount = (amount * randPctg) / 1000;
-            // console.log("poolUser", poolUser, "randAmount", randAmount);
 
             /// Big initial liquidity
             if (i == 0) {
@@ -182,7 +181,6 @@ contract UniswapV2TestSwapLocalHost is Test {
             /// Each deposit will differ a little bit (TODO: better random)
             uint256 randPctg = i + (1 % 900);
             uint256 randAmount = (amount * randPctg) / 1000;
-            // console.log("poolUser", poolUser, "randAmount", randAmount);
 
             /// Big initial liquidity
             if (i == 0) {
@@ -194,7 +192,6 @@ contract UniswapV2TestSwapLocalHost is Test {
             token1.approve(address(uniRouter), randAmount);
 
             /// swap tokens
-
             address[] memory path = new address[](2);
             path[0] = address(token0);
             path[1] = address(token1);
@@ -215,8 +212,6 @@ contract UniswapV2TestSwapLocalHost is Test {
         uint256 amount = 100 ether;
         vm.startPrank(alice);
 
-        asset.approve(address(vault), amount);
-
         /// @dev Get values before deposit
         uint256 startBalance = asset.balanceOf(alice);
         /// for Y assets we get X shares
@@ -225,11 +220,16 @@ contract UniswapV2TestSwapLocalHost is Test {
         uint256 previewRedeemInit = vault.previewRedeem(previewDepositInit);
 
         /// @dev Deposit
+        asset.approve(address(vault), amount);
+        
         uint256 aliceShareAmount = vault.deposit(amount, alice);
         uint256 aliceShareBalance = vault.balanceOf(alice);
 
+        /// alice should own eq or more shares than she requested for in previewDeposit()
         assertGe(aliceShareAmount, previewDepositInit);
+        /// alice shares from deposit are equal to her balance (true only for first deposit)
         assertEq(aliceShareAmount, aliceShareBalance);
+        /// alice should have less of an asset on her balance after deposit, by the amount approved
         assertEq(asset.balanceOf(alice), (startBalance - amount));
 
         /// @dev Simulate yield on UniswapV2Pair
@@ -237,12 +237,11 @@ contract UniswapV2TestSwapLocalHost is Test {
         makeSomeSwaps();
         vm.startPrank(alice);
 
-        /// for X shares we get Y assets
         uint256 aliceAssetsToWithdraw = vault.previewRedeem(aliceShareAmount);
-        /// for Y assets we need X shares (to burn)
         uint256 aliceSharesToBurn = vault.previewWithdraw(
             aliceAssetsToWithdraw
         );
+
         console.log("aliceSharesToBurn", aliceSharesToBurn);
 
         /// alice should be able to withdraw more assets than she deposited
@@ -254,8 +253,9 @@ contract UniswapV2TestSwapLocalHost is Test {
             alice
         );
 
+        /// alice balance should be bigger than her initial balance (yield accrued)
         assertGe(asset.balanceOf(alice), startBalance);
-        assertGe((startBalance + aliceAssetsToWithdraw), startBalance);
+        /// alice should burn less or eq amount of shares than she requested for in previewWithdraw()
         assertLe(sharesBurned, aliceSharesToBurn);
 
         console.log("aliceSharesBurned", sharesBurned);
