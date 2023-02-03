@@ -86,15 +86,7 @@ contract UniswapV2TestSwap is Test {
     }
 
     function testDepositWithdraw() public {
-        
-        /// @dev If testing with USDC, use this
-        // uint256 amountE6 = 100e6;
-        // uint256 amountAdjustedE6 = 95e6;
-
-        /// @dev Default testing with DAI (e18)
         uint256 amount = 100 ether;
-        uint256 amountAdjusted = 95 ether;
-
         vm.startPrank(alice);
 
         asset.approve(address(vault), amount);

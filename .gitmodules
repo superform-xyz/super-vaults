@@ -17,3 +17,6 @@
 	path = lib/v2-core
 	url = https://github.com/uniswap/v2-core
 	branch = v1.0.1
+[submodule "lib/v2-periphery"]
+	path = lib/v2-periphery
+	url = https://github.com/Uniswap/v2-periphery
