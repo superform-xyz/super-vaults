@@ -32,6 +32,9 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
     /// @param errorCode The error code returned by Compound
     error CompoundERC4626__CompoundError(uint256 errorCode);
 
+    /// @notice Thrown when reinvest amount is not enough.
+    error NotEnoughReinvestAmount_Error();
+
     /// -----------------------------------------------------------------------
     /// Constants
     /// -----------------------------------------------------------------------
@@ -100,17 +103,17 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
     /// @notice Claims liquidity mining rewards from Compound and performs low-lvl swap with instant reinvesting
     /// Calling harvest() claims COMP-Fork token through direct Pair swap for best control and lowest cost
     /// harvest() can be called by anybody. ideally this function should be adjusted per needs (e.g add fee for harvesting)
-    function harvest() external {
+    function harvest(uint256 minAmountOut_) external {
         ICERC20[] memory cTokens = new ICERC20[](1);
         cTokens[0] = cToken;
         comptroller.claimComp(address(this));
 
         uint256 earned = ERC20(reward).balanceOf(address(this));
         address rewardToken = address(reward);
-
+        uint256 reinvestAmount;
         /// If only one swap needed (high liquidity pair) - set swapInfo.token0/token/pair2 to 0x
         if (SwapInfo.token == address(asset)) {
-            DexSwap.swap(
+            reinvestAmount = DexSwap.swap(
                 earned, /// REWARDS amount to swap
                 rewardToken, // from REWARD (because of liquidity)
                 address(asset), /// to target underlying of this Vault ie USDC
@@ -125,14 +128,16 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
                 SwapInfo.pair1 /// pairToken (pool)
             );
 
-            DexSwap.swap(
+            reinvestAmount = DexSwap.swap(
                 swapTokenAmount,
                 SwapInfo.token, // from received BUSD (because of liquidity)
                 address(asset), /// to target underlying of this Vault ie USDC
                 SwapInfo.pair2 /// pairToken (pool)
             );
         }
-
+        if(reinvestAmount < minAmountOut_) {
+            revert NotEnoughReinvestAmount_Error();
+        }
         afterDeposit(asset.balanceOf(address(this)), 0);
     }
 

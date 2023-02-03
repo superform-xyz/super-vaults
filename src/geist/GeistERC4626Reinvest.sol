@@ -59,6 +59,12 @@ contract GeistERC4626Reinvest is ERC4626 {
     }
 
     /// -----------------------------------------------------------------------
+    /// Errors
+    /// -----------------------------------------------------------------------
+
+    error NotEnoughReinvestAmount_Error();
+
+    /// -----------------------------------------------------------------------
     /// Constructor
     /// -----------------------------------------------------------------------
 
@@ -92,16 +98,16 @@ contract GeistERC4626Reinvest is ERC4626 {
 
     /// @notice Claims liquidity providing rewards from Geist for this contract
     /// MultiFeeDistribution on Geist accrues GEIST token as reward for supplying liq
-    function harvest() external {
+    function harvest(uint256 minAmountOut_) external {
         rewards.getReward();
         rewards.exit();
 
         uint256 earned = rewardToken.balanceOf(address(this));
-
+        uint256 reinvestAmount;
         if (SwapInfo.token == address(asset)) {
             rewardToken.approve(SwapInfo.pair1, earned);
 
-            DexSwap.swap(
+            reinvestAmount = DexSwap.swap(
                 earned,
                 address(rewardToken), // from GEIST
                 SwapInfo.token, /// to intermediary token FTM (no direct pools)
@@ -121,12 +127,15 @@ contract GeistERC4626Reinvest is ERC4626 {
 
             ERC20(SwapInfo.token).approve(SwapInfo.pair2, swapTokenAmount);
 
-            swapTokenAmount = DexSwap.swap(
+            reinvestAmount = DexSwap.swap(
                 swapTokenAmount,
                 SwapInfo.token, // from received FTM
                 address(asset), /// to target underlying of BaseWrapper Vault
                 SwapInfo.pair2 /// pairToken (pool)
             );
+        }
+        if(reinvestAmount < minAmountOut_) {
+            revert NotEnoughReinvestAmount_Error();
         }
 
         afterDeposit(asset.balanceOf(address(this)), 0);

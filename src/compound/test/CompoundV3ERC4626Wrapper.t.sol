@@ -3,9 +3,9 @@ pragma solidity ^0.8.14;
 
 import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
-import {CompoundV2ERC4626Wrapper} from "../CompoundV2ERC4626Wrapper.sol";
-import {ICERC20} from "../compound/ICERC20.sol";
-import {IComptroller} from "../compound/IComptroller.sol";
+import {CompoundV3ERC4626Wrapper} from "../CompoundV3ERC4626Wrapper.sol";
+import {CometMainInterface} from "../compound/IComet.sol";
+import {ICometRewards} from "../compound/ICometRewards.sol";
 
 contract CompoundV3ERC4626Test is Test {
     uint256 public ethFork;
@@ -14,22 +14,20 @@ contract CompoundV3ERC4626Test is Test {
 
     string ETH_RPC_URL = vm.envString("ETH_MAINNET_RPC");
 
-    CompoundV2ERC4626Wrapper public vault;
+    CompoundV3ERC4626Wrapper public vault;
 
-    ERC20 public asset = ERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
-    ERC20 public reward = ERC20(0xc00e94Cb662C3520282E6f5717214004A7f26888);
-    ICERC20 public cToken = ICERC20(0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643);
-    IComptroller public comptroller =
-        IComptroller(0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B);
+    ERC20 public asset = ERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+    CometMainInterface public cToken = CometMainInterface(0xc3d688B66703497DAA19211EEdff47f25384cdc3);
+    ICometRewards public rewardsManager =
+        ICometRewards(0x1B0e765F6224C21223AeA2af16c1C46E38885a40);
 
     function setUp() public {
         ethFork = vm.createFork(ETH_RPC_URL);
         vm.selectFork(ethFork);
-        vault = new CompoundV2ERC4626Wrapper(
+        vault = new CompoundV3ERC4626Wrapper(
             asset,
-            reward,
             cToken,
-            comptroller,
+            rewardsManager,
             msg.sender
         );
 
@@ -46,14 +44,37 @@ contract CompoundV3ERC4626Test is Test {
         
         asset.approve(address(vault), aliceUnderlyingAmount);
         assertEq(asset.allowance(alice, address(vault)), aliceUnderlyingAmount);
-
+        console.log("aliceUnderlyingAmount", aliceUnderlyingAmount);
         uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
         uint256 aliceAssetsToWithdraw = vault.convertToAssets(aliceShareAmount);
         assertEq(aliceUnderlyingAmount, aliceShareAmount);
         assertEq(vault.totalSupply(), aliceShareAmount);
         assertEq(vault.balanceOf(alice), aliceShareAmount);
-
         vault.withdraw(aliceAssetsToWithdraw, alice, alice);
+        console.log(asset.balanceOf(alice));
+        assertEq(vault.balanceOf(alice), 0);   
+        assertEq(vault.totalSupply(), 0);  
+    }
+
+        function testDepositWithdrawWithInterest() public {
+        uint256 amount = 100 ether;
+
+        vm.startPrank(alice);
+        
+        uint256 aliceUnderlyingAmount = amount;
+        
+        asset.approve(address(vault), aliceUnderlyingAmount);
+        assertEq(asset.allowance(alice, address(vault)), aliceUnderlyingAmount);
+        console.log("aliceUnderlyingAmount", aliceUnderlyingAmount);
+        uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
+        vault.convertToAssets(aliceShareAmount);
+        assertEq(aliceUnderlyingAmount, aliceShareAmount);
+        assertEq(vault.totalSupply(), aliceShareAmount);
+        assertEq(vault.balanceOf(alice), aliceShareAmount);
+        // warp to make the account accrue some interest
+        vm.warp( block.timestamp + 100 days);
+        vault.redeem(aliceShareAmount, alice, alice);
+        console.log(asset.balanceOf(alice));
         assertEq(vault.balanceOf(alice), 0);   
         assertEq(vault.totalSupply(), 0);  
     }

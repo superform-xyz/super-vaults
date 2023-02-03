@@ -31,6 +31,8 @@ contract AlpacaERC4626Reinvest is ERC4626 {
     /// @notice Pointer to swapInfo
     swapInfo public SwapInfo;
 
+    error NotEnoughReinvestAmount_Error();
+
     /// Compact struct to make two swaps (PancakeSwap on BSC)
     /// A => B (using pair1) then B => asset (of BaseWrapper) (using pair2)
     /// will work fine as long we only get 1 type of reward token
@@ -100,16 +102,16 @@ contract AlpacaERC4626Reinvest is ERC4626 {
         ERC20(SwapInfo.token).approve(SwapInfo.pair2, type(uint256).max); /// max approve
     }
 
-    function harvest() external {
+    function harvest(uint256 minAmountOut_) external {
         staking.harvest(poolId);
 
         uint256 earned = ERC20(alpacaToken).balanceOf(address(this));
-
+        uint256 reinvestAmount;
         /// For ALPACA we use best liquidity pairs on Pancakeswap
         /// https://pancakeswap.finance/info/pools
         /// Only one swap needed, in this case - set swapInfo.token0/token/pair2 to 0x
         if (SwapInfo.token == address(asset)) {
-            DexSwap.swap(
+            reinvestAmount = DexSwap.swap(
                 earned, /// ALPACA amount to swap
                 alpacaToken, // from ALPACA (because of liquidity)
                 address(asset), /// to target underlying of BaseWrapper ie USDC
@@ -126,7 +128,7 @@ contract AlpacaERC4626Reinvest is ERC4626 {
                 /// https://pancakeswap.finance/info/pool/0x7752e1fa9f3a2e860856458517008558deb989e3
             );
 
-            DexSwap.swap(
+            reinvestAmount = DexSwap.swap(
                 swapTokenAmount,
                 SwapInfo.token, // from received BUSD (because of liquidity)
                 address(asset), /// to target underlying of BaseWrapper USDC
@@ -135,6 +137,9 @@ contract AlpacaERC4626Reinvest is ERC4626 {
             );
         }
 
+        if (reinvestAmount < minAmountOut_) {
+            revert NotEnoughReinvestAmount_Error();
+        }
         afterDeposit(asset.balanceOf(address(this)), 0);
     }
 

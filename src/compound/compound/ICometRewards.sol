@@ -7,6 +7,6 @@ interface ICometRewards {
         uint64 rescaleFactor;
         bool shouldUpscale;
     }
-    function rewardConfig(address comet) external returns(RewardConfig memory);
+    function rewardConfig(address comet) external view returns(RewardConfig memory);
     function claim(address comet , address src, bool shouldAccrue) external;
 }

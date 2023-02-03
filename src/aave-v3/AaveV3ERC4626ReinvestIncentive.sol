@@ -35,6 +35,12 @@ contract AaveV3ERC4626ReinvestIncentive is ERC4626 {
     event ClaimRewards(uint256 amount);
 
     /// -----------------------------------------------------------------------
+    /// Errors
+    /// -----------------------------------------------------------------------
+
+    error NotEnoughReinvestAmount_Error();
+
+    /// -----------------------------------------------------------------------
     /// Constants
     /// -----------------------------------------------------------------------
 
@@ -155,7 +161,7 @@ contract AaveV3ERC4626ReinvestIncentive is ERC4626 {
 
 
     /// @notice Claims liquidity mining rewards from Aave and sends it to this Vault
-    function harvest(uint256 minAmountOut) external {
+    function harvest(uint256 minAmountOut_) external {
         /// @dev Wrapper exists only for single aToken
         address[] memory assets = new address[](1);
         assets[0] = address(aToken);
@@ -172,14 +178,17 @@ contract AaveV3ERC4626ReinvestIncentive is ERC4626 {
             reinvestAmount += swapRewards(rewardList[i], claimedAmounts[i]);
         }
 
-        require(reinvestAmount >= minAmountOut, "reinvesting amount should be greater than minAmountOut");
-        // @notice rewarding the caller with % of the deposit tokens resulted from the rewards, 50 BPS -> 0.05%
+        if(reinvestAmount < minAmountOut_) {
+           revert NotEnoughReinvestAmount_Error();
+        }
+        
+        /// @notice rewarding the caller with % of the deposit tokens resulted from the rewards, 50 BPS -> 0.05%
         uint256 reinvestFee = reinvestAmount * (REINVEST_REWARD_BPS) / (1000);
         if (reinvestFee > 0) {
             asset.safeTransfer(msg.sender, reinvestFee);
         }
         /// reinvest() without minting (no asset.totalSupply() increase == profit)
-        afterDeposit(reinvestAmount, 0);
+        afterDeposit(asset.balanceOf(address(this)), 0);
     }
 
     /// @notice Swap reward token for underlying asset
