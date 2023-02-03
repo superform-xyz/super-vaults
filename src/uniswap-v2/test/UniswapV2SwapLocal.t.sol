@@ -320,4 +320,79 @@ contract UniswapV2TestSwapLocalHost is Test {
 
         assetsReceived = vault.redeem(aliceBalanceOfShares, alice, alice);
     }
+
+   function testDepositRedeemSimulation() public {
+        uint256 amount = 100 ether;
+        vm.startPrank(alice);
+
+        /// @dev Get values before deposit
+        uint256 startBalance = asset.balanceOf(alice);
+        /// for Y assets we get X shares
+        uint256 previewDepositInit = vault.previewDeposit(amount);
+        /// for X shares we get Y assets
+        uint256 previewRedeemInit = vault.previewRedeem(previewDepositInit);
+
+        /// @dev Deposit
+        asset.approve(address(vault), amount);
+        
+        uint256 aliceShareAmount = vault.deposit(amount, alice);
+        uint256 aliceShareBalance = vault.balanceOf(alice);
+
+        /// alice should own eq or more shares than she requested for in previewDeposit()
+        assertGe(aliceShareAmount, previewDepositInit);
+        /// alice shares from deposit are equal to her balance (true only for first deposit)
+        assertEq(aliceShareAmount, aliceShareBalance);
+
+        /// @dev Simulate yield on UniswapV2Pair
+        vm.stopPrank();
+        makeSomeSwaps();
+        vm.startPrank(alice);
+
+        uint256 aliceAssetsToWithdraw = vault.previewRedeem(aliceShareBalance);
+        uint256 aliceSharesToBurn = vault.previewWithdraw(
+            aliceAssetsToWithdraw
+        );
+
+        console.log("aliceSharesToBurn", aliceSharesToBurn);
+
+        /// alice should be able to withdraw more assets than she deposited
+        assertGe(aliceAssetsToWithdraw, previewRedeemInit);
+
+        uint256 assetsReceived = vault.redeem(
+            aliceShareBalance,
+            alice,
+            alice
+        );
+
+        /// alice balance should be bigger than her initial balance (yield accrued)
+        assertGe(asset.balanceOf(alice), startBalance);
+        /// alice receives eq or more assets than she requested for in previewRedeem()
+        assertGe(assetsReceived, aliceAssetsToWithdraw);
+        /// alice should burn all shares
+        assertLe(vault.balanceOf(alice), 0);
+
+        console.log("assetsReceived", assetsReceived);
+        console.log("aliceShareBalance", vault.balanceOf(alice));
+       
+    }
+
+    // function testProtectedDeposit() public {
+    //     uint256 amount = 100 ether;
+    //     vm.startPrank(alice);
+
+    //     /// @dev Get values before deposit
+    //     uint256 startBalance = asset.balanceOf(alice);
+    //     /// for Y assets we get X shares
+    //     uint256 previewDepositInit = vault.previewDeposit(amount);
+    //     uint256 minSharesOut = (previewDepositInit * 30) / 100;
+    //     minSharesOut = previewDepositInit - minSharesOut;
+
+    //     /// @dev Deposit
+    //     asset.approve(address(vault), amount);
+        
+    //     uint256 aliceShareAmount = vault.deposit(amount, alice);
+    // }
+
+
 }
+
