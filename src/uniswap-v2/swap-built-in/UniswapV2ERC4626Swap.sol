@@ -71,7 +71,6 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         internal
         returns (uint256 assets0, uint256 assets1)
     {
-
         /// @dev Values are sorted because we sort if t0/t1 == asset at runtime
         (assets0, assets1) = getAssetsAmounts(shares);
 
@@ -111,17 +110,17 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         uint256 assets,
         address receiver,
         uint256 minSharesOut, /// @dev calculated off-chain, "secure" deposit function. could be using tick-like calculations?
-        uint256 minSwapOut /// @dev calculated off-chain, "secure" deposit function. 
+        uint256 minSwapOut /// @dev calculated off-chain, "secure" deposit function.
     ) public returns (uint256 shares) {
-
         asset.safeTransferFrom(msg.sender, address(this), assets);
 
         /// @dev caller calculates minSwapOut from uniswapV2Library off-chain, reverts if swap is manipulated
+        /// TODO: Is minSwapOut needed if we already have minSharesOut?
         (uint256 a0, uint256 a1) = swapJoinProtected(assets, minSwapOut);
 
         shares = liquidityAdd(a0, a1);
 
-        /// @dev caller calculates minSharesOut off-chain, this contracts functions can be used to retrive reserves over the past blocks        
+        /// @dev caller calculates minSharesOut off-chain, this contracts functions can be used to retrive reserves over the past blocks
         require(shares >= minSharesOut, "UniswapV2ERC4626Swap: minSharesOut");
 
         /// @dev we just pass uniswap lp-token amount to user
@@ -161,19 +160,35 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         /// NOTE: UniLP is non-rebasing, yield accrues on Uniswap pool (you can redeem more t0/t1 for same amount of LP)
         /// NOTE: If we want it as Strategy, e.g do something with this LP, then we need to calculate shares, 1:1 won't work
         /// NOTE: Caller needs to trust previewDeposit return value which can be manipulated for 1 block
-        require((uniShares >= shares), "SHARES_AMOUNT_OUT"); 
-        
+        require((uniShares >= shares), "SHARES_AMOUNT_OUT");
+
         /// @dev we want to have 1:1 relation to UniV2Pair lp token
         shares = uniShares;
 
         /// NOTE: TBD: oracle or smth else
         // (uint256 lowBound, uint256 highBound) = getAvgPriceBound();
         // require((uniShares >= lowBound && uniShares <= highBound), "SHARES_AMOUNT_OUT");
-        
+
         _mint(receiver, uniShares);
 
         emit Deposit(msg.sender, receiver, assets, uniShares);
     }
+
+    function mint(uint256 shares, address receiver, uint256 minSharesOut) public returns (uint256 assets) {
+        assets = previewMint(shares);
+
+        asset.safeTransferFrom(msg.sender, address(this), assets);
+
+        (uint256 a0, uint256 a1) = swapJoin(assets);
+
+        uint256 uniShares = liquidityAdd(a0, a1);
+
+        /// @dev Protected mint, caller can calculate minSharesOut off-chain
+        require((uniShares >= minSharesOut), "SHARES_AMOUNT_OUT");
+
+        _mint(receiver, uniShares);
+
+        emit Deposit(msg.sender, receiver, assets, uniShares);    }
 
     function mint(uint256 shares, address receiver)
         public
@@ -197,6 +212,39 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         _mint(receiver, uniShares);
 
         emit Deposit(msg.sender, receiver, assets, uniShares);
+    }
+
+    function withdraw(
+        uint256 assets,
+        address receiver,
+        address owner,
+        uint256 minAmountOut /// @dev calculated off-chain, "secure" withdraw function.
+    ) public returns (uint256 shares) {
+        shares = previewWithdraw(assets);
+
+        if (msg.sender != owner) {
+            uint256 allowed = allowance[owner][msg.sender];
+
+            if (allowed != type(uint256).max)
+                allowance[owner][msg.sender] = allowed - shares;
+        }
+
+        (uint256 assets0, uint256 assets1) = liquidityRemove(assets, shares);
+
+        _burn(owner, shares);
+
+        uint256 amount = asset == token0
+            ? swapExit(assets1) + assets0
+            : swapExit(assets0) + assets1;
+
+        console.log("amount", amount, "assets", assets);
+
+        /// @dev Protected amount out check
+        require(amount >= minAmountOut, "ASSETS_AMOUNT_OUT");
+
+        asset.safeTransfer(receiver, amount);
+
+        emit Withdraw(msg.sender, receiver, owner, amount, shares);        
     }
 
     /// @notice burns shares from owner and sends exactly assets of underlying tokens to receiver.
@@ -233,7 +281,37 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         asset.safeTransfer(receiver, amount);
 
         emit Withdraw(msg.sender, receiver, owner, amount, shares);
+    }
 
+    function redeem(
+        uint256 shares,
+        address receiver,
+        address owner,
+        uint256 minAmountOut /// @dev calculated off-chain, "secure" withdraw function.
+    ) public returns (uint256 assets) {
+        if (msg.sender != owner) {
+            uint256 allowed = allowance[owner][msg.sender];
+
+            if (allowed != type(uint256).max)
+                allowance[owner][msg.sender] = allowed - shares;
+        }
+
+        require((assets = previewRedeem(shares)) != 0, "ZERO_ASSETS");
+
+        (uint256 assets0, uint256 assets1) = liquidityRemove(assets, shares);
+
+        _burn(owner, shares);
+
+        uint256 amount = asset == token0
+            ? swapExit(assets1) + assets0
+            : swapExit(assets0) + assets1;
+
+        /// @dev Protected amount check
+        require(amount >= minAmountOut, "ASSETS_AMOUNT_OUT");
+
+        asset.safeTransfer(receiver, amount);
+
+        emit Withdraw(msg.sender, receiver, owner, amount, shares);
     }
 
     function redeem(
@@ -267,7 +345,6 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         asset.safeTransfer(receiver, amount);
 
         emit Withdraw(msg.sender, receiver, owner, amount, shares);
-
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -366,8 +443,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
 
     /// @notice separate from mintAssets virtual assets calculation from shares, but with omitted slippage to stop overwithdraw from Vault's balance
     function redeemAssets(uint256 shares) public view returns (uint256 assets) {
-
-        (uint256 a0, uint256 a1 ) = getAssetsAmounts(shares);
+        (uint256 a0, uint256 a1) = getAssetsAmounts(shares);
 
         if (a1 == 0 || a0 == 0) return 0;
 
@@ -385,12 +461,20 @@ contract UniswapV2ERC4626Swap is ERC4626 {
     /////////////////////////// UNISWAP CALLS //////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
 
-    function swapJoinProtected(uint256 assets, uint256 minAmountOut) internal returns (uint256 amount0, uint256 amount1) {
+    /// @dev TODO: Unused now, useful for on-chain oracle implemented inside of deposit/mint standard ERC4626 functions
+    function swapJoinProtected(uint256 assets, uint256 minAmountOut)
+        internal
+        returns (uint256 amount0, uint256 amount1)
+    {
         (amount0, amount1) = swapJoin(assets);
         require(amount1 >= minAmountOut, "amount1 < minAmountOut");
     }
 
-    function swapExitProtected(uint256 assets, uint256 minAmountOut) internal returns (uint256 amounts) {
+    /// @dev TODO: Unused now, useful for on-chain oracle implemented inside of withdraw/redeem standard ERC4626 functions
+    function swapExitProtected(uint256 assets, uint256 minAmountOut)
+        internal
+        returns (uint256 amounts)
+    {
         (amounts) = swapExit(assets);
         require(amounts >= minAmountOut, "amounts < minAmountOut");
     }
