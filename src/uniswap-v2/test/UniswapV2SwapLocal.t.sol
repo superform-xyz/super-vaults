@@ -301,7 +301,7 @@ contract UniswapV2TestSwapLocalHost is Test {
         assertEq(asset.balanceOf(alice), (startBalance - assetsToApprove));
 
         uint256 aliceAssetsToWithdraw = vault.previewRedeem(
-            vault.balanceOf(alice)
+            aliceBalanceOfShares
         );
         console.log("aliceAssetsToWithdraw", aliceAssetsToWithdraw);
 
@@ -310,16 +310,11 @@ contract UniswapV2TestSwapLocalHost is Test {
         );
         console.log("aliceSharesToBurn", aliceSharesToBurn);
 
-        uint256 assetsReceived = vault.redeem(aliceSharesToBurn, alice, alice);
+        uint256 assetsReceived = vault.redeem(aliceBalanceOfShares, alice, alice);
         console.log("assetsReceived", assetsReceived);
 
         assertGe(asset.balanceOf(alice), startBalance);
         assertGe((startBalance + aliceAssetsToWithdraw), startBalance);
-
-        aliceBalanceOfShares = vault.balanceOf(alice);
-        console.log("sharesLeftover", aliceBalanceOfShares);
-
-        assetsReceived = vault.redeem(aliceBalanceOfShares, alice, alice);
     }
 
     function testDepositRedeemSimulation() public {
@@ -372,7 +367,7 @@ contract UniswapV2TestSwapLocalHost is Test {
         console.log("aliceShareBalance", vault.balanceOf(alice));
     }
 
-    function testProtectedDeposit() public {
+    function testProtectedDepositWithdraw() public {
         uint256 amount = 100 ether;
         vm.startPrank(alice);
 
@@ -394,24 +389,6 @@ contract UniswapV2TestSwapLocalHost is Test {
 
         console.log("minSharesOut", minSharesOut);
 
-        /// @dev Caller needs to know what asset is an underlying asset to calculate slippage for
-        /// @dev Decided against using minSwapOut as minSharesOut is already a protection
-        // (uint256 assets0, uint256 assets1) = vault.getSplitAssetAmounts(amount);
-        // uint256 allowedSlippageOnSwapJoin;
-        // uint256 minSwapOut;
-
-        // if (vault.asset() == token0) {
-        //     /// assets1 is result of swap from approved token
-        //     allowedSlippageOnSwapJoin = (assets1 * 30) / 1000;
-        //     minSwapOut = assets1 - allowedSlippageOnSwapJoin;
-        //     console.log("minSwapOut", minSwapOut);
-        // } else {
-        //     /// assets0 is result of swap from approved token
-        //     allowedSlippageOnSwapJoin = (assets0 * 30) / 1000;
-        //     minSwapOut = assets0 - allowedSlippageOnSwapJoin;
-        //     console.log("minSwapOut", minSwapOut);
-        // }
-
         /// @dev Deposit
         asset.approve(address(vault), amount);
         uint256 aliceShareAmount = vault.deposit(
@@ -431,5 +408,99 @@ contract UniswapV2TestSwapLocalHost is Test {
         /// alice should have at least eq amount of shares to minSharesOut
         assertGe(aliceShareAmount, minSharesOut);
 
+        /// @dev Simulate yield on UniswapV2Pair
+        vm.stopPrank();
+        makeSomeSwaps();
+        vm.startPrank(alice);
+
+        uint256 aliceAssetsToWithdraw = vault.previewRedeem(aliceShareAmount);
+        uint256 aliceSharesToBurn = vault.previewWithdraw(
+            aliceAssetsToWithdraw
+        );
+
+        console.log("aliceSharesToBurn", aliceSharesToBurn);
+
+        /// alice should be able to withdraw more assets than she deposited
+        assertGe(aliceAssetsToWithdraw, amount);
+
+        /// @dev Here, caller assumes trust in previewRedeem, under normal circumstances it should be queried few times or calculated fully off-chain
+        uint256 minAmountOut = vault.previewRedeem(aliceShareBalance);
+        uint256 allowedSlippage = (minAmountOut * 30) / 1000;
+        minAmountOut = minAmountOut - allowedSlippage;
+        
+        uint256 sharesBurned = vault.withdraw(
+            aliceAssetsToWithdraw,
+            alice,
+            alice,
+            minAmountOut
+        );
+
+        /// alice balance should be bigger than her initial balance (yield accrued)
+        assertGe(asset.balanceOf(alice), startBalance);
+        /// alice should burn less or eq amount of shares than she requested for in previewWithdraw()
+        assertLe(sharesBurned, aliceSharesToBurn);
+
+        console.log("aliceSharesBurned", sharesBurned);
+        console.log("aliceShareBalance", vault.balanceOf(alice));
+
+        aliceAssetsToWithdraw = vault.previewRedeem(vault.balanceOf(alice));
+
+        console.log("assetsLeftover", aliceAssetsToWithdraw);
+
+        sharesBurned = vault.withdraw(vault.balanceOf(alice), alice, alice);
+
     }
+
+    function testProtectedMintRedeem() public {
+        uint256 amountOfSharesToMint = 44323816369031;
+        console.log("amountOfSharesToMint", amountOfSharesToMint);
+        vm.startPrank(alice);
+
+        /// @dev Get values before deposit
+        uint256 startBalance = asset.balanceOf(alice);
+
+        /// NOTE: In case of this ERC4626 adapter, its highly advisable to ALWAYS call previewMint() before mint()
+        uint256 assetsToApprove = vault.previewMint(amountOfSharesToMint);
+        console.log("aliceAssetsToApprove", assetsToApprove);
+
+        asset.approve(address(vault), assetsToApprove);
+
+        /// @dev Caller assumes trust in previewMint, under normal circumstances it should be queried few times or calculated fully off-chain
+        uint256 minSharesOut = (amountOfSharesToMint * 997) / 1000;
+        uint256 aliceAssetsMinted = vault.mint(amountOfSharesToMint, alice, minSharesOut);
+
+        console.log("aliceAssetsMinted", aliceAssetsMinted);
+
+        /// @dev Simulate yield on UniswapV2Pair
+        vm.stopPrank();
+        makeSomeSwaps();
+        vm.startPrank(alice);
+
+        uint256 aliceBalanceOfShares = vault.balanceOf(alice);
+        console.log("aliceBalanceOfShares", aliceBalanceOfShares);
+
+        assertGe(aliceAssetsMinted, assetsToApprove);
+        assertGe(aliceBalanceOfShares, amountOfSharesToMint);
+        assertEq(asset.balanceOf(alice), (startBalance - assetsToApprove));
+
+        uint256 aliceAssetsToWithdraw = vault.previewRedeem(
+            aliceBalanceOfShares
+        );
+        console.log("aliceAssetsToWithdraw", aliceAssetsToWithdraw);
+
+        uint256 aliceSharesToBurn = vault.previewWithdraw(
+            aliceAssetsToWithdraw
+        );
+        console.log("aliceSharesToBurn", aliceSharesToBurn);
+
+        /// @dev Caller assumes trust in previewMint, under normal circumstances it should be queried few times or calculated fully off-chain
+        uint256 minAmountOut = (aliceAssetsToWithdraw * 30) / 1000;
+        uint256 assetsReceived = vault.redeem(aliceBalanceOfShares, alice, alice, minAmountOut);
+        
+        console.log("assetsReceived", assetsReceived);
+
+        assertGe(asset.balanceOf(alice), startBalance);
+        assertGe((startBalance + aliceAssetsToWithdraw), startBalance);      
+    }
+
 }

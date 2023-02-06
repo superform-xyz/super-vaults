@@ -60,11 +60,6 @@ contract UniswapV2ERC4626Swap is ERC4626 {
             token0 = ERC20(token0_);
             token1 = asset;
         }
-
-        /// TODO: Approve management
-        token0.approve(address(router), type(uint256).max);
-        token1.approve(address(router), type(uint256).max);
-        ERC20(address(pair)).approve(address(router), type(uint256).max);
     }
 
     function liquidityRemove(uint256, uint256 shares)
@@ -73,6 +68,8 @@ contract UniswapV2ERC4626Swap is ERC4626 {
     {
         /// @dev Values are sorted because we sort if t0/t1 == asset at runtime
         (assets0, assets1) = getAssetsAmounts(shares);
+
+        pair.approve(address(router), shares);
 
         /// temp implementation, we should call directly on a pair
         (assets0, assets1) = router.removeLiquidity(
@@ -90,6 +87,11 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         internal
         returns (uint256 li)
     {
+        
+        /// temp should be more elegant. better than max approve though
+        token0.approve(address(router), assets0);
+        token1.approve(address(router), assets1);
+        
         /// temp implementation, we should call directly on a pair
         (, , li) = router.addLiquidity(
             address(token0),
@@ -105,7 +107,6 @@ contract UniswapV2ERC4626Swap is ERC4626 {
 
     /// @notice deposit function taking additional protection parameters for execution
     /// Caller can calculate minSharesOut using previewDeposit function range of outputs
-    /// Caller can calculate minSwapOut using UniswapV2Library.getAmountOut range of outputs
     function deposit(
         uint256 assets,
         address receiver,
