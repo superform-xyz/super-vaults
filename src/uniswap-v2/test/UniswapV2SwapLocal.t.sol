@@ -395,31 +395,29 @@ contract UniswapV2TestSwapLocalHost is Test {
         console.log("minSharesOut", minSharesOut);
 
         /// @dev Caller needs to know what asset is an underlying asset to calculate slippage for
-        (uint256 assets0, uint256 assets1) = vault.getSplitAssetAmounts(amount);
-        uint256 allowedSlippageOnSwapJoin;
-        uint256 minSwapOut;
+        /// @dev Decided against using minSwapOut as minSharesOut is already a protection
+        // (uint256 assets0, uint256 assets1) = vault.getSplitAssetAmounts(amount);
+        // uint256 allowedSlippageOnSwapJoin;
+        // uint256 minSwapOut;
 
-        if (vault.asset() == token0) {
-            /// assets1 is result of swap from approved token
-            allowedSlippageOnSwapJoin = (assets1 * 30) / 1000;
-            minSwapOut = assets1 - allowedSlippageOnSwapJoin;
-            console.log("minSwapOut", minSwapOut);
-        } else {
-            /// assets0 is result of swap from approved token
-            allowedSlippageOnSwapJoin = (assets0 * 30) / 1000;
-            minSwapOut = assets0 - allowedSlippageOnSwapJoin;
-            console.log("minSwapOut", minSwapOut);
-        }
-
-        console.log("assets0", assets0, "assets1", assets1);
+        // if (vault.asset() == token0) {
+        //     /// assets1 is result of swap from approved token
+        //     allowedSlippageOnSwapJoin = (assets1 * 30) / 1000;
+        //     minSwapOut = assets1 - allowedSlippageOnSwapJoin;
+        //     console.log("minSwapOut", minSwapOut);
+        // } else {
+        //     /// assets0 is result of swap from approved token
+        //     allowedSlippageOnSwapJoin = (assets0 * 30) / 1000;
+        //     minSwapOut = assets0 - allowedSlippageOnSwapJoin;
+        //     console.log("minSwapOut", minSwapOut);
+        // }
 
         /// @dev Deposit
         asset.approve(address(vault), amount);
         uint256 aliceShareAmount = vault.deposit(
             amount,
             alice,
-            minSharesOut,
-            minSwapOut
+            minSharesOut
         );
         
         uint256 aliceShareBalance = vault.balanceOf(alice);

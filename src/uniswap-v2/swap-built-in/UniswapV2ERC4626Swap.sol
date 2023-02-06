@@ -109,14 +109,13 @@ contract UniswapV2ERC4626Swap is ERC4626 {
     function deposit(
         uint256 assets,
         address receiver,
-        uint256 minSharesOut, /// @dev calculated off-chain, "secure" deposit function. could be using tick-like calculations?
-        uint256 minSwapOut /// @dev calculated off-chain, "secure" deposit function.
+        uint256 minSharesOut /// @dev calculated off-chain, "secure" deposit function. could be using tick-like calculations?
     ) public returns (uint256 shares) {
         asset.safeTransferFrom(msg.sender, address(this), assets);
 
         /// @dev caller calculates minSwapOut from uniswapV2Library off-chain, reverts if swap is manipulated
         /// TODO: Is minSwapOut needed if we already have minSharesOut?
-        (uint256 a0, uint256 a1) = swapJoinProtected(assets, minSwapOut);
+        (uint256 a0, uint256 a1) = swapJoin(assets);
 
         shares = liquidityAdd(a0, a1);
 
