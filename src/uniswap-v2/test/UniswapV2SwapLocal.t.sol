@@ -378,14 +378,9 @@ contract UniswapV2TestSwapLocalHost is Test {
         uint256 previewDepositInit = vault.previewDeposit(amount);
 
         console.log("previewDepositInit", previewDepositInit);
-
-        /// @dev add 0.3% slippage to expected shares
-        uint256 slippageValue = (previewDepositInit * 30) / 1000;
-
-        console.log("slippageValue", slippageValue);
-
+        
         /// @dev calculate min shares out (shares expected to receive - slippage)
-        uint256 minSharesOut = previewDepositInit - slippageValue;
+        uint256 minSharesOut = (previewDepositInit * 997) / 1000;
 
         console.log("minSharesOut", minSharesOut);
 
@@ -425,9 +420,10 @@ contract UniswapV2TestSwapLocalHost is Test {
 
         /// @dev Here, caller assumes trust in previewRedeem, under normal circumstances it should be queried few times or calculated fully off-chain
         uint256 minAmountOut = vault.previewRedeem(aliceShareBalance);
-        uint256 allowedSlippage = (minAmountOut * 30) / 1000;
-        minAmountOut = minAmountOut - allowedSlippage;
-        
+        /// TODO: Investiage why here we need to give higher slippage?
+        minAmountOut = (minAmountOut * 995) / 1000;
+        console.log("minAmountOut", minAmountOut);
+
         uint256 sharesBurned = vault.withdraw(
             aliceAssetsToWithdraw,
             alice,

@@ -79,7 +79,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
             assets0 - getSlippage(assets0), /// NOTE: No MEV protection, only ensuring execution within certain range to avoid reverts
             assets1 - getSlippage(assets1), /// NOTE: No MEV protection, only ensuring execution within certain range to avoid reverts
             address(this),
-            block.timestamp + 100
+            block.timestamp + 100 /// temp implementation
         );
     }
 
@@ -101,7 +101,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
             assets0 - getSlippage(assets0), /// NOTE: No MEV protection, only ensuring execution within certain range to avoid reverts
             assets1 - getSlippage(assets1), /// NOTE: No MEV protection, only ensuring execution within certain range to avoid reverts
             address(this),
-            block.timestamp + 100
+            block.timestamp + 100 /// temp implementation
         );
     }
 
@@ -239,7 +239,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
 
         console.log("amount", amount, "assets", assets);
 
-        /// @dev Protected amount out check
+        /// @dev Protected amountOut check
         require(amount >= minAmountOut, "ASSETS_AMOUNT_OUT");
 
         asset.safeTransfer(receiver, amount);
@@ -276,7 +276,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         /// NOTE: This is a weak check anyways. previews can be manipulated.
         /// NOTE: If enabled, withdraws() which didn't accrue enough of the yield to cover deposit's swapJoin() will fail
         /// NOTE: For secure execution user should use protected functions
-        // require(amount >= assets, "ASSETS_AMOUNT_OUT");
+        /// require(amount >= assets, "ASSETS_AMOUNT_OUT");
 
         asset.safeTransfer(receiver, amount);
 
