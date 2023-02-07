@@ -164,17 +164,17 @@ deploy-benqi-savax :; forge create --rpc-url $(AVALANCHE_RPC_URL) \
 ###############
 
 # AAVE-V3-ARBITRUM-FACTORY
-deploy-aave3-arbitrum-factory :; forge create --rpc-url $(ARBITRUM_MAINNET_RPC) \
+deploy-aave3-arbitrum-factory :; forge create --rpc-url $(ARBITRUM_RPC_URL) \
 				--constructor-args $(AAVEV3_ARBITRUM_LENDINGPOOL) $(AAVEV3_ARBITRUM_REWARDS) $(MANAGER) \
 				--private-key $(PRIVATE_KEY) src/aave-v3/AaveV3ERC4626ReinvestFactory.sol:AaveV3ERC4626ReinvestFactory
 
 # AAVE-V3-ARB-DAI
-deploy-aave3-arbitrum-dai :; forge create --rpc-url $(ARBITRUM_MAINNET_RPC) \
+deploy-aave3-arbitrum-dai :; forge create --rpc-url $(ARBITRUM_RPC_URL) \
 				--constructor-args $(AAVEV3_ARBITRUM_DAI) $(AAVEV3_ARBITRUM_ADAI) $(AAVEV3_ARBITRUM_LENDINGPOOL) $(AAVEV3_ARBITRUM_REWARDS) $(MANAGER) \
 				--private-key $(PRIVATE_KEY) src/aave-v3/AaveV3ERC4626Reinvest.sol:AaveV3ERC4626Reinvest
 
 # AAVE-V3-ARB-USDC
-deploy-aave3-arbitrum-usdc :; forge create --rpc-url $(ARBITRUM_MAINNET_RPC) \
+deploy-aave3-arbitrum-usdc :; forge create --rpc-url $(ARBITRUM_RPC_URL) \
 				--constructor-args $(AAVEV3_ARBITRUM_USDC) $(AAVEV3_ARBITRUM_AUSDC) $(AAVEV3_ARBITRUM_LENDINGPOOL) $(AAVEV3_ARBITRUM_REWARDS) $(MANAGER) \
 				--private-key $(PRIVATE_KEY) src/aave-v3/AaveV3ERC4626Reinvest.sol:AaveV3ERC4626Reinvest
 
