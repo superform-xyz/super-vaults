@@ -17,6 +17,9 @@ jobs:
       - uses: foundry-rs/foundry-toolchain@v1
         with:
           version: nightly
+      - uses: cardinalby/export-env-action@v2
+        with:
+          envFile: 'constants.env'   
       - name: dependencies
         run: forge install
       - name: tests
@@ -37,8 +40,6 @@ jobs:
           POLYGON_RPC_URL: ${{ secrets.POLYGON_RPC_URL }}
           AVALANCHE_RPC_URL: ${{ secrets.AVALANCHE_RPC_URL }}
           FANTOM_RPC_URL: ${{ secrets.FANTOM_RPC_URL }}
-          VENUS_COMPTROLLER: ${{ secrets.VENUS_COMPTROLLER }}
-          BENQI_WAVAX_ASSET: ${{ secrets.BENQI_WAVAX_ASSET }}
 
   snapshot:
     runs-on: ubuntu-latest
