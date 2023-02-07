@@ -37,8 +37,8 @@ jobs:
           POLYGON_RPC_URL: ${{ secrets.POLYGON_RPC_URL }}
           AVALANCHE_RPC_URL: ${{ secrets.AVALANCHE_RPC_URL }}
           FANTOM_RPC_URL: ${{ secrets.FANTOM_RPC_URL }}
-          VENUS_COMPTROLLER: 0xf6C14D4DFE45C132822Ce28c646753C54994E59C
-          BENQI_WAVAX_ASSET: 0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7
+          VENUS_COMPTROLLER: ${{ secrets.VENUS_COMPTROLLER }}
+          BENQI_WAVAX_ASSET: ${{ secrets.BENQI_WAVAX_ASSET }}
 
   snapshot:
     runs-on: ubuntu-latest
