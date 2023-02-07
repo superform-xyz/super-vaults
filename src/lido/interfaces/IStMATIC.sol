@@ -2,8 +2,9 @@
 pragma solidity 0.8.14;
 
 interface IStMATIC {
-    
-    function submit(uint256 _amount) external returns (uint256);
+    function submit(uint256 _amount, address _referal)
+        external
+        returns (uint256);
 
     function approve(address, uint256) external returns (bool);
 
