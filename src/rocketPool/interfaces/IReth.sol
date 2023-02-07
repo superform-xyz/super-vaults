@@ -3,8 +3,13 @@ pragma solidity 0.8.14;
 
 interface IRETH {
 
+    function getBalance() external view returns (uint256);
+    function getExcessBalance() external view returns (uint256);
+    function recycleDissolvedDeposit() external payable;
+    function recycleExcessCollateral() external payable;
+    function recycleLiquidatedStake() external payable;
+    function assignDeposits() external;
+    function withdrawExcessBalance(uint256 _amount) external;
     function deposit() external payable;
-
-    function balanceOf(address) external view returns (uint256);
 
 }

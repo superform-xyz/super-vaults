@@ -9,6 +9,7 @@ import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {IWETH} from "./interfaces/IWETH.sol";
 import {IRETH} from "./interfaces/IReth.sol";
 import {IRSTORAGE} from "./interfaces/IRstorage.sol";
+import {IRPROTOCOL} from "./interfaces/IRProtocol.sol";
 
 import "forge-std/console.sol";
 
@@ -16,9 +17,12 @@ import "forge-std/console.sol";
 /// @author ZeroPoint Labs
 contract rEthERC4626 is ERC4626 {
 
+    bytes32 public immutable DEPOSIT_POOL = keccak256(abi.encodePacked("contract.address", "rocketDepositPool"));
+
     IWETH public weth;
     IRETH public rEth;
     IRSTORAGE public rStorage;
+    IRPROTOCOL public rProtocol;
     ERC20 public rEthAsset;
 
     /// -----------------------------------------------------------------------
@@ -38,14 +42,20 @@ contract rEthERC4626 is ERC4626 {
         address weth_,
         address rStorage_
     ) ERC4626(ERC20(weth_), "ERC4626-Wrapped rEth", "wLstReth") {
+        
+        /// NOTE: Non-upgradable contract
         rStorage = IRSTORAGE(rStorage_);
         weth = IWETH(weth_);
 
         /// Get address of Deposit pool from address of rStorage on deployment
-        address rocketDepositPoolAddress = rStorage.getAddress(keccak256(abi.encodePacked("contract.address", "rocketDepositPool")));
+        /// NOTE: Upgradable contract
+        address rocketDepositPoolAddress = _rocketDepositPoolAddress();
+        address rocketProtocolAddress = _rocketProtocolAddress();
         rEth = IRETH(rocketDepositPoolAddress);
+        rProtocol = IRPROTOCOL(rocketProtocolAddress);
 
         /// Get address of rETH ERC20 token
+        /// NOTE: Non-upgradable contract
         address rocketTokenRETHAddress = rStorage.getAddress(keccak256(abi.encodePacked("contract.address", "rocketTokenRETH")));
         rEthAsset = ERC20(rocketTokenRETHAddress);
     }
@@ -57,7 +67,7 @@ contract rEthERC4626 is ERC4626 {
     //////////////////////////////////////////////////////////////*/
 
     function beforeWithdraw(uint256 assets, uint256) internal override {
-        /// NOTE: Empty. We withdraw stMatic from the contract balance
+        /// NOTE: Empty. We withdraw rEth from the contract balance
     }
 
     function afterDeposit(uint256 assets, uint256) internal override {
@@ -76,6 +86,15 @@ contract rEthERC4626 is ERC4626 {
         override
         returns (uint256 shares)
     {
+        /// TODO: Call to check if rEth address didn't change
+        if (rEth != IRETH(rStorage.getAddress(DEPOSIT_POOL))) {
+            rEth = IRETH(rStorage.getAddress(DEPOSIT_POOL));
+        }
+
+        /// TODO: Call to check if there are free slots to stake in the pool
+        require(freeSlots() > assets, "NO_FREE_SLOTS");
+        
+        /// TODO: Compare slot space with previewDeposit and revert with "NO_FREE_SLOTS" if not enough
         require((shares = previewDeposit(assets)) != 0, "ZERO_SHARES");
         
         console.log("deposit shares", shares);
@@ -88,6 +107,7 @@ contract rEthERC4626 is ERC4626 {
 
         emit Deposit(msg.sender, receiver, assets, shares);
 
+        /// TODO: Move afterDeposit earlier, before minting shares
         afterDeposit(assets, shares);
     }
 
@@ -162,7 +182,7 @@ contract rEthERC4626 is ERC4626 {
 
     /// rEth as AUM. Non-rebasing!
     function totalAssets() public view virtual override returns (uint256) {
-        return rEth.balanceOf(address(this));
+        return rEthAsset.balanceOf(address(this));
     }
 
     function convertToShares(uint256 assets)
@@ -212,4 +232,23 @@ contract rEthERC4626 is ERC4626 {
 
         return supply == 0 ? assets : assets.mulDivUp(supply, totalAssets());
     }
+
+    /// @notice Check if Rocket's Deposit Pool has free slots to stake
+    function freeSlots() public view returns (uint256) {
+        uint256 _freeSlots = rEth.getBalance();
+        uint256 _poolSize = rProtocol.getMaximumDepositPoolSize();
+        /// @dev make a check for negative case here (round to 0)
+        return _poolSize - _freeSlots;
+    }
+
+    /// @notice Get address of active rEth contract (rocketDepositPool)
+    function _rocketDepositPoolAddress() internal view returns (address) {
+        return rStorage.getAddress(keccak256(abi.encodePacked("contract.address", "rocketDepositPool")));
+    }
+
+    function _rocketProtocolAddress() internal view returns (address) {
+        return rStorage.getAddress(keccak256(abi.encodePacked("contract.address", "rocketDAOProtocolSettingsDeposit")));
+    }
+
+
 }
