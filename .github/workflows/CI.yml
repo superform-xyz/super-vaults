@@ -18,7 +18,7 @@ jobs:
         with:
           version: nightly
       - name: dependencies
-        run: forge install
+        run: forge installs
       - name: tests
         run: forge test
         env:
@@ -36,6 +36,10 @@ jobs:
           ETHEREUM_RPC_URL: ${{ secrets.ETHEREUM_RPC_URL }}
           POLYGON_RPC_URL: ${{ secrets.POLYGON_RPC_URL }}
           AVALANCHE_RPC_URL: ${{ secrets.AVALANCHE_RPC_URL }}
+          FANTOM_RPC_URL: ${{ secrets.FANTOM_RPC_URL }}
+          VENUS_COMPTROLLER: 0xf6C14D4DFE45C132822Ce28c646753C54994E59C
+          BENQI_WAVAX_ASSET: 0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7
+
   snapshot:
     runs-on: ubuntu-latest
     steps:
