@@ -12,7 +12,7 @@ contract AlpacaERC4626ReinvestTest is Test {
     uint256 public bscFork;
     address public manager;
 
-    string BSC_RPC_URL = vm.envString("BSC_MAINNET_RPC");
+    string BSC_RPC_URL = vm.envString("BSC_RPC_URL");
 
     AlpacaERC4626Reinvest public vault;
 

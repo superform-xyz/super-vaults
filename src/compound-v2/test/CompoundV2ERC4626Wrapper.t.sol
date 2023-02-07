@@ -12,7 +12,7 @@ contract CompoundV2ERC4626Test is Test {
 
     address public alice;
 
-    string ETH_RPC_URL = vm.envString("ETH_MAINNET_RPC");
+    string ETH_RPC_URL = vm.envString("ETHEREUM_RPC_URL");
 
     CompoundV2ERC4626Wrapper public vault;
 

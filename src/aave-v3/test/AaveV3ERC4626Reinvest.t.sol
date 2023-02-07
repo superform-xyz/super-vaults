@@ -12,7 +12,6 @@ import {IRewardsController} from "../../aave-v3/external/IRewardsController.sol"
 import {IPool} from "../external/IPool.sol";
 
 contract AaveV3ERC4626ReinvestTest is Test {
-    
     ////////////////////////////////////////
 
     address public manager;
@@ -24,10 +23,10 @@ contract AaveV3ERC4626ReinvestTest is Test {
     uint256 public avaxFork;
     uint256 public polyFork;
 
-    string ETH_RPC_URL = vm.envString("ETH_MAINNET_RPC");
-    string FTM_RPC_URL = vm.envString("FTM_MAINNET_RPC");
-    string AVAX_RPC_URL = vm.envString("AVAX_MAINNET_RPC");
-    string POLYGON_MAINNET_RPC = vm.envString("POLYGON_MAINNET_RPC");
+    string ETH_RPC_URL = vm.envString("ETHEREUM_RPC_URL");
+    string FTM_RPC_URL = vm.envString("FANTOM_RPC_URL");
+    string AVAX_RPC_URL = vm.envString("AVALANCHE_RPC_URL");
+    string POLYGON_RPC_URL = vm.envString("POLYGON_RPC_URL");
 
     AaveV3ERC4626Reinvest public vault;
     AaveV3ERC4626ReinvestFactory public factory;
@@ -47,7 +46,7 @@ contract AaveV3ERC4626ReinvestTest is Test {
     constructor() {
         ethFork = vm.createFork(ETH_RPC_URL);
         ftmFork = vm.createFork(FTM_RPC_URL);
-        polyFork = vm.createFork(POLYGON_MAINNET_RPC);
+        polyFork = vm.createFork(POLYGON_RPC_URL);
 
         /// @dev WAVAX REWARDS on Avax
         avaxFork = vm.createFork(AVAX_RPC_URL);
@@ -152,7 +151,7 @@ contract AaveV3ERC4626ReinvestTest is Test {
 
         /// @dev Should fail because we can only set from Factory contract
         vault.setRewards();
-        
+
         vm.stopPrank();
 
         vm.startPrank(manager);

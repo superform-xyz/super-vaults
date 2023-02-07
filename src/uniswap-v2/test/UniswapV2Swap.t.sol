@@ -22,7 +22,7 @@ contract UniswapV2TestSwap is Test {
 
     using FixedPointMathLib for uint256;
 
-    string ETH_RPC_URL = vm.envString("ETH_MAINNET_RPC");
+    string ETH_RPC_URL = vm.envString("ETHEREUM_RPC_URL");
 
     UniswapV2ERC4626Swap public vault;
     UniswapV2ERC4626PoolFactory public factory;

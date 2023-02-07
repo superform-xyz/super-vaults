@@ -12,7 +12,6 @@ import {IMultiFeeDistribution} from "../external/IMultiFeeDistribution.sol";
 import {DexSwap} from "../utils/swapUtils.sol";
 
 contract GeistERC4626ReinvestTest is Test {
-
     ////////////////////////////////////////
 
     address public manager;
@@ -24,25 +23,23 @@ contract GeistERC4626ReinvestTest is Test {
     uint256 public avaxFork;
     uint256 public polyFork;
 
-    string ETH_RPC_URL = vm.envString("ETH_MAINNET_RPC");
-    string FTM_RPC_URL = vm.envString("FTM_MAINNET_RPC");
-    string AVAX_RPC_URL = vm.envString("AVAX_MAINNET_RPC");
-    string POLYGON_MAINNET_RPC = vm.envString("POLYGON_MAINNET_RPC");
+    string ETH_RPC_URL = vm.envString("ETHEREUM_RPC_URL");
+    string FTM_RPC_URL = vm.envString("FANTOM_RPC_URL");
+    string AVAX_RPC_URL = vm.envString("AVALANCHE_RPC_URL");
+    string POLYGON_RPC_URL = vm.envString("POLYGON_RPC_URL");
 
     GeistERC4626Reinvest public vault;
 
     ERC20 public asset = ERC20(vm.envAddress("GEIST_DAI_ASSET"));
     ERC20 public aToken = ERC20(vm.envAddress("GEIST_DAI_ATOKEN"));
     ERC20 public rewardToken = ERC20(vm.envAddress("GEIST_REWARD_TOKEN"));
-    IMultiFeeDistribution public rewards = IMultiFeeDistribution(vm.envAddress("GEIST_REWARDS_DISTRIBUTION"));
-    ILendingPool public lendingPool = ILendingPool(vm.envAddress("GEIST_LENDINGPOOL"));
-
-
-
+    IMultiFeeDistribution public rewards =
+        IMultiFeeDistribution(vm.envAddress("GEIST_REWARDS_DISTRIBUTION"));
+    ILendingPool public lendingPool =
+        ILendingPool(vm.envAddress("GEIST_LENDINGPOOL"));
 
     ////////////////////////////////////////
     constructor() {
-
         ftmFork = vm.createFork(FTM_RPC_URL);
 
         manager = msg.sender;
@@ -57,7 +54,6 @@ contract GeistERC4626ReinvestTest is Test {
             rewardToken,
             manager
         );
-
     }
 
     function setUp() public {
@@ -65,7 +61,6 @@ contract GeistERC4626ReinvestTest is Test {
         bob = address(0x2);
         deal(address(asset), alice, 10000 ether);
         deal(address(asset), bob, 10000 ether);
-
     }
 
     function testSingleDepositWithdraw() public {
@@ -149,7 +144,6 @@ contract GeistERC4626ReinvestTest is Test {
         assertEq(asset.balanceOf(alice), alicePreDepositBal);
     }
 
-
     function testHarvesterDAI() public {
         vm.startPrank(manager);
 
@@ -160,7 +154,7 @@ contract GeistERC4626ReinvestTest is Test {
         vault.setRoute(swapToken, pair1, pair2);
 
         vm.stopPrank();
-        
+
         vm.startPrank(alice);
 
         uint256 amount = 100 ether;
@@ -180,5 +174,4 @@ contract GeistERC4626ReinvestTest is Test {
         assertEq(ERC20(rewardToken).balanceOf(address(vault)), 0);
         console.log("totalAssets after harvest", vault.totalAssets());
     }
-
 }

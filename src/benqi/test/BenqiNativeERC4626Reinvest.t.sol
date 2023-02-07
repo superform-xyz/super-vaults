@@ -10,7 +10,6 @@ import {ICEther} from "../compound/ICEther.sol";
 import {IComptroller} from "../compound/IComptroller.sol";
 
 contract BenqiNativeERC4626ReinvestTest is Test {
-
     address public manager;
     address public alice;
     address public bob;
@@ -20,10 +19,10 @@ contract BenqiNativeERC4626ReinvestTest is Test {
     uint256 public avaxFork;
     uint256 public polyFork;
 
-    string ETH_RPC_URL = vm.envString("ETH_MAINNET_RPC");
-    string FTM_RPC_URL = vm.envString("FTM_MAINNET_RPC");
-    string AVAX_RPC_URL = vm.envString("AVAX_MAINNET_RPC");
-    string POLYGON_MAINNET_RPC = vm.envString("POLYGON_MAINNET_RPC");
+    string ETH_RPC_URL = vm.envString("ETHEREUM_RPC_URL");
+    string FTM_RPC_URL = vm.envString("FANTOM_RPC_URL");
+    string AVAX_RPC_URL = vm.envString("AVALANCHE_RPC_URL");
+    string POLYGON_RPC_URL = vm.envString("POLYGON_RPC_URL");
 
     BenqiNativeERC4626Reinvest public vault;
     ERC20 public asset;
@@ -57,7 +56,6 @@ contract BenqiNativeERC4626ReinvestTest is Test {
         hoax(alice, 1000 ether);
         deal(address(asset), alice, 100000000 ether);
         deal(address(asset), bob, 100000000 ether);
-
     }
 
     function setVault(
@@ -85,9 +83,9 @@ contract BenqiNativeERC4626ReinvestTest is Test {
     function testDepositWithdraw() public {
         uint256 amount = 1000000 ether;
 
-        vm.prank(alice);        
+        vm.prank(alice);
         uint256 aliceUnderlyingAmount = amount;
-        
+
         asset.approve(address(vault), aliceUnderlyingAmount);
         assertEq(asset.allowance(alice, address(vault)), aliceUnderlyingAmount);
 
@@ -103,16 +101,18 @@ contract BenqiNativeERC4626ReinvestTest is Test {
         assertEq(vault.balanceOf(alice), aliceShareAmount);
 
         vm.prank(alice);
-        vault.withdraw(aliceAssetsToWithdraw, alice, alice);      
+        vault.withdraw(aliceAssetsToWithdraw, alice, alice);
     }
 
     function testDepositWithdrawAVAX() public {
         uint256 amount = 100 ether;
 
-        vm.prank(alice);        
+        vm.prank(alice);
         uint256 aliceUnderlyingAmount = amount;
 
-        uint256 aliceShareAmount = vault.deposit{value: aliceUnderlyingAmount}(alice);
+        uint256 aliceShareAmount = vault.deposit{value: aliceUnderlyingAmount}(
+            alice
+        );
 
         uint256 aliceAssetsToWithdraw = vault.convertToAssets(aliceShareAmount);
         assertEq(aliceUnderlyingAmount, aliceShareAmount);
@@ -120,7 +120,6 @@ contract BenqiNativeERC4626ReinvestTest is Test {
         assertEq(vault.balanceOf(alice), aliceShareAmount);
 
         vm.prank(alice);
-        vault.withdraw(aliceAssetsToWithdraw, alice, alice);      
+        vault.withdraw(aliceAssetsToWithdraw, alice, alice);
     }
-
 }
