@@ -12,7 +12,7 @@ import {IComptroller} from "../compound/IComptroller.sol";
 contract VenusERC4626WrapperTest is Test {
     uint256 public fork;
 
-    string BSC_RPC_URL = vm.envString("BSC_MAINNET_RPC");
+    string BSC_RPC_URL = vm.envString("BSC_RPC_URL");
 
     address public manager;
     address public alice;
@@ -107,10 +107,15 @@ contract VenusERC4626WrapperTest is Test {
         assertEq(vault.balanceOf(alice), aliceShareAmount);
 
         uint256 aliceBalanceBeforeWithdraw = asset.balanceOf(alice);
-        uint256 expectedAssetsAfterWithdraw = aliceBalanceBeforeWithdraw + aliceAssetsToWithdraw;
+        uint256 expectedAssetsAfterWithdraw = aliceBalanceBeforeWithdraw +
+            aliceAssetsToWithdraw;
         console.log("aliceBalanceBeforeWithdraw", aliceBalanceBeforeWithdraw);
 
-        uint256 aliceSharesBurned = vault.withdraw(aliceAssetsToWithdraw, alice, alice);
+        uint256 aliceSharesBurned = vault.withdraw(
+            aliceAssetsToWithdraw,
+            alice,
+            alice
+        );
         uint256 aliceBalanceAfterWithdraw = asset.balanceOf(alice);
 
         console.log("aliceBalanceBeforeDeposit", aliceBalanceBeforeDeposit);
@@ -175,7 +180,7 @@ contract VenusERC4626WrapperTest is Test {
 
         deal(address(reward), address(vault), 1 ether);
         assertEq(reward.balanceOf(address(vault)), 1 ether);
-        
+
         vault.harvest();
         assertEq(reward.balanceOf(address(vault)), 0);
 

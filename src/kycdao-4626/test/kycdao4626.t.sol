@@ -17,7 +17,7 @@ contract kycDAO4626Test is Test {
 
     using FixedPointMathLib for uint256;
 
-    string POLYGON_RPC_URL = vm.envString("POLYGON_MAINNET_RPC");
+    string POLYGON_RPC_URL = vm.envString("POLYGON_RPC_URL");
 
     kycDAO4626 public vault;
 

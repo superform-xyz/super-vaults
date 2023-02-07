@@ -18,7 +18,7 @@ contract stEthTest is Test {
 
     using FixedPointMathLib for uint256;
 
-    string ETH_RPC_URL = vm.envString("ETH_MAINNET_RPC");
+    string ETH_RPC_URL = vm.envString("ETHEREUM_RPC_URL");
 
     StETHERC4626 public vault;
 

@@ -10,7 +10,6 @@ import {ICERC20} from "../compound/ICERC20.sol";
 import {IComptroller} from "../compound/IComptroller.sol";
 
 contract BenqiERC4626ReinvestTest is Test {
-
     address public manager;
     address public alice;
     address public bob;
@@ -20,10 +19,10 @@ contract BenqiERC4626ReinvestTest is Test {
     uint256 public avaxFork;
     uint256 public polyFork;
 
-    string ETH_RPC_URL = vm.envString("ETH_MAINNET_RPC");
-    string FTM_RPC_URL = vm.envString("FTM_MAINNET_RPC");
-    string AVAX_RPC_URL = vm.envString("AVAX_MAINNET_RPC");
-    string POLYGON_MAINNET_RPC = vm.envString("POLYGON_MAINNET_RPC");
+    string ETH_RPC_URL = vm.envString("ETHEREUM_RPC_URL");
+    string FTM_RPC_URL = vm.envString("FANTOM_RPC_URL");
+    string AVAX_RPC_URL = vm.envString("AVALANCHE_RPC_URL");
+    string POLYGON_RPC_URL = vm.envString("POLYGON_RPC_URL");
 
     BenqiERC4626Reinvest public vault;
     ERC20 public asset;
@@ -65,7 +64,6 @@ contract BenqiERC4626ReinvestTest is Test {
         bob = address(0x2);
         deal(address(asset), alice, 100000000 ether);
         deal(address(asset), bob, 100000000 ether);
-
     }
 
     function setVault(
@@ -100,9 +98,9 @@ contract BenqiERC4626ReinvestTest is Test {
     function testDepositWithdraw() public {
         uint256 amount = 1000000 ether;
 
-        vm.prank(alice);        
+        vm.prank(alice);
         uint256 aliceUnderlyingAmount = amount;
-        
+
         asset.approve(address(vault), aliceUnderlyingAmount);
         assertEq(asset.allowance(alice, address(vault)), aliceUnderlyingAmount);
 
@@ -127,7 +125,6 @@ contract BenqiERC4626ReinvestTest is Test {
         assertEq(vault.balanceOf(alice), aliceShareAmount);
 
         vm.prank(alice);
-        vault.withdraw(aliceAssetsToWithdraw, alice, alice);      
+        vault.withdraw(aliceAssetsToWithdraw, alice, alice);
     }
-
 }
