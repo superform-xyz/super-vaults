@@ -12,4 +12,7 @@ interface IRETH {
     function withdrawExcessBalance(uint256 _amount) external;
     function deposit() external payable;
 
+    /// @dev Part of RocketBase parent contract
+    function calcBase() external view returns (uint256);
+
 }
