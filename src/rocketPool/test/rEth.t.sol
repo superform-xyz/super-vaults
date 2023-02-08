@@ -60,7 +60,6 @@ contract rEthTest is Test {
         uint256 aliceUnderlyingAmount = 1 ether;
 
         vm.startPrank(alice);
-        console.log("alice bal weth", _weth.balanceOf(alice));
 
         _weth.approve(address(vault), aliceUnderlyingAmount);
         assertEq(_weth.allowance(alice, address(vault)), aliceUnderlyingAmount);
@@ -69,6 +68,8 @@ contract rEthTest is Test {
             aliceUnderlyingAmount
         );
 
+        console.log("expectedSharesFromAssets", expectedSharesFromAssets);
+   
         assertEq(block.number, 15_565_892);
         uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
 
@@ -78,7 +79,7 @@ contract rEthTest is Test {
         uint256 aliceAssetsFromShares = vault.convertToAssets(aliceShareAmount);
         console.log("aliceAssetsFromShares", aliceAssetsFromShares);
 
-        vault.withdraw(aliceAssetsFromShares, alice, alice);
+        vault.withdraw(vault.balanceOf(alice), alice, alice);
     }
 
     // /// Expect Error: The deposit pool size after depositing exceeds the maximum size
