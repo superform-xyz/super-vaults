@@ -36,6 +36,9 @@ contract rEthTest is Test {
     /// https://docs.rocketpool.net/overview/contracts-integrations/#protocol-contracts
     function setUp() public {
         ethFork = vm.createFork(ETH_RPC_URL);
+        
+        /// 15565892
+        vm.rollFork(ethFork, 15_565_892);
         vm.selectFork(ethFork);
 
         address rocketDepositPoolAddress = _rStorage.getAddress(
@@ -49,27 +52,26 @@ contract rEthTest is Test {
         manager = msg.sender;
 
         deal(weth, alice, ONE_THOUSAND_E18);
-
     }
 
     /// Expect Error: The deposit pool size after depositing exceeds the maximum size
     /// That's because RocketPool only allows staking if slots are free.
     function testDepositWithdraw() public {
-        uint256 aliceUnderlyingAmount = 10000000000000000;
+        uint256 aliceUnderlyingAmount = 1 ether;
 
         vm.startPrank(alice);
         console.log("alice bal weth", _weth.balanceOf(alice));
 
         _weth.approve(address(vault), aliceUnderlyingAmount);
-        assertEq(
-            _weth.allowance(alice, address(vault)),
-            aliceUnderlyingAmount
-        );
+        assertEq(_weth.allowance(alice, address(vault)), aliceUnderlyingAmount);
 
         uint256 expectedSharesFromAssets = vault.convertToShares(
             aliceUnderlyingAmount
         );
+
+        assertEq(block.number, 15_565_892);
         uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
+
         assertEq(expectedSharesFromAssets, aliceShareAmount);
         console.log("aliceShareAmount", aliceShareAmount);
 

@@ -16,8 +16,8 @@ import "forge-std/console.sol";
 /// @notice RocketPool's rETH ERC4626 Wrapper
 /// @author ZeroPoint Labs
 contract rEthERC4626 is ERC4626 {
-
-    bytes32 public immutable DEPOSIT_POOL = keccak256(abi.encodePacked("contract.address", "rocketDepositPool"));
+    bytes32 public immutable DEPOSIT_POOL =
+        keccak256(abi.encodePacked("contract.address", "rocketDepositPool"));
 
     IWETH public weth;
     IRETH public rEth;
@@ -38,11 +38,9 @@ contract rEthERC4626 is ERC4626 {
 
     /// @param weth_ weth address (Vault's underlying / deposit token)
     /// @param rStorage_ rocketPool Storage contract address to read current implementation details
-    constructor(
-        address weth_,
-        address rStorage_
-    ) ERC4626(ERC20(weth_), "ERC4626-Wrapped rEth", "wLstReth") {
-        
+    constructor(address weth_, address rStorage_)
+        ERC4626(ERC20(weth_), "ERC4626-Wrapped rEth", "wLstReth")
+    {
         /// NOTE: Non-upgradable contract
         rStorage = IRSTORAGE(rStorage_);
         weth = IWETH(weth_);
@@ -52,12 +50,15 @@ contract rEthERC4626 is ERC4626 {
         address rocketDepositPoolAddress = _rocketDepositPoolAddress();
         address rocketProtocolAddress = _rocketProtocolAddress();
         console.log("rocketDepositPoolAddress", rocketDepositPoolAddress);
+        console.log("rocketProtocolAddress", rocketProtocolAddress);
         rEth = IRETH(rocketDepositPoolAddress);
         rProtocol = IRPROTOCOL(rocketProtocolAddress);
 
         /// Get address of rETH ERC20 token
         /// NOTE: Non-upgradable contract
-        address rocketTokenRETHAddress = rStorage.getAddress(keccak256(abi.encodePacked("contract.address", "rocketTokenRETH")));
+        address rocketTokenRETHAddress = rStorage.getAddress(
+            keccak256(abi.encodePacked("contract.address", "rocketTokenRETH"))
+        );
         rEthAsset = ERC20(rocketTokenRETHAddress);
     }
 
@@ -86,18 +87,20 @@ contract rEthERC4626 is ERC4626 {
         public
         override
         returns (uint256 shares)
-    {
-        /// TODO: Call to check if rEth address didn't change
+    {   
+
+        /// @dev Call to check if rEth address didn't change
         if (rEth != IRETH(rStorage.getAddress(DEPOSIT_POOL))) {
             rEth = IRETH(rStorage.getAddress(DEPOSIT_POOL));
         }
 
-        /// TODO: Call to check if there are free slots to stake in the pool
+        /// @dev Call to check if there are free slots to stake in the pool
+        console.log("freeSlots", freeSlots());
         require(freeSlots() > assets, "NO_FREE_SLOTS");
 
-        /// TODO: previewDeposit needs to return amount of rEth minted from assets        
+        /// @dev previewDeposit needs to return amount of rEth minted from assets
         require((shares = previewDeposit(assets)) != 0, "ZERO_SHARES");
-        
+
         console.log("deposit shares", shares);
 
         /// @dev Transfer weth to this contract
@@ -109,14 +112,15 @@ contract rEthERC4626 is ERC4626 {
         /// @dev Deposit eth to rocket pool
         rEth.deposit{value: assets}();
 
+        /// @dev How much rEth are we receiving after deposit to the rocket pool
         uint256 rEthReceived = rEthAsset.balanceOf(address(this));
 
+        /// @dev Should receive at least amount equal to the shares calculated
         require(rEthReceived >= shares, "NOT_ENOUGH_rETH");
 
         _mint(receiver, rEthReceived);
 
         emit Deposit(msg.sender, receiver, assets, rEthReceived);
-
     }
 
     function mint(uint256 shares, address receiver)
@@ -130,7 +134,16 @@ contract rEthERC4626 is ERC4626 {
 
         weth.withdraw(assets);
 
-        _mint(receiver, shares);
+        /// @dev Deposit eth to rocket pool
+        rEth.deposit{value: assets}();
+
+        /// @dev How much rEth are we receiving after deposit to the rocket pool
+        uint256 rEthReceived = rEthAsset.balanceOf(address(this));
+
+        /// @dev Should receive at least amount equal to the shares calculated
+        require(rEthReceived >= shares, "NOT_ENOUGH_rETH");
+
+        _mint(receiver, assets);
 
         emit Deposit(msg.sender, receiver, assets, shares);
 
@@ -155,14 +168,16 @@ contract rEthERC4626 is ERC4626 {
 
         beforeWithdraw(assets, shares);
 
-        console.log("rEth balance withdraw", rEthAsset.balanceOf(address(this)));
+        console.log(
+            "rEth balance withdraw",
+            rEthAsset.balanceOf(address(this))
+        );
 
         _burn(owner, shares);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
         rEthAsset.safeTransfer(receiver, assets);
-
     }
 
     function redeem(
@@ -193,7 +208,12 @@ contract rEthERC4626 is ERC4626 {
         return rEthAsset.balanceOf(address(this));
     }
 
-    function previewDeposit(uint256 assets) public view override returns (uint256) {
+    function previewDeposit(uint256 assets)
+        public
+        view
+        override
+        returns (uint256)
+    {
         return convertToShares(assets);
     }
 
@@ -204,12 +224,9 @@ contract rEthERC4626 is ERC4626 {
         override
         returns (uint256)
     {
-        
-        // uint256 depositFee = msg.value.mul(rocketDAOProtocolSettingsDeposit.getDepositFee()).div(calcBase);
-        // uint256 depositFee = assets.mul(rProtocol.getDepositFee()).div(rEth.calcBase());
-
+        /// https://github.com/rocket-pool/rocketpool/blob/967e4d3c32721a84694921751920af313d1467af/contracts/contract/deposit/RocketDepositPool.sol#L82
         uint256 depositFee = assets.mulDivDown(rProtocol.getDepositFee(), 1e18); /// rEth.calcBase()
-        return assets - depositFee;        
+        return assets - depositFee;
     }
 
     function convertToAssets(uint256 shares)
@@ -219,9 +236,8 @@ contract rEthERC4626 is ERC4626 {
         override
         returns (uint256)
     {
-        uint256 supply = totalSupply;
-
-        return supply == 0 ? shares : shares.mulDivDown(totalAssets(), supply);
+        uint256 depositFee = shares.mulDivDown(rProtocol.getDepositFee(), 1e18); /// rEth.calcBase()
+        return shares - depositFee;
     }
 
     function previewMint(uint256 shares)
@@ -231,9 +247,8 @@ contract rEthERC4626 is ERC4626 {
         override
         returns (uint256)
     {
-        uint256 supply = totalSupply;
-
-        return supply == 0 ? shares : shares.mulDivUp(totalAssets(), supply);
+        uint256 depositFee = shares.mulDivDown(rProtocol.getDepositFee(), 1e18); /// rEth.calcBase()
+        return shares - depositFee;
     }
 
     function previewWithdraw(uint256 assets)
@@ -243,27 +258,39 @@ contract rEthERC4626 is ERC4626 {
         override
         returns (uint256)
     {
-        uint256 supply = totalSupply;
-
-        return supply == 0 ? assets : assets.mulDivUp(supply, totalAssets());
+        uint256 depositFee = assets.mulDivDown(rProtocol.getDepositFee(), 1e18); /// rEth.calcBase()
+        return assets - depositFee;
     }
 
     /// @notice Check if Rocket's Deposit Pool has free slots to stake
     function freeSlots() public view returns (uint256) {
         uint256 _freeSlots = rEth.getBalance();
+        console.log("free slots", _freeSlots);
         uint256 _poolSize = rProtocol.getMaximumDepositPoolSize();
+        console.log("pool size", _poolSize);
         /// @dev make a check for negative case here (round to 0)
         return _poolSize - _freeSlots;
     }
 
     /// @notice Get address of active rEth contract (rocketDepositPool)
     function _rocketDepositPoolAddress() internal view returns (address) {
-        return rStorage.getAddress(keccak256(abi.encodePacked("contract.address", "rocketDepositPool")));
+        return
+            rStorage.getAddress(
+                keccak256(
+                    abi.encodePacked("contract.address", "rocketDepositPool")
+                )
+            );
     }
 
     function _rocketProtocolAddress() internal view returns (address) {
-        return rStorage.getAddress(keccak256(abi.encodePacked("contract.address", "rocketDAOProtocolSettingsDeposit")));
+        return
+            rStorage.getAddress(
+                keccak256(
+                    abi.encodePacked(
+                        "contract.address",
+                        "rocketDAOProtocolSettingsDeposit"
+                    )
+                )
+            );
     }
-
-
 }
