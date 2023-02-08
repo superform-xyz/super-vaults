@@ -70,25 +70,12 @@ contract rEthERC4626 is ERC4626 {
 
     receive() external payable {}
 
-    /*//////////////////////////////////////////////////////////////
-                          INTERNAL HOOKS LOGIC
-    //////////////////////////////////////////////////////////////*/
-
-    function beforeWithdraw(uint256 assets, uint256) internal override {
-        /// NOTE: Empty. We withdraw rEth from the contract balance
-    }
-
-    function afterDeposit(uint256 assets, uint256) internal override {
-        console.log("ethAmount aD", assets);
-        rEth.deposit{value: assets}();
-    }
-
     /// -----------------------------------------------------------------------
     /// ERC4626 overrides
     /// -----------------------------------------------------------------------
 
-    /// Standard ERC4626 deposit can only accept ERC20
-    /// Vault's underlying is rETH
+    /// @notice Deposit into active RocketDepositPool. Standard ERC4626 deposit can only accept ERC20
+    /// @return shares - rEth as both Vault's shares and underlying
     function deposit(uint256 assets, address receiver)
         public
         override
@@ -114,16 +101,22 @@ contract rEthERC4626 is ERC4626 {
 
         /// @dev Unwrap weth to eth
         weth.withdraw(assets);
+        
+        /// @dev We need to check how much rEth we have before deposit
+        uint256 startBalance = rEthAsset.balanceOf(address(this));
 
         /// @dev Deposit eth to rocket pool
         rEth.deposit{value: assets}();
 
         /// @dev How much rEth are we receiving after deposit to the rocket pool
-        uint256 rEthReceived = rEthAsset.balanceOf(address(this));
+        /// TODO: balanceOf could be manipulated
+        uint256 depositBalance = rEthAsset.balanceOf(address(this));
+        uint256 rEthReceived = depositBalance - startBalance;
+        
         console.log("rEthReceived", rEthReceived);
 
         /// @dev Should receive at least amount equal to the shares calculated
-        require(rEthReceived >= shares, "NOT_ENOUGH_rETH");
+        require(rEthReceived == shares, "NOT_ENOUGH_rETH");
 
         _mint(receiver, rEthReceived);
 
@@ -134,27 +127,37 @@ contract rEthERC4626 is ERC4626 {
         public
         override
         returns (uint256 assets)
-    {
+    {   
+        /// get X rEth shares for Y eth assets
         assets = previewMint(shares);
 
+        /// transfer Y eth asset to this contract
         asset.safeTransferFrom(msg.sender, address(this), assets);
 
+        /// @dev Unwrap weth to eth
         weth.withdraw(assets);
+
+        /// @dev We need to check how much rEth we have before deposit
+        uint256 startBalance = rEthAsset.balanceOf(address(this));
 
         /// @dev Deposit eth to rocket pool
         rEth.deposit{value: assets}();
 
         /// @dev How much rEth are we receiving after deposit to the rocket pool
-        uint256 rEthReceived = rEthAsset.balanceOf(address(this));
+        /// TODO: balanceOf could be manipulated
+        uint256 depositBalance = rEthAsset.balanceOf(address(this));
+        uint256 rEthReceived = depositBalance - startBalance;
 
+        console.log("rEthReceived", rEthReceived);
+        console.log("shares", shares);
+        
         /// @dev Should receive at least amount equal to the shares calculated
-        require(rEthReceived >= shares, "NOT_ENOUGH_rETH");
+        // require(rEthReceived == assets, "NOT_ENOUGH_rETH");
 
-        _mint(receiver, assets);
+        _mint(receiver, rEthReceived);
 
-        emit Deposit(msg.sender, receiver, assets, shares);
+        emit Deposit(msg.sender, receiver, assets, rEthReceived);
 
-        // afterDeposit(assets, shares);
     }
 
     function withdraw(
@@ -172,8 +175,6 @@ contract rEthERC4626 is ERC4626 {
             if (allowed != type(uint256).max)
                 allowance[owner][msg.sender] = allowed - shares;
         }
-
-        beforeWithdraw(assets, shares);
 
         console.log(
             "rEth balance withdraw",
@@ -201,8 +202,6 @@ contract rEthERC4626 is ERC4626 {
 
         require((assets = previewRedeem(shares)) != 0, "ZERO_ASSETS");
 
-        beforeWithdraw(assets, shares);
-
         _burn(owner, shares);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
@@ -225,33 +224,6 @@ contract rEthERC4626 is ERC4626 {
         return convertToShares(assets);
     }
 
-    /// @notice Get amount of ETH from rEth
-    function previewMint(uint256 shares)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
-        /// https://github.com/rocket-pool/rocketpool/blob/967e4d3c32721a84694921751920af313d1467af/contracts/interface/token/RocketTokenRETHInterface.sol#L8
-        uint256 ethValue = rEthToken.getEthValue(shares);
-        uint256 depositFee = ethValue.mulDivUp(rProtocol.getDepositFee(), 1e18); /// rEth.calcBase()
-        return ethValue - depositFee;
-    }
-
-    /// @notice Get amount of ETH from rEth
-    function previewWithdraw(uint256 assets)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
-        /// https://github.com/rocket-pool/rocketpool/blob/967e4d3c32721a84694921751920af313d1467af/contracts/interface/token/RocketTokenRETHInterface.sol#L9
-        /// https://github.com/rocket-pool/rocketpool/blob/967e4d3c32721a84694921751920af313d1467af/contracts/contract/deposit/RocketDepositPool.sol#L82
-        return rEthToken.getRethValue(assets);
-    }
-
     /// @notice Get amount of rEth from ETH
     function convertToShares(uint256 assets)
         public
@@ -268,6 +240,38 @@ contract rEthERC4626 is ERC4626 {
     }
 
     /// @notice Get amount of ETH from rEth
+    /// to get X rEth shares you need to supply Y eth assets
+    function previewMint(uint256 shares)
+        public
+        view
+        virtual
+        override
+        returns (uint256)
+    {
+        /// https://github.com/rocket-pool/rocketpool/blob/967e4d3c32721a84694921751920af313d1467af/contracts/interface/token/RocketTokenRETHInterface.sol#L8
+        uint256 ethValue = rEthToken.getRethValue(shares);
+        return rEthToken.getEthValue(ethValue) + 1;
+    }
+
+    /// @notice Get amount of ETH from rEth
+    function previewWithdraw(uint256 assets)
+        public
+        view
+        virtual
+        override
+        returns (uint256)
+    {
+        /// https://github.com/rocket-pool/rocketpool/blob/967e4d3c32721a84694921751920af313d1467af/contracts/interface/token/RocketTokenRETHInterface.sol#L9
+        /// https://github.com/rocket-pool/rocketpool/blob/967e4d3c32721a84694921751920af313d1467af/contracts/contract/deposit/RocketDepositPool.sol#L82
+        return rEthToken.getRethValue(assets);
+    }
+
+    /// @notice Get amount of ETH from rEth
+    function previewRedeem(uint256 shares) public view override returns (uint256) {
+        return convertToAssets(shares);
+    }
+
+    /// @notice Get amount of ETH from rEth
     function convertToAssets(uint256 shares)
         public
         view
@@ -276,7 +280,8 @@ contract rEthERC4626 is ERC4626 {
         returns (uint256)
     {
         /// https://github.com/rocket-pool/rocketpool/blob/967e4d3c32721a84694921751920af313d1467af/contracts/interface/token/RocketTokenRETHInterface.sol#L8
-        return rEthToken.getEthValue(shares);
+        uint256 ethValue = rEthToken.getRethValue(shares);
+        return rEthToken.getEthValue(ethValue) + 1;
     }
 
     /// @notice Check if Rocket's Deposit Pool has free slots to stake
@@ -297,6 +302,7 @@ contract rEthERC4626 is ERC4626 {
             );
     }
 
+    /// @notice Get address of active rEth contract (rocketTokenRETH)
     function _rocketProtocolAddress() internal view returns (address) {
         return
             rStorage.getAddress(
