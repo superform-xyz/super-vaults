@@ -169,7 +169,7 @@ contract GeistERC4626ReinvestTest is Test {
         console.log("totalAssets before harvest", vault.totalAssets());
 
         assertEq(ERC20(rewardToken).balanceOf(address(vault)), 10000 ether);
-        vault.harvest();
+        vault.harvest(0);
 
         assertEq(ERC20(rewardToken).balanceOf(address(vault)), 0);
         console.log("totalAssets after harvest", vault.totalAssets());

@@ -32,6 +32,13 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
         0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDFFFFFFFFFFFFFF;
 
     /// -----------------------------------------------------------------------
+    /// Errors
+    /// -----------------------------------------------------------------------
+
+        // @notice Thrown when reinvested amounts are not enough.
+    error MIN_AMOUNT_ERROR();
+
+    /// -----------------------------------------------------------------------
     /// Immutable params
     /// -----------------------------------------------------------------------
 
@@ -97,7 +104,7 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
     }
 
     /// @notice Claims liquidity providing rewards from AAVE-Fork and performs low-lvl swap with instant reinvesting
-    function harvest() external {
+    function harvest(uint256 minAmountOut_) external {
 
         /// @dev Claim rewards from AAVE-Fork
         address[] memory assets = new address[](1);
@@ -105,6 +112,7 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
         uint256 earned = rewards.claimRewards(assets, type(uint256).max, address(this));
         
         ERC20 rewardToken_ = ERC20(rewardToken);
+        uint256 reinvestAmount;
 
         /// If one swap needed (high liquidity pair) - set swapInfo.token0/token/pair2 to 0x
         /// @dev Swap AAVE-Fork token for asset
@@ -112,7 +120,7 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
 
             rewardToken_.approve(SwapInfo.pair1, earned); /// max approves address
 
-            DexSwap.swap(
+            reinvestAmount = DexSwap.swap(
                 earned, /// REWARDS amount to swap
                 rewardToken, // from REWARD-TOKEN
                 address(asset), /// to target underlying of this Vault
@@ -132,14 +140,16 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
 
             ERC20(SwapInfo.token).approve(SwapInfo.pair2, swapTokenAmount); 
 
-            swapTokenAmount = DexSwap.swap(
+            reinvestAmount = DexSwap.swap(
                 swapTokenAmount,
                 SwapInfo.token, // from received token
                 address(asset), /// to target underlying of this Vault
                 SwapInfo.pair2 /// pairToken (pool)
             );
         }
-
+        if(reinvestAmount < minAmountOut_) {
+            revert MIN_AMOUNT_ERROR();
+        }
         /// reinvest() without minting (no asset.totalSupply() increase == profit)
         afterDeposit(asset.balanceOf(address(this)), 0);
     }

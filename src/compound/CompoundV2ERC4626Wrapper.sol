@@ -9,8 +9,9 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {ICERC20} from "./compound/ICERC20.sol";
 import {LibCompound} from "./compound/LibCompound.sol";
 import {IComptroller} from "./compound/IComptroller.sol";
-
+import {ISwapRouter} from "../aave-v2/utils/ISwapRouter.sol";
 import {DexSwap} from "./utils/swapUtils.sol";
+import "forge-std/console.sol";
 
 /// @title CompoundV2StrategyWrapper - Custom implementation of yield-daddy wrappers with flexible reinvesting logic
 /// Rationale: Forked protocols often implement custom functions and modules on top of forked code.
@@ -31,6 +32,12 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
     /// @notice Thrown when a call to Compound returned an error.
     /// @param errorCode The error code returned by Compound
     error CompoundERC4626__CompoundError(uint256 errorCode);
+    /// @notice Thrown when reinvest amount is not enough.
+    error MIN_AMOUNT_ERROR();
+    /// @notice Thrown when caller is not the manager.
+    error INVALID_ACCESS_ERROR();
+    /// @notice Thrown when swap path fee in reinvest is invalid.
+    error INVALID_FEE_ERROR();
 
     /// -----------------------------------------------------------------------
     /// Constants
@@ -55,7 +62,9 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
     IComptroller public immutable comptroller;
 
     /// @notice Pointer to swapInfo
-    swapInfo public SwapInfo;
+    bytes public swapPath;
+
+    ISwapRouter public immutable swapRouter = ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
 
     /// Compact struct to make two swaps (PancakeSwap on BSC)
     /// A => B (using pair1) then B => asset (of Wrapper) (using pair2)
@@ -80,6 +89,9 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
         cToken = cToken_;
         comptroller = comptroller_;
         manager = manager_;
+        ICERC20[] memory cTokens = new ICERC20[](1);
+        cTokens[0] = cToken;
+        comptroller.enterMarkets(cTokens);
     }
 
     /// -----------------------------------------------------------------------
@@ -87,52 +99,46 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
     /// -----------------------------------------------------------------------
 
     function setRoute(
-        address token,
-        address pair1,
-        address pair2
+        uint24 poolFee1_,
+        address tokenMid_,
+        uint24 poolFee2_
     ) external {
-        require(msg.sender == manager, "onlyOwner");
-        SwapInfo = swapInfo(token, pair1, pair2);
-        ERC20(reward).approve(SwapInfo.pair1, type(uint256).max); /// max approve
-        ERC20(SwapInfo.token).approve(SwapInfo.pair2, type(uint256).max); /// max approve
+        if(msg.sender != manager)
+            revert INVALID_ACCESS_ERROR();
+        if(poolFee1_ == 0)
+            revert INVALID_FEE_ERROR();
+        if(poolFee2_ == 0 || tokenMid_ == address(0))
+            swapPath  = abi.encodePacked(reward, poolFee1_, address(asset));
+        else 
+            swapPath  = abi.encodePacked(reward, poolFee1_, tokenMid_, poolFee2_, address(asset));
+        ERC20(reward).approve(address(swapRouter), type(uint256).max); /// max approve
     }
 
     /// @notice Claims liquidity mining rewards from Compound and performs low-lvl swap with instant reinvesting
     /// Calling harvest() claims COMP-Fork token through direct Pair swap for best control and lowest cost
     /// harvest() can be called by anybody. ideally this function should be adjusted per needs (e.g add fee for harvesting)
-    function harvest() external {
+    function harvest(uint256 minAmountOut_) external {
         ICERC20[] memory cTokens = new ICERC20[](1);
         cTokens[0] = cToken;
-        comptroller.claimComp(address(this));
+        comptroller.claimComp(address(this), cTokens);
 
         uint256 earned = ERC20(reward).balanceOf(address(this));
-        address rewardToken = address(reward);
+        uint256 reinvestAmount;
+        /// @dev Swap rewards to asset
+        ISwapRouter.ExactInputParams memory params =
+            ISwapRouter.ExactInputParams({
+                path: swapPath,
+                recipient: msg.sender,
+                deadline: block.timestamp,
+                amountIn: earned,
+                amountOutMinimum: minAmountOut_
+            });
 
-        /// If only one swap needed (high liquidity pair) - set swapInfo.token0/token/pair2 to 0x
-        if (SwapInfo.token == address(asset)) {
-            DexSwap.swap(
-                earned, /// REWARDS amount to swap
-                rewardToken, // from REWARD (because of liquidity)
-                address(asset), /// to target underlying of this Vault ie USDC
-                SwapInfo.pair1 /// pairToken (pool)
-            );
-        /// If two swaps needed
-        } else {
-            uint256 swapTokenAmount = DexSwap.swap(
-                earned, /// REWARDS amount to swap
-                rewardToken, /// fromToken REWARD
-                SwapInfo.token, /// to intermediary token with high liquidity (no direct pools)
-                SwapInfo.pair1 /// pairToken (pool)
-            );
-
-            DexSwap.swap(
-                swapTokenAmount,
-                SwapInfo.token, // from received BUSD (because of liquidity)
-                address(asset), /// to target underlying of this Vault ie USDC
-                SwapInfo.pair2 /// pairToken (pool)
-            );
+        // Executes the swap.
+        reinvestAmount = swapRouter.exactInput(params);
+        if(reinvestAmount < minAmountOut_) {
+            revert MIN_AMOUNT_ERROR();
         }
-
         afterDeposit(asset.balanceOf(address(this)), 0);
     }
 
@@ -169,7 +175,6 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
 
         // approve to cToken
         asset.safeApprove(address(cToken), assets);
-
         // deposit into cToken
         uint256 errorCode = cToken.mint(assets);
         if (errorCode != NO_ERROR) {

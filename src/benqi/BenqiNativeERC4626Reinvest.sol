@@ -80,6 +80,8 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
     /// @notice Thrown when the redeems shares doesnot return any assets.
     error CompoundERC4626_ZEROASSETS_Error();
 
+    // @notice Thrown when reinvested amounts are not enough.
+    error MIN_AMOUNT_ERROR();
     /// -----------------------------------------------------------------------
     /// Constructor
     /// -----------------------------------------------------------------------
@@ -116,7 +118,7 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
     }
 
     /// @notice Claims liquidity mining rewards from Benqi and sends it to this Vault
-    function harvest(uint8 rewardType_) external {
+    function harvest(uint8 rewardType_, uint256 minAmountOut_) external {
         
         swapInfo memory swapMap = swapInfoMap[rewardType_];
         address rewardToken = rewardTokenMap[rewardType_];
@@ -124,13 +126,13 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
 
         comptroller.claimReward(rewardType_, address(this));
         uint256 earned = ERC20(rewardToken).balanceOf(address(this));
-
+        uint256 reinvestAmount;
         /// If only one swap needed (high liquidity pair) - set swapInfo.token0/token/pair2 to 0x
         if (swapMap.token == address(asset)) {
 
             rewardToken_.approve(swapMap.pair1, earned); 
 
-            DexSwap.swap(
+            reinvestAmount = DexSwap.swap(
                 earned, /// REWARDS amount to swap
                 rewardToken, // from REWARD (because of liquidity)
                 address(asset), /// to target underlying of this Vault ie USDC
@@ -150,14 +152,16 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
 
             ERC20(swapMap.token).approve(swapMap.pair2, swapTokenAmount); 
 
-            DexSwap.swap(
+            reinvestAmount = DexSwap.swap(
                 swapTokenAmount,
                 swapMap.token, // from received BUSD (because of liquidity)
                 address(asset), /// to target underlying of this Vault ie USDC
                 swapMap.pair2 /// pairToken (pool)
             );
         }
-
+        if(reinvestAmount < minAmountOut_) {
+            revert MIN_AMOUNT_ERROR();
+        }
         afterDeposit(asset.balanceOf(address(this)), 0);
     }
 
