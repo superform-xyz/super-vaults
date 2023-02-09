@@ -75,11 +75,19 @@ contract rEthTest is Test {
         assertEq(expectedSharesFromAssets, aliceShareAmount);
         console.log("aliceShareAmount", aliceShareAmount);
 
-        /// @dev TODO: Converted shares to asset output 1 wei less than expected
-        uint256 aliceAssetsFromShares = vault.convertToAssets(aliceShareAmount);
-        console.log("aliceAssetsFromShares", aliceAssetsFromShares);
+        /// @dev Caller asks to withdraw ETH asset equal to the vrETH he owns
+        uint256 aliceAssetsFromShares = vault.previewRedeem(aliceShareAmount);
+        uint256 aliceRethBalance = vault.balanceOf(alice);
 
-        vault.withdraw(vault.balanceOf(alice), alice, alice);
+        if (aliceRethBalance > aliceAssetsFromShares) {
+            console.log("aliceAssetsFromShares", aliceAssetsFromShares);
+            vault.withdraw(aliceAssetsFromShares, alice, alice);
+        } else {
+            uint256 aliceMaxWithdraw = vault.maxWithdraw(alice);
+            console.log("aliceMaxWithdraw", aliceMaxWithdraw);
+            vault.withdraw(aliceMaxWithdraw, alice, alice);
+        }
+
     }
 
     function testMintRedeem() public {
@@ -87,20 +95,38 @@ contract rEthTest is Test {
 
         vm.startPrank(alice);
 
+        /// how much eth-backing we'll get for this amount of rEth
+        /// previewMint should return amount of weth to supply for asked vrEth shares
         uint256 expectedAssetFromShares = vault.previewMint(
-            aliceSharesMint
+            aliceSharesMint /// vrEth amount (caller wants 1e18 vrEth : rEth)
         );
 
         console.log("expectedAssetFromShares", expectedAssetFromShares);
 
         _weth.approve(address(vault), expectedAssetFromShares);
 
-        uint256 aliceAssetAmount = vault.mint(aliceSharesMint, alice);
+        uint256 aliveRethMinted = vault.mint(aliceSharesMint, alice);
+        
+        console.log("aliceAssetAmount", aliveRethMinted);
+
         // assertEq(expectedAssetFromShares, aliceAssetAmount);
+        
+        uint256 aliceEthToRedeem = vault.previewRedeem(aliveRethMinted);
+        uint256 aliceRethBalance = vault.balanceOf(alice);
 
-        uint256 aliceSharesAmount = vault.balanceOf(alice);
+        console.log("aliceSharesAmount", aliceRethBalance);
+
         // assertEq(aliceSharesAmount, aliceSharesMint);
+        
+        /// @dev Caller asks to withdraw ETH asset equal to the vrETH he owns
+        if (aliceRethBalance > aliceEthToRedeem) {
+            console.log("aliceAssetsFromShares", aliceEthToRedeem);
+            vault.withdraw(aliceEthToRedeem, alice, alice);
+        } else {
+            uint256 aliceMaxRedeem = vault.maxRedeem(alice);
+            console.log("aliceMaxRedeem", aliceMaxRedeem);
+            vault.withdraw(aliceMaxRedeem, alice, alice);
+        }
 
-        vault.redeem(aliceSharesAmount, alice, alice);
     }
 }

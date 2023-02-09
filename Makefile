@@ -8,7 +8,7 @@ update:; forge update
 
 # Build & test
 build  :; forge build
-test   :; forge test --no-match-contract rEthTest\|stEthSwapTest -vvv
+test   :; forge test --no-match-contract stEthSwapTest -vvv
 clean  :; forge clean
 snapshot :; forge snapshot
 fmt    :; forge fmt && forge fmt test/
@@ -21,7 +21,7 @@ test-steth-swap :; forge test --match-contract stEthSwap.*Test -vvv
 test-stmatic :; forge test --match-contract stMatic.*Test -vvv
 test-uniswapV2 :; forge test --match-contract UniswapV2Test -vvv
 test-uniswapV2swap :; forge test --match-contract UniswapV2TestSwap -vv
-test-reth :; forge test --match-contract rEthTest -vvv
+test-reth :; forge test --match-contract rEthTest -vv
 test-arrakis :; forge test --match-contract Arrakis_LP_Test -vvv
 test-geist :; forge test --match-contract GeistERC4626ReinvestTest -vvv
 
