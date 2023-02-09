@@ -75,19 +75,12 @@ contract rEthTest is Test {
         assertEq(expectedSharesFromAssets, aliceShareAmount);
         console.log("aliceShareAmount", aliceShareAmount);
 
-        /// @dev Caller asks to withdraw ETH asset equal to the vrETH he owns
+        /// @dev Caller asks to withdraw ETH asset equal to the wrEth he owns
         uint256 aliceAssetsFromShares = vault.previewRedeem(aliceShareAmount);
-        uint256 aliceRethBalance = vault.balanceOf(alice);
+        /// @dev Equal to amount of wrEth:rEth backed by ETH
+        uint256 aliceMaxETHBackedWithdraw = vault.previewWithdraw(aliceAssetsFromShares);
 
-        if (aliceRethBalance > aliceAssetsFromShares) {
-            console.log("aliceAssetsFromShares", aliceAssetsFromShares);
-            vault.withdraw(aliceAssetsFromShares, alice, alice);
-        } else {
-            uint256 aliceMaxWithdraw = vault.maxWithdraw(alice);
-            console.log("aliceMaxWithdraw", aliceMaxWithdraw);
-            vault.withdraw(aliceMaxWithdraw, alice, alice);
-        }
-
+        vault.withdraw(aliceMaxETHBackedWithdraw, alice, alice);
     }
 
     function testMintRedeem() public {
@@ -96,9 +89,9 @@ contract rEthTest is Test {
         vm.startPrank(alice);
 
         /// how much eth-backing we'll get for this amount of rEth
-        /// previewMint should return amount of weth to supply for asked vrEth shares
+        /// previewMint should return amount of weth to supply for asked wrEth shares
         uint256 expectedAssetFromShares = vault.previewMint(
-            aliceSharesMint /// vrEth amount (caller wants 1e18 vrEth : rEth)
+            aliceSharesMint /// wrEth amount (caller wants 1e18 wrEth : rEth)
         );
 
         console.log("expectedAssetFromShares", expectedAssetFromShares);
@@ -118,11 +111,14 @@ contract rEthTest is Test {
 
         // assertEq(aliceSharesAmount, aliceSharesMint);
 
-        /// @dev Caller asks to withdraw ETH asset equal to the vrETH he owns
+        /// @dev Caller asks to withdraw ETH asset equal to the wrEth he owns, 1:1 ratio
+        /// @dev This happens because previewRedeem only redeems wrEth:rEth 1:1 ratio TODO
         if (aliceRethBalance > aliceEthToRedeem) {
-            console.log("aliceAssetsFromShares", aliceEthToRedeem);
+            console.log("aliceEthToRedeem", aliceEthToRedeem);
             vault.redeem(aliceEthToRedeem, alice, alice);
         } else {
+            console.log("alice wants to redeem more virtual eth than rEth she owns covers");
+            console.log("maxRedeem instead");
             uint256 aliceMaxRedeem = vault.maxRedeem(alice);
             console.log("aliceMaxRedeem", aliceMaxRedeem);
             vault.redeem(aliceMaxRedeem, alice, alice);

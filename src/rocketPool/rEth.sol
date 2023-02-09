@@ -17,7 +17,9 @@ import "forge-std/console.sol";
 /// @notice Experimental RocketPool's rETH ERC4626 Wrapper
 /// Preview functions allow to check current value of held rETH tokens denominated as ETH
 /// Redemption is denominated in rETH as RocketPool doesn't allow to redeem ETH directly
-/// Adapter can be used as a good base for building rETH oriented strategy 
+/// Adapter can be used as a good base for building rETH oriented strategy (requires changes to shares calculation)
+/// deposit & mint are "entry" functions to RocketPool - caller gives weth, caller receives wrEth, vault holds rEth
+/// withdraw & redeem are "exit" functions from rEthERC4626  - caller gives wrEth, caller receives rEth
 /// @author ZeroPoint Labs
 contract rEthERC4626 is ERC4626 {
     bytes32 public immutable DEPOSIT_POOL =
@@ -44,7 +46,7 @@ contract rEthERC4626 is ERC4626 {
     /// @param weth_ weth address (Vault's underlying / deposit token)
     /// @param rStorage_ rocketPool Storage contract address to read current implementation details
     constructor(address weth_, address rStorage_)
-        ERC4626(ERC20(weth_), "ERC4626-Wrapped rEth", "wrETH")
+        ERC4626(ERC20(weth_), "ERC4626-Wrapped rEth", "wrEth")
     {
         /// NOTE: Non-upgradable contract
         rStorage = IRSTORAGE(rStorage_);
@@ -76,13 +78,13 @@ contract rEthERC4626 is ERC4626 {
     /// -----------------------------------------------------------------------
 
     /// @notice Deposit into active RocketDepositPool. Standard ERC4626 deposit can only accept ERC20
-    /// @return shares - rEth as both Vault's shares and underlying
+    /// @return shares - rEth as both Vault's shares (wrEth) and underlying virtually backed by ETH
+    /// @dev Deposit function obeys ERC4626 standard
     function deposit(uint256 assets, address receiver)
         public
         override
         returns (uint256 shares)
-    {   
-
+    {
         /// @dev Call to check if rEth address didn't change
         if (rEth != IRETH(rStorage.getAddress(DEPOSIT_POOL))) {
             rEth = IRETH(rStorage.getAddress(DEPOSIT_POOL));
@@ -102,7 +104,7 @@ contract rEthERC4626 is ERC4626 {
 
         /// @dev Unwrap weth to eth
         weth.withdraw(assets);
-        
+
         /// @dev We need to check how much rEth we have before deposit
         uint256 startBalance = rEthAsset.balanceOf(address(this));
 
@@ -113,7 +115,7 @@ contract rEthERC4626 is ERC4626 {
         /// TODO: Prone to inflation attack on balance of this contract!!!
         uint256 depositBalance = rEthAsset.balanceOf(address(this));
         uint256 rEthReceived = depositBalance - startBalance;
-        
+
         console.log("rEthReceived", rEthReceived);
 
         /// @dev Should receive at least amount equal to the shares calculated
@@ -126,11 +128,12 @@ contract rEthERC4626 is ERC4626 {
 
     /// @notice Mint specified amount of rETH (shares) from provided ETH (asset)
     /// @return assets - rEth as both Vault's shares and underlying
+    /// @dev Mint function obeys ERC4626 standard
     function mint(uint256 shares, address receiver)
         public
         override
         returns (uint256 assets)
-    {   
+    {
         /// @dev Call to check if rEth address didn't change
         if (rEth != IRETH(rStorage.getAddress(DEPOSIT_POOL))) {
             rEth = IRETH(rStorage.getAddress(DEPOSIT_POOL));
@@ -161,26 +164,27 @@ contract rEthERC4626 is ERC4626 {
 
         console.log("rEthReceived", rEthReceived);
         console.log("shares", shares);
-        
+
         _mint(receiver, rEthReceived);
 
         emit Deposit(msg.sender, receiver, assets, rEthReceived);
-
     }
 
-    /// @notice Withdraw in this implementation allows to receive rEth, not redeem directly to ETH
-    /// @dev assets are equal to the shares in this case
-    /// caller is asking for this much of rETH to withdraw, where asset is virtually equal to ETH-backing
+    /// @notice Withdraw in this implementation allows to receive rEth from wrEth, not redeem directly to ETH (from rEth)
+    /// caller is asking for asset rETH/wrEth to withdraw, where asset is virtually equal to ETH-backing
     /// rocket pool has no redeem-to-eth function
+    /// @dev To allow withdrawing "assets" as ETH, directly from rEth, would require an exchange of rEth to ETH on a DEX
+    /// That is considered an extension to the following implementation, which is strict ERC4626 wrapper over rEth token interface
     function withdraw(
         uint256 assets,
         address receiver,
         address owner
     ) public override returns (uint256 shares) {
-
+        /// @dev Returns
         shares = previewWithdraw(assets);
 
-        require(maxWithdraw(owner) >= assets, "MAX_WITHDRAW_EXCEEDED");
+        /// @dev Revert early, will fail on safeTransfer otherwise anyways
+        require(maxWithdraw(owner) >= shares, "MAX_WITHDRAW_EXCEEDED");
 
         console.log("shares withdraw", shares);
 
@@ -200,11 +204,16 @@ contract rEthERC4626 is ERC4626 {
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
-        console.log("withdraw assets", assets);
-        rEthAsset.safeTransfer(receiver, assets);
+        console.log("withdraw rEth", shares);
+
+        /// @dev Transfers amount of rEth equal to amount of ETH requested
+        rEthAsset.safeTransfer(receiver, shares);
     }
 
-    /// @notice Redeem rETH for burning wrETH shares (of this vault)
+    /// @notice Redeem rETH for burning wrEth shares (of this vault)
+    /// caller is asking to redeem wrEth shares to rEth, exit asset is rEth
+    /// @dev To allow redeeming "assets" as ETH, directly from rEth, would require an exchange of rEth to ETH on a DEX
+    /// That is considered an extension to the following implementation, which is strict ERC4626 wrapper over rEth token interface
     function redeem(
         uint256 shares,
         address receiver,
@@ -217,7 +226,7 @@ contract rEthERC4626 is ERC4626 {
                 allowance[owner][msg.sender] = allowed - shares;
         }
 
-        /// @dev return virtual amount of ETH backing redeemed shares
+        /// @dev return virtual amount of ETH backing rEth shares
         require((assets = previewRedeem(shares)) != 0, "ZERO_ASSETS");
 
         require(maxRedeem(owner) >= shares, "MAX_REDEEM_EXCEEDED");
@@ -226,16 +235,30 @@ contract rEthERC4626 is ERC4626 {
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
+        /// @dev Transfers amount of the requested rEth shares. We can transfer "shares" in this impl because of 1:1 ratio rEth:wrEth
         rEthAsset.safeTransfer(receiver, shares);
     }
 
-    /// rEth as AUM
+    /*//////////////////////////////////////////////////////////////
+
+                            ACCOUNTING LOGIC
+
+                Here, previewFunctions are wrappers around
+                rocket pool getters. Only previewDeposit
+                is used directly in the Vault's accounting
+                Remaining functions return virtual amounts
+                of ETH-backed or rEth-redeemable shares.
+
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice rEth token is used as AUM
     /// @dev TODO: Mitigate inflation attack (transfering rETH to this contract)
     function totalAssets() public view virtual override returns (uint256) {
         return rEthAsset.balanceOf(address(this));
     }
 
     /// @notice Get amount of rEth from ETH
+    /// Calculated against RocketPool Deposit Pool with fee subtracted
     function previewDeposit(uint256 assets)
         public
         view
@@ -246,6 +269,7 @@ contract rEthERC4626 is ERC4626 {
     }
 
     /// @notice Get amount of rEth from ETH
+    /// Calculated against RocketPool Deposit Pool with fee subtracted
     function convertToShares(uint256 assets)
         public
         view
@@ -260,7 +284,7 @@ contract rEthERC4626 is ERC4626 {
         return rEthToken.getRethValue(depositNet);
     }
 
-    /// @notice Get amount of ETH from rEth
+    /// @notice Get (virtual) amount of ETH-backing for provided rEth shares
     /// to get X rEth shares you need to supply Y eth assets
     function previewMint(uint256 shares)
         public
@@ -273,7 +297,7 @@ contract rEthERC4626 is ERC4626 {
         return rEthToken.getEthValue(shares) + 1;
     }
 
-    /// @notice Get (virtual) amount of ETH from burned rEth. caller receives rEth.
+    /// @notice Get amount of rEth shares for provided ETH-backing
     function previewWithdraw(uint256 assets)
         public
         view
@@ -286,12 +310,19 @@ contract rEthERC4626 is ERC4626 {
         return rEthToken.getRethValue(assets);
     }
 
-    /// @notice Get amount of ETH from rEth
-    function previewRedeem(uint256 shares) public view override returns (uint256) {
+    /// @notice Get (virtual) amount of ETH-backing for provided rEth shares
+    /// @dev Vault doesn't use this value internally as it only operates on rEth shares
+    /// @dev Value can be used to calculate real value of rEth shares
+    function previewRedeem(uint256 shares)
+        public
+        view
+        override
+        returns (uint256)
+    {
         return convertToAssets(shares);
     }
 
-    /// @notice Get amount of ETH from rEth
+    /// @notice Get (virtual) amount of ETH-backing for provided rEth shares
     function convertToAssets(uint256 shares)
         public
         view
@@ -300,16 +331,23 @@ contract rEthERC4626 is ERC4626 {
         returns (uint256)
     {
         /// https://github.com/rocket-pool/rocketpool/blob/967e4d3c32721a84694921751920af313d1467af/contracts/interface/token/RocketTokenRETHInterface.sol#L8
-        // uint256 ethValue = rEthToken.getRethValue(shares);
         return rEthToken.getEthValue(shares) + 1;
     }
 
+    /// @notice Max withdraw of rEth (wrEth shares)
     function maxWithdraw(address owner) public view override returns (uint256) {
         return balanceOf[owner];
     }
 
+    /// @notice Max redeem of rEth (wrEth shares)
     function maxRedeem(address owner) public view override returns (uint256) {
         return balanceOf[owner];
+    }
+
+    /// @notice Max amount of ETH user will receive from his wrEth/rEth shares
+    function maxRedeemable(address owner) public view returns (uint256 ethBackedAmount) {
+        uint256 balance = balanceOf[owner];
+        return previewRedeem(balance);
     }
 
     /// @notice Check if Rocket's Deposit Pool has free slots to stake
