@@ -117,15 +117,15 @@ contract rEthTest is Test {
         console.log("aliceSharesAmount", aliceRethBalance);
 
         // assertEq(aliceSharesAmount, aliceSharesMint);
-        
+
         /// @dev Caller asks to withdraw ETH asset equal to the vrETH he owns
         if (aliceRethBalance > aliceEthToRedeem) {
             console.log("aliceAssetsFromShares", aliceEthToRedeem);
-            vault.withdraw(aliceEthToRedeem, alice, alice);
+            vault.redeem(aliceEthToRedeem, alice, alice);
         } else {
             uint256 aliceMaxRedeem = vault.maxRedeem(alice);
             console.log("aliceMaxRedeem", aliceMaxRedeem);
-            vault.withdraw(aliceMaxRedeem, alice, alice);
+            vault.redeem(aliceMaxRedeem, alice, alice);
         }
 
     }
