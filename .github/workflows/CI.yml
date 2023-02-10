@@ -16,6 +16,7 @@ jobs:
           submodules: recursive
       - uses: foundry-rs/foundry-toolchain@v1
         with:
+          cache: false
           version: nightly
       - uses: cardinalby/export-env-action@v2
         with:
