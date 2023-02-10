@@ -8,25 +8,32 @@ import {IUniswapV2Pair} from "../interfaces/IUniswapV2Pair.sol";
 import {IUniswapV2Router} from "../interfaces/IUniswapV2Router.sol";
 import {UniswapV2ERC4626Swap} from "./UniswapV2ERC4626Swap.sol";
 
+import {IUniswapV3Factory} from "../interfaces/IUniswapV3.sol";
+import {IUniswapV3Pool} from "../interfaces/IUniswapV3.sol";
+
 contract UniswapV2ERC4626PoolFactory {
     IUniswapV2Router router;
+    IUniswapV3Factory oracleFactory;
 
-    constructor(IUniswapV2Router router_) {
+    constructor(IUniswapV2Router router_, IUniswapV3Factory oracleFactory_) {
         router = router_;
+        oracleFactory = oracleFactory_;
     }
 
-    function create(IUniswapV2Pair pair)
+    function create(IUniswapV2Pair pair, uint24 fee)
         external
-        returns (UniswapV2ERC4626Swap v0, UniswapV2ERC4626Swap v1)
+        returns (UniswapV2ERC4626Swap v0, UniswapV2ERC4626Swap v1, address oracle)
     {
-        /// TODO: invariant dependant, only temp here
-        uint256 slippage = 30; /// 0.3
-
         /// @dev Tokens sorted by uniswapV2pair
         ERC20 token0 = ERC20(pair.token0());
         ERC20 token1 = ERC20(pair.token1());
 
-        /// @dev For uniswap V2 there're always only two tokens
+        /// @dev Each UniV3 Pool is a twap oracle
+        require((oracle = twap(address(token0), address(token1), fee)) != address(0), "twap doesn't exist");
+        
+        IUniswapV3Pool oracle_ = IUniswapV3Pool(oracle);
+
+        /// @dev For uniswap V2 only two tokens pool
         /// @dev using symbol for naming to keep it short
         string memory name0 = string(
             abi.encodePacked("UniV2-", token0.symbol(), "-ERC4626")
@@ -41,14 +48,14 @@ contract UniswapV2ERC4626PoolFactory {
             abi.encodePacked("UniV2-", token1.symbol())
         );
 
-        /// @dev For uniswap V2 there're always only two tokens
+        /// @dev For uniswap V2 only two tokens pool
         v0 = new UniswapV2ERC4626Swap(
             token0,
             name0,
             symbol0,
             router,
             pair,
-            slippage
+            oracle_
         );
 
         v1 = new UniswapV2ERC4626Swap(
@@ -57,7 +64,14 @@ contract UniswapV2ERC4626PoolFactory {
             symbol1,
             router,
             pair,
-            slippage
+            oracle_
         );
     }
+
+    /// cast call 0x1F98431c8aD98523631AE4a59f267346ea31F984 "getPool(address,address,uint24)(address)" / 
+    /// 0x6B175474E89094C44Da98b954EedeAC495271d0F 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 3000 --rpc-url $ETHEREUM_RPC_URL
+    function twap(address token0, address token1, uint24 fee) public view returns (address) {
+        return oracleFactory.getPool(token0, token1, fee);
+    }
+
 }

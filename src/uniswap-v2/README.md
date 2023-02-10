@@ -8,12 +8,18 @@ Allows to deposit into Uniswap V2 Pool using token0 or token1 and receive Uniswa
 
 Allows to deposit into Uniswap V2 Pool by 'yanking' both token0 and token1 from user address in exchange for Uniswap LP-token representation wrapped in ERC4626 functionality. Uniswap's Pair token (LP-Token) is used for internal accoutning and virtual amounts of token0 and token1 are expected to be transfered by user to a Vault address in exchange for specified earlier amount of Pair token to receive. 
 
+# Observations (NEW!)
+
+`previewDeposit()` can be only trusted as much as for a single block. if caller is EOA, he can perform off-chain validation of `previewDeposit()` current value against past value(s). we can't expect the same from the contract account.
+
+user can shoot his foot off if blindly integrating with this contracts. that is because uniswapV2Pair reserves are easy to manipulate for one block. however, manipulation can only lead to smaller output amount of shares, but not the loss of funds across the vault or other accounting errors, as UniswapV2ERC4626Swap adapter is operating on 1:1 with LP-Token of Uniswap, getting more of LP-Token or less is only important for the caller and won't affect deposit/withdraw scheme.
+
 ### Both contracts are WIP / Experimental phase
 
 TODO: Uniswap Reserves Manipulation - critical fix!
 TODO: Slippage / invariant for deposit/withdraw flow
 
-# Design notes
+# Design notes (OLD!)
 
 We can look at the problem of creating a single asset ERC4626 adapter over Uniswap's V2 double asset Pool as 'blackbox' automaton build only out of simple input/outputs and transforming functions.
 

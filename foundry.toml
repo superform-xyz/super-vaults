@@ -3,3 +3,6 @@ src = 'src'
 out = 'out'
 libs = ['lib']
 solc = "0.8.14"
+
+fs_permissions = [{ access = "read-write", path = "./"}]
+

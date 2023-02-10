@@ -17,7 +17,7 @@ contract BenqiERC4626StakingTest is Test {
 
     using FixedPointMathLib for uint256;
 
-    string ETH_RPC_URL = vm.envString("AVAX_MAINNET_RPC");
+    string ETH_RPC_URL = vm.envString("AVALANCHE_RPC_URL");
 
     BenqiERC4626Staking public vault;
 
@@ -80,6 +80,7 @@ contract BenqiERC4626StakingTest is Test {
 
         vault.redeem(aliceSharesAmount, alice, alice);
     }
+
     function testDepositETH() public {
         uint256 aliceEth = HUNDRED_E18;
 

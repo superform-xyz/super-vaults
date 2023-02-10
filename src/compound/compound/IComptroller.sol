@@ -11,7 +11,11 @@ interface IComptroller {
 
     function claimComp(address holder) external;
 
+    function claimComp(address holder, ICERC20[] memory cTokens) external;
+
     function mintGuardianPaused(ICERC20 cToken) external view returns (bool);
 
     function rewardAccrued(uint8, address) external view returns (uint256);
+    
+    function enterMarkets(ICERC20[] memory cTokens) external returns (uint256[] memory);
 }

@@ -10,7 +10,6 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {IStMATIC} from "../interfaces/IStMATIC.sol";
 import {IWETH} from "../interfaces/IWETH.sol";
 
-
 contract stMaticTest is Test {
     uint256 public ethFork;
     uint256 public immutable ONE_THOUSAND_E18 = 1000 ether;
@@ -18,7 +17,7 @@ contract stMaticTest is Test {
 
     using FixedPointMathLib for uint256;
 
-    string ETH_RPC_URL = vm.envString("ETH_MAINNET_RPC");
+    string ETH_RPC_URL = vm.envString("ETHEREUM_RPC_URL");
 
     StMATIC4626 public vault;
 
@@ -42,10 +41,9 @@ contract stMaticTest is Test {
         /// [FAIL. Reason: Setup failed: stdStorage find(StdStorage): No storage use detected for target.]
         deal(matic, alice, ONE_THOUSAND_E18);
         /// Lets prank then...
-        
+
         // vm.prank(0xd70250731A72C33BFB93016E3D1F0CA160dF7e42);
         // _matic.transfer(alice, ONE_THOUSAND_E18);
-        
     }
 
     function testDepositWithdraw() public {
@@ -55,9 +53,14 @@ contract stMaticTest is Test {
         console.log("alice bal matic", _matic.balanceOf(alice));
 
         _matic.approve(address(vault), aliceUnderlyingAmount);
-        assertEq(_matic.allowance(alice, address(vault)), aliceUnderlyingAmount);
+        assertEq(
+            _matic.allowance(alice, address(vault)),
+            aliceUnderlyingAmount
+        );
 
-        uint256 expectedSharesFromAssets = vault.convertToShares(aliceUnderlyingAmount);
+        uint256 expectedSharesFromAssets = vault.convertToShares(
+            aliceUnderlyingAmount
+        );
         uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
         assertEq(expectedSharesFromAssets, aliceShareAmount);
         console.log("aliceShareAmount", aliceShareAmount);
@@ -87,5 +90,4 @@ contract stMaticTest is Test {
 
         vault.redeem(aliceSharesAmount, alice, alice);
     }
-
 }

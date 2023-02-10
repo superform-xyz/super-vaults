@@ -16,7 +16,6 @@ import "forge-std/console.sol";
 /// Vault balance holds stMatic. Value is updated for each accounting call.
 /// @author ZeroPoint Labs
 contract StMATIC4626 is ERC4626 {
-
     IStMATIC public stMatic;
     ERC20 public stMaticAsset;
     ERC20 public matic;
@@ -34,10 +33,9 @@ contract StMATIC4626 is ERC4626 {
 
     /// @param matic_ matic address (Vault's underlying / deposit token)
     /// @param stMatic_ stMatic (Lido contract) address
-    constructor(
-        address matic_,
-        address stMatic_
-    ) ERC4626(ERC20(matic_), "ERC4626-Wrapped stMatic", "wLstMatic") {
+    constructor(address matic_, address stMatic_)
+        ERC4626(ERC20(matic_), "ERC4626-Wrapped stMatic", "wLstMatic")
+    {
         stMatic = IStMATIC(stMatic_);
         stMaticAsset = ERC20(stMatic_);
         matic = ERC20(matic_);
@@ -57,7 +55,8 @@ contract StMATIC4626 is ERC4626 {
     function afterDeposit(uint256 assets, uint256) internal override {
         console.log("ethAmount aD", assets);
         /// Lido's stMatic pool submit() isn't payable, MATIC is ERC20 compatible
-        uint256 stEthAmount = stMatic.submit(assets);
+        /// TODO - check the referal address - do we need it?
+        uint256 stEthAmount = stMatic.submit(assets, address(0));
         console.log("stEthAmount aD", stEthAmount);
     }
 
@@ -73,7 +72,7 @@ contract StMATIC4626 is ERC4626 {
         returns (uint256 shares)
     {
         require((shares = previewDeposit(assets)) != 0, "ZERO_SHARES");
-        
+
         console.log("deposit shares", shares);
 
         asset.safeTransferFrom(msg.sender, address(this), assets);
@@ -119,14 +118,16 @@ contract StMATIC4626 is ERC4626 {
 
         beforeWithdraw(assets, shares);
 
-        console.log("stMatic balance withdraw", stMaticAsset.balanceOf(address(this)));
+        console.log(
+            "stMatic balance withdraw",
+            stMaticAsset.balanceOf(address(this))
+        );
 
         _burn(owner, shares);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
         stMaticAsset.safeTransfer(receiver, assets);
-
     }
 
     function redeem(

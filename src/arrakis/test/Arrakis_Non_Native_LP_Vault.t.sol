@@ -8,6 +8,7 @@ import {ArrakisNonNativeVault, IArrakisRouter, IUniswapV3Pool, LiquidityAmounts,
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {IWETH} from "../utils/IWETH.sol";
 import {ArrakisFactory} from "../Arrakis_Factory.sol";
+
 interface UniRouter {
     function factory() external view returns (address);
 
@@ -24,7 +25,7 @@ contract Arrakis_LP_Test is Test {
     using TickMath for int24;
     using SafeTransferLib for ERC20;
     uint256 public maticFork;
-    string POLYGON_MAINNET_RPC = vm.envString("POLYGON_MAINNET_RPC");
+    string POLYGON_RPC_URL = vm.envString("POLYGON_RPC_URL");
     ERC20 public arrakisVault;
     bool blah;
     ArrakisNonNativeVault vault;
@@ -38,22 +39,25 @@ contract Arrakis_LP_Test is Test {
         UniRouter(0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff);
 
     function setUp() public {
-        maticFork = vm.createFork(POLYGON_MAINNET_RPC);
+        maticFork = vm.createFork(POLYGON_RPC_URL);
 
         vm.selectFork(maticFork);
 
         /* ------------------------------- deployments ------------------------------ */
         arrakisVault = ERC20(0x4520c823E3a84ddFd3F99CDd01b2f8Bf5372A82a);
 
-        arrakisFactory = new ArrakisFactory(0xbc91a120cCD8F80b819EAF32F0996daC3Fa76a6C);
-
-        (arrakisNonNativeVault, arrakisToken1AsAssetVault) = arrakisFactory.createArrakisVaults(
-         address(arrakisVault),
-        "Arrakis WMATIC/USDC LP Vault",
-        "aLP4626", 
-        0x9941C03D31BC8B3aA26E363f7DD908725e1a21bb,
-        50
+        arrakisFactory = new ArrakisFactory(
+            0xbc91a120cCD8F80b819EAF32F0996daC3Fa76a6C
         );
+
+        (arrakisNonNativeVault, arrakisToken1AsAssetVault) = arrakisFactory
+            .createArrakisVaults(
+                address(arrakisVault),
+                "Arrakis WMATIC/USDC LP Vault",
+                "aLP4626",
+                0x9941C03D31BC8B3aA26E363f7DD908725e1a21bb,
+                50
+            );
     }
 
     function getWMATIC(uint256 amt) internal {
@@ -64,7 +68,10 @@ contract Arrakis_LP_Test is Test {
 
     function paramswap() external {
         uint256 amount;
-        amount = ERC20(blah ? address(vault.non_asset()) : address(vault.asset())).balanceOf(address(msg.sender))/2;
+        amount =
+            ERC20(blah ? address(vault.non_asset()) : address(vault.asset()))
+                .balanceOf(address(msg.sender)) /
+            2;
 
         IUniswapV3Pool uniPool = vault.arrakisVault().pool();
         (uint160 sqrtPriceX96, , , , , , ) = uniPool.slot0();
@@ -82,16 +89,16 @@ contract Arrakis_LP_Test is Test {
     }
 
     function computeFeesAccrued() external view {
-        (, int24 tick, , , , , ) = vault.arrakisVault()
-            .pool()
-            .slot0();
+        (, int24 tick, , , , , ) = vault.arrakisVault().pool().slot0();
         (
             uint128 liquidity,
             uint256 feeGrowthInside0Last,
             uint256 feeGrowthInside1Last,
             uint128 tokensOwed0,
             uint128 tokensOwed1
-        ) = vault.arrakisVault().pool().positions(vault.arrakisVault().getPositionID());
+        ) = vault.arrakisVault().pool().positions(
+                vault.arrakisVault().getPositionID()
+            );
 
         // compute current fees earned
         uint256 fee0 = _computeFeesEarned(
@@ -182,11 +189,12 @@ contract Arrakis_LP_Test is Test {
         // compute current holdings from liquidity
         (amount0Current, amount1Current) = LiquidityAmounts
             .getAmountsForLiquidity(
-            sqrtRatioX96,
-            gUniPool.lowerTick().getSqrtRatioAtTick(),
-            gUniPool.upperTick().getSqrtRatioAtTick(),
-            liquidity
-        );}
+                sqrtRatioX96,
+                gUniPool.lowerTick().getSqrtRatioAtTick(),
+                gUniPool.upperTick().getSqrtRatioAtTick(),
+                liquidity
+            );
+    }
 
     function uniswapV3SwapCallback(
         int256 amount0Delta,
@@ -207,7 +215,6 @@ contract Arrakis_LP_Test is Test {
                 uint256(amount1Delta)
             );
     }
-
 
     function swap(uint256 amtIn, address[] memory path)
         internal
@@ -242,10 +249,7 @@ contract Arrakis_LP_Test is Test {
         console.log("Underlying balance :", vault.totalAssets());
         console.log("Starting swap simulation on uniswap....");
         uint256 countLoop = 2;
-        ERC20(address(WMATIC)).transfer(
-            address(this),
-            298000e18
-        );
+        ERC20(address(WMATIC)).transfer(address(this), 298000e18);
         while (countLoop > 0) {
             this.paramswap();
             countLoop--;
@@ -273,22 +277,19 @@ contract Arrakis_LP_Test is Test {
         getWMATIC(amt);
         amt = 2000e18;
 
-        ERC20(address(WMATIC)).approve(address(arrakisNonNativeVault), type(uint256).max);
+        ERC20(address(WMATIC)).approve(
+            address(arrakisNonNativeVault),
+            type(uint256).max
+        );
         this.computeFeesAccrued();
         emit log_named_uint("deposited amount:", 2000e18);
 
-        uint256 sharesReceived = arrakisNonNativeVault.mint(
-            amt,
-            address(this)
-        );
+        uint256 sharesReceived = arrakisNonNativeVault.mint(amt, address(this));
         console.log("Shares Received :", sharesReceived);
         console.log("Underlying balance :", vault.totalAssets());
         console.log("Starting swap simulation on uniswap....");
         uint256 countLoop = 2;
-        ERC20(address(WMATIC)).transfer(
-            address(this),
-            298000e18
-        );
+        ERC20(address(WMATIC)).transfer(address(this), 298000e18);
         while (countLoop > 0) {
             this.paramswap();
             countLoop--;
@@ -297,7 +298,7 @@ contract Arrakis_LP_Test is Test {
 
         this.computeFeesAccrued();
         uint256 returnAssets = arrakisNonNativeVault.withdraw(
-            vault.totalAssets()-1e19,
+            vault.totalAssets() - 1e19,
             address(this),
             address(this)
         );
