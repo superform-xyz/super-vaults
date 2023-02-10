@@ -181,7 +181,7 @@ contract VenusERC4626WrapperTest is Test {
         deal(address(reward), address(vault), 1 ether);
         assertEq(reward.balanceOf(address(vault)), 1 ether);
 
-        vault.harvest();
+        vault.harvest(0);
         assertEq(reward.balanceOf(address(vault)), 0);
 
         console.log("totalAssets after harvest", vault.totalAssets());

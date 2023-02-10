@@ -10,15 +10,17 @@ import {IRewardsController} from "./external/IRewardsController.sol";
 
 import {DexSwap} from "./utils/swapUtils.sol";
 
-/// @title AaveV3ERC4626Reinvest - extended implementation of yield-daddy @author zefram.eth
+/// @title AaveV3ERC4626ReinvestIncentive - extended implementation of yield-daddy @author diszsid.eth
 /// @dev Reinvests rewards accrued for higher APY
 /// @notice ERC4626 wrapper for Aave V3 with rewards reinvesting
-contract AaveV3ERC4626Reinvest is ERC4626 {
+contract AaveV3ERC4626ReinvestIncentive is ERC4626 {
     /// @notice Manager for setting swap routes for harvest()
     address public manager;
 
     /// @notice Check if rewards have been set before harvest() and setRoutes()
     bool public rewardsSet;
+
+    uint256 public REINVEST_REWARD_BPS;
 
     /// -----------------------------------------------------------------------
     /// Libraries usage
@@ -37,7 +39,6 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
     /// -----------------------------------------------------------------------
 
     error MIN_AMOUNT_ERROR();
-    error INVALID_AMOUNT_INPUT_ERROR();
 
     /// -----------------------------------------------------------------------
     /// Constants
@@ -148,8 +149,19 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
         }
     }
 
+    /**
+     * @notice Update reinvest min threshold
+     * @param newValue threshold
+     */
+    function updateReinvestRewardBps(uint256 newValue) external {
+        require(msg.sender == manager, "onlyOwner");
+        require(newValue <= 150, "reward too high");
+        REINVEST_REWARD_BPS = newValue;
+    }
+
+
     /// @notice Claims liquidity mining rewards from Aave and sends it to this Vault
-    function harvest(uint256[] memory minAmounts_) external {
+    function harvest(uint256 minAmountOut_) external {
         /// @dev Wrapper exists only for single aToken
         address[] memory assets = new address[](1);
         assets[0] = address(aToken);
@@ -159,47 +171,49 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
             address[] memory rewardList,
             uint256[] memory claimedAmounts
         ) = rewardsController.claimAllRewards(assets, address(this));
-
-        if(claimedAmounts.length == 0) {
-            return;
-        }
-        else if(claimedAmounts.length != minAmounts_.length ){
-            revert INVALID_AMOUNT_INPUT_ERROR();
-        }
-
+        uint256 reinvestAmount = 0;
         /// @dev if pool rewards more than one token
         /// TODO: Better control. Give ability to select what rewards to swap
         for (uint256 i = 0; i < claimedAmounts.length; i++) {
-            swapRewards(rewardList[i], claimedAmounts[i], minAmounts_[i]);
+            reinvestAmount += swapRewards(rewardList[i], claimedAmounts[i]);
         }
 
+        if(reinvestAmount < minAmountOut_) {
+           revert MIN_AMOUNT_ERROR();
+        }
+        
+        /// @notice rewarding the caller with % of the deposit tokens resulted from the rewards, 50 BPS -> 0.05%
+        uint256 reinvestFee = reinvestAmount * (REINVEST_REWARD_BPS) / (1000);
+        if (reinvestFee > 0) {
+            asset.safeTransfer(msg.sender, reinvestFee);
+        }
         /// reinvest() without minting (no asset.totalSupply() increase == profit)
         afterDeposit(asset.balanceOf(address(this)), 0);
     }
 
     /// @notice Swap reward token for underlying asset
-    function swapRewards(address rewardToken, uint256 earned, uint256 minAmount_) internal {
+    function swapRewards(address rewardToken, uint256 earned) internal returns (uint256) {
         /// @dev Used just for approve
         ERC20 rewardToken_ = ERC20(rewardToken);
 
         swapInfo memory swapMap = swapInfoMap[rewardToken];
-        uint256 reinvestAmount;
+        uint256 swapTokenAmount;
 
         /// @dev Swap AAVE-Fork token for asset
         if (swapMap.token == address(asset)) {
             rewardToken_.approve(swapMap.pair1, earned); /// approve only available rewards
 
-            reinvestAmount = DexSwap.swap(
-                earned, /// REWARDS amount to swap
-                rewardToken, // from REWARD-TOKEN
-                address(asset), /// to target underlying of this Vault
-                swapMap.pair1 /// pairToken (pool)
-            );
+            swapTokenAmount = DexSwap.swap(
+                    earned, /// REWARDS amount to swap
+                    rewardToken, // from REWARD-TOKEN
+                    address(asset), /// to target underlying of this Vault
+                    swapMap.pair1 /// pairToken (pool)
+                );
             /// If two swaps needed
         } else {
             rewardToken_.approve(swapMap.pair1, earned); /// approve only available rewards
 
-            uint256 swapTokenAmount = DexSwap.swap(
+            swapTokenAmount = DexSwap.swap(
                 earned,
                 rewardToken, // from AAVE-Fork
                 swapMap.token, /// to intermediary token with high liquidity (no direct pools)
@@ -208,16 +222,14 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
 
             ERC20(swapMap.token).approve(swapMap.pair2, swapTokenAmount);
 
-            reinvestAmount = DexSwap.swap(
+            swapTokenAmount = DexSwap.swap(
                 swapTokenAmount,
                 swapMap.token, // from received token
                 address(asset), /// to target underlying of this Vault
                 swapMap.pair2 /// pairToken (pool)
             );
         }
-        if(reinvestAmount < minAmount_) {
-            revert MIN_AMOUNT_ERROR();
-        }
+        return swapTokenAmount;
     }
 
     /// @notice Check how much rewards are available to claim, useful before harvest()

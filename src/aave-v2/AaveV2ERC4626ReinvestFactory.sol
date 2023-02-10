@@ -110,8 +110,8 @@ contract AaveV2ERC4626ReinvestFactory {
     }
 
     /// @notice Harvest rewards from specified vault
-    function harvestFrom(AaveV2ERC4626Reinvest vault_) external {
-        vault_.harvest();
+    function harvestFrom(AaveV2ERC4626Reinvest vault_, uint256 minAmountOut_) external {
+        vault_.harvest(minAmountOut_);
         emit HarvestERC4626Reinvest(vault_);
     }
 

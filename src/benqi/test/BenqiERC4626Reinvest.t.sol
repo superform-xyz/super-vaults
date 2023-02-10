@@ -92,7 +92,7 @@ contract BenqiERC4626ReinvestTest is Test {
         vault.setRoute(rewardType_, address(reward), swapToken, pair1, pair2);
         /// @dev Transfer 1 QI token
         deal(address(reward), address(vault), 1000000 ether);
-        vault.harvest(rewardType_);
+        vault.harvest(rewardType_, 0);
     }
 
     function testDepositWithdraw() public {
