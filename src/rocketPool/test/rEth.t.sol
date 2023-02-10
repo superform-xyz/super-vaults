@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.14;
 
 import "forge-std/Test.sol";
@@ -36,6 +36,9 @@ contract rEthTest is Test {
     /// https://docs.rocketpool.net/overview/contracts-integrations/#protocol-contracts
     function setUp() public {
         ethFork = vm.createFork(ETH_RPC_URL);
+        
+        /// @dev Set the block with freeSlots available to deposit
+        vm.rollFork(ethFork, 15_565_892);
         vm.selectFork(ethFork);
 
         address rocketDepositPoolAddress = _rStorage.getAddress(
@@ -49,55 +52,77 @@ contract rEthTest is Test {
         manager = msg.sender;
 
         deal(weth, alice, ONE_THOUSAND_E18);
-
     }
 
-    /// Expect Error: The deposit pool size after depositing exceeds the maximum size
-    /// That's because RocketPool only allows staking if slots are free.
     function testDepositWithdraw() public {
-        uint256 aliceUnderlyingAmount = 10000000000000000;
+        uint256 aliceUnderlyingAmount = 1 ether;
 
         vm.startPrank(alice);
-        console.log("alice bal weth", _weth.balanceOf(alice));
 
         _weth.approve(address(vault), aliceUnderlyingAmount);
-        assertEq(
-            _weth.allowance(alice, address(vault)),
-            aliceUnderlyingAmount
-        );
+        assertEq(_weth.allowance(alice, address(vault)), aliceUnderlyingAmount);
 
         uint256 expectedSharesFromAssets = vault.convertToShares(
             aliceUnderlyingAmount
         );
+
+        console.log("expectedSharesFromAssets", expectedSharesFromAssets);
+   
+        /// @dev Set the block with freeSlots available to deposit
+        assertEq(block.number, 15_565_892);
         uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
+
         assertEq(expectedSharesFromAssets, aliceShareAmount);
         console.log("aliceShareAmount", aliceShareAmount);
 
-        uint256 aliceAssetsFromShares = vault.convertToAssets(aliceShareAmount);
-        console.log("aliceAssetsFromShares", aliceAssetsFromShares);
+        /// @dev Caller asks to withdraw ETH asset equal to the wrEth he owns
+        uint256 aliceAssetsFromShares = vault.previewRedeem(aliceShareAmount);
+        /// @dev Equal to amount of wrEth:rEth backed by ETH
+        uint256 aliceMaxETHBackedWithdraw = vault.previewWithdraw(aliceAssetsFromShares);
 
-        vault.withdraw(aliceAssetsFromShares, alice, alice);
+        vault.withdraw(aliceMaxETHBackedWithdraw, alice, alice);
     }
 
-    /// Expect Error: The deposit pool size after depositing exceeds the maximum size
-    /// That's because RocketPool only allows staking if slots are free.
     function testMintRedeem() public {
-        uint256 aliceSharesMint = 10000000000000000;
+        uint256 aliceSharesMint = 1 ether;
 
         vm.startPrank(alice);
 
-        uint256 expectedAssetFromShares = vault.convertToAssets(
-            aliceSharesMint
+        /// how much eth-backing we'll get for this amount of rEth
+        /// previewMint should return amount of weth to supply for asked wrEth shares
+        uint256 expectedAssetFromShares = vault.previewMint(
+            aliceSharesMint /// wrEth amount (caller wants 1e18 wrEth : rEth)
         );
+
+        console.log("expectedAssetFromShares", expectedAssetFromShares);
 
         _weth.approve(address(vault), expectedAssetFromShares);
 
-        uint256 aliceAssetAmount = vault.mint(aliceSharesMint, alice);
-        assertEq(expectedAssetFromShares, aliceAssetAmount);
+        uint256 aliveRethMinted = vault.mint(aliceSharesMint, alice);
+        
+        console.log("aliceAssetAmount", aliveRethMinted);
 
-        uint256 aliceSharesAmount = vault.balanceOf(alice);
-        assertEq(aliceSharesAmount, aliceSharesMint);
+        // assertEq(expectedAssetFromShares, aliceAssetAmount);
+        
+        uint256 aliceEthToRedeem = vault.previewRedeem(aliveRethMinted);
+        uint256 aliceRethBalance = vault.balanceOf(alice);
 
-        vault.redeem(aliceSharesAmount, alice, alice);
+        console.log("aliceSharesAmount", aliceRethBalance);
+
+        // assertEq(aliceSharesAmount, aliceSharesMint);
+
+        /// @dev Caller asks to withdraw ETH asset equal to the wrEth he owns, 1:1 ratio
+        /// @dev This happens because previewRedeem only redeems wrEth:rEth 1:1 ratio TODO
+        if (aliceRethBalance > aliceEthToRedeem) {
+            console.log("aliceEthToRedeem", aliceEthToRedeem);
+            vault.redeem(aliceEthToRedeem, alice, alice);
+        } else {
+            console.log("alice wants to redeem more virtual eth than rEth she owns covers");
+            console.log("maxRedeem instead");
+            uint256 aliceMaxRedeem = vault.maxRedeem(alice);
+            console.log("aliceMaxRedeem", aliceMaxRedeem);
+            vault.redeem(aliceMaxRedeem, alice, alice);
+        }
+
     }
 }

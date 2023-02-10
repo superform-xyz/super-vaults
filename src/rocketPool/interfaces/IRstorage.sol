@@ -3,6 +3,6 @@ pragma solidity 0.8.14;
 
 interface IRSTORAGE {
 
-    function getAddress(bytes32) external returns (address);
+    function getAddress(bytes32) external view returns (address);
 
 }
