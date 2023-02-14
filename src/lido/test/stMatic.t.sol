@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.14;
 
 import "forge-std/Test.sol";
@@ -38,12 +38,8 @@ contract stMaticTest is Test {
         alice = address(0x1);
         manager = msg.sender;
 
-        /// [FAIL. Reason: Setup failed: stdStorage find(StdStorage): No storage use detected for target.]
         deal(matic, alice, ONE_THOUSAND_E18);
-        /// Lets prank then...
 
-        // vm.prank(0xd70250731A72C33BFB93016E3D1F0CA160dF7e42);
-        // _matic.transfer(alice, ONE_THOUSAND_E18);
     }
 
     function testDepositWithdraw() public {
@@ -65,7 +61,7 @@ contract stMaticTest is Test {
         assertEq(expectedSharesFromAssets, aliceShareAmount);
         console.log("aliceShareAmount", aliceShareAmount);
 
-        uint256 aliceAssetsFromShares = vault.convertToAssets(aliceShareAmount);
+        uint256 aliceAssetsFromShares = vault.previewRedeem(aliceShareAmount);
         console.log("aliceAssetsFromShares", aliceAssetsFromShares);
 
         vault.withdraw(aliceAssetsFromShares, alice, alice);
@@ -76,7 +72,7 @@ contract stMaticTest is Test {
 
         vm.startPrank(alice);
 
-        uint256 expectedAssetFromShares = vault.convertToAssets(
+        uint256 expectedAssetFromShares = vault.previewMint(
             aliceSharesMint
         );
 
@@ -88,6 +84,7 @@ contract stMaticTest is Test {
         uint256 aliceSharesAmount = vault.balanceOf(alice);
         assertEq(aliceSharesAmount, aliceSharesMint);
 
+        console.log("aliceSharesAmount", aliceSharesAmount);
         vault.redeem(aliceSharesAmount, alice, alice);
     }
 }

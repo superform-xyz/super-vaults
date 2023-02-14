@@ -9,8 +9,6 @@ import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {IStMATIC} from "./interfaces/IStMATIC.sol";
 import {IMATIC} from "./interfaces/IMatic.sol";
 
-import "forge-std/console.sol";
-
 /// @notice Lido's stMATIC ERC4626 Wrapper - stMatic as Vault's underlying token (and token received after withdraw).
 /// Accepts MATIC through ERC4626 interface
 /// Vault balance holds stMatic. Value is updated for each accounting call.
@@ -47,12 +45,10 @@ contract StMATIC4626 is ERC4626 {
     //////////////////////////////////////////////////////////////*/
 
     function afterDeposit(uint256 assets, uint256) internal override {
-        console.log("ethAmount aD", assets);
         asset.approve(address(stMatic), assets);
-        /// Lido's stMatic pool submit() isn't payable, MATIC is ERC20 compatible
-        /// TODO - check the referal address - do we need it?
+
+        /// @dev Lido's stMatic pool submit() isn't payable, MATIC is ERC20 compatible
         uint256 stEthAmount = stMatic.submit(assets, address(0));
-        console.log("stEthAmount aD", stEthAmount);
     }
 
     /// -----------------------------------------------------------------------
@@ -68,15 +64,14 @@ contract StMATIC4626 is ERC4626 {
     {
         require((shares = previewDeposit(assets)) != 0, "ZERO_SHARES");
 
-        console.log("deposit shares", shares);
-
         asset.safeTransferFrom(msg.sender, address(this), assets);
+
+        afterDeposit(assets, shares);
 
         _mint(receiver, shares);
 
         emit Deposit(msg.sender, receiver, assets, shares);
 
-        afterDeposit(assets, shares);
     }
 
     function mint(uint256 shares, address receiver)
@@ -87,12 +82,12 @@ contract StMATIC4626 is ERC4626 {
         assets = previewMint(shares);
 
         asset.safeTransferFrom(msg.sender, address(this), assets);
+        
+        afterDeposit(assets, shares);
 
         _mint(receiver, shares);
 
         emit Deposit(msg.sender, receiver, assets, shares);
-
-        afterDeposit(assets, shares);
     }
 
     function withdraw(
@@ -102,8 +97,6 @@ contract StMATIC4626 is ERC4626 {
     ) public override returns (uint256 shares) {
         shares = previewWithdraw(assets);
 
-        console.log("shares withdraw", shares);
-
         if (msg.sender != owner) {
             uint256 allowed = allowance[owner][msg.sender];
 
@@ -111,16 +104,12 @@ contract StMATIC4626 is ERC4626 {
                 allowance[owner][msg.sender] = allowed - shares;
         }
 
-        console.log(
-            "stMatic balance withdraw",
-            stMaticAsset.balanceOf(address(this))
-        );
-
         _burn(owner, shares);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
-        stMaticAsset.safeTransfer(receiver, assets);
+        /// @dev Withdraw stMatic from this contract
+        stMaticAsset.safeTransfer(receiver, shares);
     }
 
     function redeem(
@@ -141,7 +130,8 @@ contract StMATIC4626 is ERC4626 {
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
-        stMaticAsset.safeTransfer(receiver, assets);
+        /// @dev Withdraw stMatic from this contract
+        stMaticAsset.safeTransfer(receiver, shares);
     }
 
     /// stMatic as AUM. Non-rebasing!
@@ -149,16 +139,15 @@ contract StMATIC4626 is ERC4626 {
         return stMatic.balanceOf(address(this));
     }
 
+
     function convertToShares(uint256 assets)
         public
         view
         virtual
         override
-        returns (uint256)
+        returns (uint256 shares)
     {
-        uint256 supply = totalSupply;
-
-        return supply == 0 ? assets : assets.mulDivDown(supply, totalAssets());
+        (shares, ,) = stMatic.convertMaticToStMatic(assets);
     }
 
     function convertToAssets(uint256 shares)
@@ -166,23 +155,19 @@ contract StMATIC4626 is ERC4626 {
         view
         virtual
         override
-        returns (uint256)
-    {
-        uint256 supply = totalSupply;
-
-        return supply == 0 ? shares : shares.mulDivDown(totalAssets(), supply);
+        returns (uint256 assets)
+    {   
+        (assets, ,) = stMatic.convertStMaticToMatic(shares);
     }
 
-    function previewMint(uint256 shares)
+    function previewDeposit(uint256 assets)
         public
         view
         virtual
         override
         returns (uint256)
     {
-        uint256 supply = totalSupply;
-
-        return supply == 0 ? shares : shares.mulDivUp(totalAssets(), supply);
+        return convertToShares(assets);
     }
 
     function previewWithdraw(uint256 assets)
@@ -192,8 +177,26 @@ contract StMATIC4626 is ERC4626 {
         override
         returns (uint256)
     {
-        uint256 supply = totalSupply;
+        return convertToShares(assets);
+    }
 
-        return supply == 0 ? assets : assets.mulDivUp(supply, totalAssets());
+    function previewRedeem(uint256 shares)
+        public
+        view
+        virtual
+        override
+        returns (uint256)
+    {
+        return convertToAssets(shares);
+    }
+
+    function previewMint(uint256 shares)
+        public
+        view
+        virtual
+        override
+        returns (uint256)
+    {
+        return convertToAssets(shares) + 1;
     }
 }

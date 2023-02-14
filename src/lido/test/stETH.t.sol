@@ -83,7 +83,6 @@ contract stEthTest is Test {
         uint256 aliceSharesAmount = vault.balanceOf(alice);
         console.log("aliceSharesAmount", aliceSharesAmount);
 
-        /// @dev 1 wei rounding error
         uint256 sharesBurned = vault.redeem(aliceSharesAmount, alice, alice);
         console.log("sharesBurned", sharesBurned);
     }

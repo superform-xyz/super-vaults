@@ -19,7 +19,7 @@ test-compound :; forge test --match-contract Compound* -vvv
 test-compound-v3 :; forge test --match-contract CompoundV3* -vvv
 test-steth :; forge test --match-contract stEth.*Test -vvv
 test-steth-swap :; forge test --match-contract stEthSwap.*Test -vvv
-test-stmatic :; forge test --match-contract stMatic.*Test -vvv
+test-stmatic :; forge test --match-contract stMatic.*Test -vv
 test-uniswapV2 :; forge test --match-contract UniswapV2Test -vvv
 test-uniswapV2swap :; forge test --match-contract UniswapV2TestSwap -vv
 test-reth :; forge test --match-contract rEthTest -vvv
