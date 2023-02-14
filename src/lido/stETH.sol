@@ -52,23 +52,23 @@ contract StETHERC4626 is ERC4626 {
     //////////////////////////////////////////////////////////////*/
 
     function addLiquidity(uint256 ethAmount, uint256) internal returns (uint256 stEthAmount) {
-        console.log("ethAmount aD", ethAmount);
-        /// Lido's submit() accepts only native ETH
+        console.log("ethAmount addLiq", ethAmount);
         stEthAmount = stEth.submit{value: ethAmount}(address(this));
-        console.log("stEthAmount aD", stEthAmount);
+        console.log("stEthAmount addLiq", stEthAmount);
     }
 
     /// -----------------------------------------------------------------------
     /// ERC4626 overrides
     /// -----------------------------------------------------------------------
 
-    /// Standard ERC4626 deposit can only accept ERC20
-    /// Vault's underlying is WETH (ERC20), Lido expects ETH (Native), we make wraperooo magic
+    /// @notice Standard ERC4626 deposit can only accept ERC20
+    /// Vault's underlying is WETH (ERC20), Lido expects ETH (Native), we use WETH wraper
     function deposit(uint256 assets, address receiver)
         public
         override
         returns (uint256 shares)
     {
+        require((shares = previewDeposit(assets)) != 0, "ZERO_SHARES");
         
         asset.safeTransferFrom(msg.sender, address(this), assets);
 
@@ -76,7 +76,7 @@ contract StETHERC4626 is ERC4626 {
         
         console.log("eth balance deposit", address(this).balance);
 
-        shares = addLiquidity(assets, shares);
+        addLiquidity(assets, shares);
 
         _mint(receiver, shares);
 
@@ -84,9 +84,9 @@ contract StETHERC4626 is ERC4626 {
 
     }
 
-    /// Deposit function accepting ETH (Native) directly
+    /// @notice Deposit function accepting ETH (Native) directly
     function deposit(address receiver) public payable returns (uint256 shares) {
-        require(msg.value != 0, "0");
+        require((shares = previewDeposit(msg.value)) != 0, "ZERO_SHARES");
 
         shares = addLiquidity(msg.value, shares);
 
@@ -109,7 +109,7 @@ contract StETHERC4626 is ERC4626 {
 
         weth.withdraw(assets);
 
-        shares = addLiquidity(assets, shares);
+        addLiquidity(assets, shares);
 
         _mint(receiver, shares);
 
@@ -199,6 +199,16 @@ contract StETHERC4626 is ERC4626 {
         return convertToShares(assets);
     }
 
+    function previewWithdraw(uint256 assets)
+        public
+        view
+        virtual
+        override
+        returns (uint256)
+    {
+        return convertToShares(assets);
+    }
+
     function previewRedeem(uint256 shares)
         public
         view
@@ -219,13 +229,4 @@ contract StETHERC4626 is ERC4626 {
         return convertToAssets(shares);
     }
 
-    function previewWithdraw(uint256 assets)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
-        return convertToShares(assets);
-    }
 }

@@ -16,9 +16,9 @@ import "forge-std/console.sol";
 /// Vault balance holds stMatic. Value is updated for each accounting call.
 /// @author ZeroPoint Labs
 contract StMATIC4626 is ERC4626 {
+
     IStMATIC public stMatic;
     ERC20 public stMaticAsset;
-    ERC20 public matic;
 
     /// -----------------------------------------------------------------------
     /// Libraries usage
@@ -38,8 +38,6 @@ contract StMATIC4626 is ERC4626 {
     {
         stMatic = IStMATIC(stMatic_);
         stMaticAsset = ERC20(stMatic_);
-        matic = ERC20(matic_);
-        matic.approve(address(stMatic), type(uint256).max);
     }
 
     receive() external payable {}
@@ -48,12 +46,9 @@ contract StMATIC4626 is ERC4626 {
                           INTERNAL HOOKS LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function beforeWithdraw(uint256 assets, uint256) internal override {
-        /// NOTE: Empty. We withdraw stMatic from the contract balance
-    }
-
     function afterDeposit(uint256 assets, uint256) internal override {
         console.log("ethAmount aD", assets);
+        asset.approve(address(stMatic), assets);
         /// Lido's stMatic pool submit() isn't payable, MATIC is ERC20 compatible
         /// TODO - check the referal address - do we need it?
         uint256 stEthAmount = stMatic.submit(assets, address(0));
@@ -116,8 +111,6 @@ contract StMATIC4626 is ERC4626 {
                 allowance[owner][msg.sender] = allowed - shares;
         }
 
-        beforeWithdraw(assets, shares);
-
         console.log(
             "stMatic balance withdraw",
             stMaticAsset.balanceOf(address(this))
@@ -143,8 +136,6 @@ contract StMATIC4626 is ERC4626 {
         }
 
         require((assets = previewRedeem(shares)) != 0, "ZERO_ASSETS");
-
-        beforeWithdraw(assets, shares);
 
         _burn(owner, shares);
 
