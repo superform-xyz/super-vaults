@@ -22,7 +22,7 @@ test-steth-swap :; forge test --match-contract stEthSwap.*Test -vvv
 test-stmatic :; forge test --match-contract stMatic.*Test -vvv
 test-uniswapV2 :; forge test --match-contract UniswapV2Test -vvv
 test-uniswapV2swap :; forge test --match-contract UniswapV2TestSwap -vv
-test-reth :; forge test --match-contract rEthTest -vv
+test-reth :; forge test --match-contract rEthTest -vvv
 test-arrakis :; forge test --match-contract Arrakis_LP_Test -vvv
 test-geist :; forge test --match-contract GeistERC4626ReinvestTest -vvv
 
@@ -35,6 +35,7 @@ test-benqiNative-reinvest :; forge test --match-contract BenqiNativeERC4626Reinv
 
 # Harvester tests (check tests comments)
 test-aaveV3-harvest :; forge test --match-contract AaveV3ERC4626ReinvestTest --match-test testHarvester -vvv
+test-venus-harvest :; forge test --match-contract VenusERC4626HarvestTest -vvv
 
 # Uniswap tests
 test-uniswapV2swap-withdraw :; forge test --match-contract UniswapV2TestSwap --match-test testDepositWithdraw -vvv

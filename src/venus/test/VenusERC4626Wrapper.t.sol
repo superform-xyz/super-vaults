@@ -37,7 +37,11 @@ contract VenusERC4626WrapperTest is Test {
 
     constructor() {
         fork = vm.createFork(BSC_RPC_URL);
+        
+        /// 21_375_198
+        vm.rollFork(fork, 21_375_198);
         vm.selectFork(fork);
+
         manager = msg.sender;
         comptroller = IComptroller(VENUS_COMPTROLLER);
 
@@ -79,8 +83,8 @@ contract VenusERC4626WrapperTest is Test {
     function setUp() public {
         alice = address(0x1);
         bob = address(0x2);
-        deal(address(asset), alice, 1000 ether);
-        deal(address(asset), bob, 1000 ether);
+        deal(address(asset), alice, 100000 ether);
+        deal(address(asset), bob, 100000 ether);
     }
 
     function testDepositWithdrawUSDC() public {
@@ -152,7 +156,18 @@ contract VenusERC4626WrapperTest is Test {
     }
 
     function testHarvest() public {
-        uint256 amount = 100 ether;
+        uint256 amount = 10000 ether;
+
+        fork = vm.createFork(BSC_RPC_URL);
+        
+        /// 21_375_198
+        vm.rollFork(fork, 21_375_198);
+        vm.selectFork(fork);
+
+        alice = address(0x1);
+        bob = address(0x2);
+        deal(address(asset), alice, 100000 ether);
+        deal(address(asset), bob, 100000 ether);
 
         setVault(
             ERC20(vm.envAddress("VENUS_USDC_ASSET")),
@@ -179,7 +194,11 @@ contract VenusERC4626WrapperTest is Test {
         console.log("totalAssets before harvest", vault.totalAssets());
 
         deal(address(reward), address(vault), 1 ether);
+
         assertEq(reward.balanceOf(address(vault)), 1 ether);
+        
+        // vm.selectFork(fork);
+        vm.rollFork(25_635_611);
 
         vault.harvest(0);
         assertEq(reward.balanceOf(address(vault)), 0);

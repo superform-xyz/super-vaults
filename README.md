@@ -28,6 +28,12 @@ You can match individual test files with:
 
 _(see MakeFile)_
 
+# Slither
+
+To run Slither over the specific file: 
+
+`slither src/uniswap-v2/swap-built-in/UniswapV2ERC4626Swap.sol --config-file slither.config.json`
+
 # Structure
 
 Each protocol is hosted inside of a separate directory. For a single protocol we expect to see many different types of ERC4626 Vaults and Wrappers/Adapters. Starting from the most basic, allowing only zapIn/zapOut to the non-ERC4626 Vault through the ERC4626 interface ending on complex yield applications. If you plan on adding your own wrapper or standalone ERC4626 Vault, create a PR following existing root directory structure, like: 
