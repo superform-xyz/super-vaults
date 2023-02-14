@@ -160,15 +160,6 @@ contract VenusERC4626WrapperTest is Test {
 
         fork = vm.createFork(BSC_RPC_URL);
         
-        /// 21_375_198
-        vm.rollFork(fork, 21_375_198);
-        vm.selectFork(fork);
-
-        alice = address(0x1);
-        bob = address(0x2);
-        deal(address(asset), alice, 100000 ether);
-        deal(address(asset), bob, 100000 ether);
-
         setVault(
             ERC20(vm.envAddress("VENUS_USDC_ASSET")),
             ERC20(vm.envAddress("VENUS_REWARD_XVS")),
@@ -196,9 +187,6 @@ contract VenusERC4626WrapperTest is Test {
         deal(address(reward), address(vault), 1 ether);
 
         assertEq(reward.balanceOf(address(vault)), 1 ether);
-        
-        // vm.selectFork(fork);
-        vm.rollFork(25_635_611);
 
         vault.harvest(0);
         assertEq(reward.balanceOf(address(vault)), 0);
