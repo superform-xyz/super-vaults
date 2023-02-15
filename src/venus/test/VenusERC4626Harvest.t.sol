@@ -63,7 +63,6 @@ contract VenusERC4626HarvestTest is Test {
     function setUp() public {
         fork = vm.createFork(BSC_RPC_URL, 25_630_086);
 
-        /// 12038576
         vm.selectFork(fork);
 
         manager = msg.sender;
@@ -94,15 +93,11 @@ contract VenusERC4626HarvestTest is Test {
         vm.makePersistent(bob);
     }
 
-    /// https://github.com/foundry-rs/foundry/issues/3458
-    /// @dev Check this issue: https://github.com/foundry-rs/foundry/issues/3579
-    /// @dev Check this issue: https://github.com/foundry-rs/foundry/issues/3110
     function testHarvestUSDC() public {
         uint256 amount = 100000 ether;
-        /// @dev to support 2 deposits times
+
+        /// @dev split for more deposits to calculate delta correctly
         uint256 halfAmount = amount / 2;
-        IComptroller.VenusMarketState memory supplyState;
-        uint256 venusSupplierIndex;
 
         setVault(
             ERC20(vm.envAddress("VENUS_USDC_ASSET")),
@@ -123,55 +118,28 @@ contract VenusERC4626HarvestTest is Test {
 
         asset.approve(address(vault), amount);
         vault.deposit(halfAmount, alice);
-
-        supplyState = comptroller.venusSupplyState(address(cToken));
-        /*
-        console.log("supplyStateBetweenAliceDeposits.index", supplyState.index);
-        venusSupplierIndex = comptroller.venusSupplierIndex(
-            address(cToken),
-            address(vault)
-        );
-        console.log(
-            "venusSupplierIndex between allice deposits",
-            venusSupplierIndex
-        );
-        */
         vault.deposit(halfAmount, alice);
+
         vm.stopPrank();
 
         vm.rollFork(25_630_500);
 
         vm.startPrank(bob);
         asset.approve(address(vault), amount);
-
         vault.deposit(halfAmount, bob);
-        /*
-        supplyState = comptroller.venusSupplyState(address(cToken));
-        console.log("supplyStateBetweenBobDeposits.index", supplyState.index);
-        venusSupplierIndex = comptroller.venusSupplierIndex(
-            address(cToken),
-            address(vault)
-        );
-        console.log(
-            "venusSupplierIndex between Bob deposits",
-            venusSupplierIndex
-        );
-        */
         vault.deposit(halfAmount, bob);
 
         vm.stopPrank();
+
         console.log("--------FIRST ROLL FORK--------");
 
         vm.rollFork(25_631_000);
 
         vm.startPrank(alice);
-
+        uint256 totalAssets = vault.totalAssets();
         console.log("block number", block.number);
-        console.log("totalAssets", vault.totalAssets());
+        console.log("totalAssets first roll", totalAssets);
 
-        // deal(address(reward), address(vault), 1 ether);
-
-        // assertEq(reward.balanceOf(address(vault)), 1 ether);
         uint256 rewardsSeparate = comptroller.venusAccrued(address(vault));
         console.log("rewards accrued separate", rewardsSeparate);
         console.log("XVS balance", reward.balanceOf(address(vault)));
@@ -181,7 +149,8 @@ contract VenusERC4626HarvestTest is Test {
 
         vm.rollFork(25_691_325);
         assert(vm.isPersistent(address(comptroller)));
-
+        totalAssets = vault.totalAssets();
+        console.log("totalAssets second roll", totalAssets);
         console.log("block number", block.number);
         rewardsSeparate = comptroller.venusAccrued(address(vault));
         console.log("rewards accrued separate", rewardsSeparate);
@@ -189,11 +158,14 @@ contract VenusERC4626HarvestTest is Test {
         console.log("Ctoken balance", cToken.balanceOf(address(vault)));
 
         console.log("--------HARVEST CALL--------");
+
         vault.harvest(0);
+
         assertEq(reward.balanceOf(address(vault)), 0);
+        assertGe(vault.totalAssets(), totalAssets);
+
         rewardsSeparate = comptroller.venusAccrued(address(vault));
         console.log("rewards accrued separate final", rewardsSeparate);
-
         console.log("totalAssets after harvest", vault.totalAssets());
     }
 }
