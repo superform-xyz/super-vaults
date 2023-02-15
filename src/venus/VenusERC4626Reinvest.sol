@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.14;
+import "forge-std/console.sol";
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
@@ -96,23 +97,25 @@ contract VenusERC4626Reinvest is ERC4626 {
     ) external {
         require(msg.sender == manager, "onlyOwner");
         SwapInfo = swapInfo(token, pair1, pair2);
-
     }
 
     /// @notice Claims liquidity mining rewards from Compound and performs low-lvl swap with instant reinvesting
     function harvest(uint256 minAmountOut_) external {
         ICERC20[] memory cTokens = new ICERC20[](1);
         cTokens[0] = cToken;
+        ICERC20[] memory allMarkets = comptroller.getAllMarkets();
+
         comptroller.claimVenus(address(this));
 
-        uint256 earned = ERC20(reward).balanceOf(address(this));
+        uint256 earned = reward.balanceOf(address(this));
+        console.log("earned", earned);
+
         address rewardToken = address(reward);
         uint256 reinvestAmount;
         /// If only one swap needed (high liquidity pair) - set swapInfo.token0/token/pair2 to 0x
         /// XVS => WBNB => USDC
         if (SwapInfo.token == address(asset)) {
-
-            reward.approve(SwapInfo.pair1, earned); 
+            reward.approve(SwapInfo.pair1, earned);
 
             reinvestAmount = DexSwap.swap(
                 earned, /// REWARDS amount to swap
@@ -122,7 +125,6 @@ contract VenusERC4626Reinvest is ERC4626 {
             );
             /// If two swaps needed
         } else {
-
             reward.approve(SwapInfo.pair1, earned);
 
             uint256 swapTokenAmount = DexSwap.swap(
@@ -132,7 +134,7 @@ contract VenusERC4626Reinvest is ERC4626 {
                 SwapInfo.pair1 /// pairToken (pool)
             );
 
-            ERC20(SwapInfo.token).approve(SwapInfo.pair2, swapTokenAmount); 
+            ERC20(SwapInfo.token).approve(SwapInfo.pair2, swapTokenAmount);
 
             reinvestAmount = DexSwap.swap(
                 swapTokenAmount,
@@ -141,7 +143,7 @@ contract VenusERC4626Reinvest is ERC4626 {
                 SwapInfo.pair2 /// pairToken (pool)
             );
         }
-        if(reinvestAmount < minAmountOut_) {
+        if (reinvestAmount < minAmountOut_) {
             revert MIN_AMOUNT_ERROR();
         }
         afterDeposit(asset.balanceOf(address(this)), 0);

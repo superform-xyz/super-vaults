@@ -44,7 +44,7 @@ contract VenusERC4626HarvestTest is Test {
         vm.startPrank(manager);
 
         asset = underylyingAsset;
-        reward = reward;
+        reward = reward_;
         cToken = cToken_;
 
         vault = new VenusERC4626Reinvest(
@@ -61,15 +61,14 @@ contract VenusERC4626HarvestTest is Test {
     }
 
     function setUp() public {
+        fork = vm.createFork(BSC_RPC_URL, 25_630_086);
 
-        fork = vm.createFork(BSC_RPC_URL);
         /// 12038576
-        vm.rollFork(fork, 12_038_576);
         vm.selectFork(fork);
 
         manager = msg.sender;
         comptroller = IComptroller(VENUS_COMPTROLLER);
-        
+
         setVault(
             ERC20(vm.envAddress("VENUS_USDC_ASSET")),
             ERC20(vm.envAddress("VENUS_REWARD_XVS")),
@@ -100,6 +99,10 @@ contract VenusERC4626HarvestTest is Test {
     /// @dev Check this issue: https://github.com/foundry-rs/foundry/issues/3110
     function testHarvestUSDC() public {
         uint256 amount = 100000 ether;
+        /// @dev to support 2 deposits times
+        uint256 halfAmount = amount / 2;
+        IComptroller.VenusMarketState memory supplyState;
+        uint256 venusSupplierIndex;
 
         setVault(
             ERC20(vm.envAddress("VENUS_USDC_ASSET")),
@@ -118,27 +121,79 @@ contract VenusERC4626HarvestTest is Test {
 
         vm.startPrank(alice);
 
-        uint256 aliceUnderlyingAmount = amount;
+        asset.approve(address(vault), amount);
+        vault.deposit(halfAmount, alice);
 
-        asset.approve(address(vault), aliceUnderlyingAmount);
-        vault.deposit(aliceUnderlyingAmount, alice);
+        supplyState = comptroller.venusSupplyState(address(cToken));
+        /*
+        console.log("supplyStateBetweenAliceDeposits.index", supplyState.index);
+        venusSupplierIndex = comptroller.venusSupplierIndex(
+            address(cToken),
+            address(vault)
+        );
+        console.log(
+            "venusSupplierIndex between allice deposits",
+            venusSupplierIndex
+        );
+        */
+        vault.deposit(halfAmount, alice);
+        vm.stopPrank();
+
+        vm.rollFork(25_630_500);
+
+        vm.startPrank(bob);
+        asset.approve(address(vault), amount);
+
+        vault.deposit(halfAmount, bob);
+        /*
+        supplyState = comptroller.venusSupplyState(address(cToken));
+        console.log("supplyStateBetweenBobDeposits.index", supplyState.index);
+        venusSupplierIndex = comptroller.venusSupplierIndex(
+            address(cToken),
+            address(vault)
+        );
+        console.log(
+            "venusSupplierIndex between Bob deposits",
+            venusSupplierIndex
+        );
+        */
+        vault.deposit(halfAmount, bob);
+
+        vm.stopPrank();
+        console.log("--------FIRST ROLL FORK--------");
+
+        vm.rollFork(25_631_000);
+
+        vm.startPrank(alice);
 
         console.log("block number", block.number);
-        console.log("totalAssets before harvest", vault.totalAssets());
+        console.log("totalAssets", vault.totalAssets());
 
-        deal(address(reward), address(vault), 1 ether);
+        // deal(address(reward), address(vault), 1 ether);
 
-        assertEq(reward.balanceOf(address(vault)), 1 ether);
-        
-        vm.rollFork(fork, 25_635_000);
+        // assertEq(reward.balanceOf(address(vault)), 1 ether);
+        uint256 rewardsSeparate = comptroller.venusAccrued(address(vault));
+        console.log("rewards accrued separate", rewardsSeparate);
+        console.log("XVS balance", reward.balanceOf(address(vault)));
+        console.log("Ctoken balance", cToken.balanceOf(address(vault)));
+
+        console.log("--------SECOND ROLL FORK--------");
+
+        vm.rollFork(25_691_325);
+        assert(vm.isPersistent(address(comptroller)));
+
         console.log("block number", block.number);
-        console.log("rewards accrued", vault.getRewardsAccrued());
-        
+        rewardsSeparate = comptroller.venusAccrued(address(vault));
+        console.log("rewards accrued separate", rewardsSeparate);
+        console.log("XVS balance", reward.balanceOf(address(comptroller)));
+        console.log("Ctoken balance", cToken.balanceOf(address(vault)));
+
+        console.log("--------HARVEST CALL--------");
         vault.harvest(0);
         assertEq(reward.balanceOf(address(vault)), 0);
+        rewardsSeparate = comptroller.venusAccrued(address(vault));
+        console.log("rewards accrued separate final", rewardsSeparate);
 
         console.log("totalAssets after harvest", vault.totalAssets());
     }
-
-    
 }
