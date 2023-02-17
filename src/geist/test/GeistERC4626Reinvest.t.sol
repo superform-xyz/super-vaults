@@ -39,8 +39,11 @@ contract GeistERC4626ReinvestTest is Test {
         ILendingPool(vm.envAddress("GEIST_LENDINGPOOL"));
 
     ////////////////////////////////////////
-    constructor() {
-        ftmFork = vm.createFork(FTM_RPC_URL);
+
+    function setUp() public {
+
+        /// 	48129547
+        ftmFork = vm.createFork(FTM_RPC_URL, 48_129_547);
 
         manager = msg.sender;
 
@@ -54,9 +57,7 @@ contract GeistERC4626ReinvestTest is Test {
             rewardToken,
             manager
         );
-    }
-
-    function setUp() public {
+    
         alice = address(0x1);
         bob = address(0x2);
         deal(address(asset), alice, 10000 ether);
@@ -144,6 +145,7 @@ contract GeistERC4626ReinvestTest is Test {
         assertEq(asset.balanceOf(alice), alicePreDepositBal);
     }
 
+    /// @notice Tests irrelevant for Base Implementation of Reinvest. Just mocking rewards accrued through transfer.
     function testHarvesterDAI() public {
         vm.startPrank(manager);
 
@@ -161,14 +163,24 @@ contract GeistERC4626ReinvestTest is Test {
         asset.approve(address(vault), amount);
         uint256 aliceShareAmount = vault.deposit(amount, alice);
 
+        vm.roll(block.number + 1000000);
         /// @dev Deal 10000 GEIST reward tokens to the vault
         deal(address(rewardToken), address(vault), 10000 ether);
 
         assertEq(vault.totalSupply(), aliceShareAmount);
         assertEq(vault.totalAssets(), 100 ether);
         console.log("totalAssets before harvest", vault.totalAssets());
-
         assertEq(ERC20(rewardToken).balanceOf(address(vault)), 10000 ether);
+
+        vm.roll(block.number + 6492849);
+        IMultiFeeDistribution.RewardData[] memory rewardData = vault.getRewardsAccrued();
+
+        for (uint i = 0; i < rewardData.length; i++) {
+            address tok = rewardData[i].token;
+            uint256 amt = rewardData[i].amount;
+            console.log("tok", tok, "amt", amt);
+        }
+
         vault.harvest(0);
 
         assertEq(ERC20(rewardToken).balanceOf(address(vault)), 0);
