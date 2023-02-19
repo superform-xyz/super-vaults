@@ -36,11 +36,8 @@ contract BenqiERC4626ReinvestTest is Test {
     address pair2;
 
     function setUp() public {
-        // avaxFork = vm.createFork(AVAX_RPC_URL);
         avaxFork = vm.createFork(AVAX_RPC_URL, 19_963_848);
         vm.selectFork(avaxFork);
-        // vm.roll(18963848);
-        // vm.warp(19963848);
 
         manager = msg.sender;
         comptroller = IComptroller(vm.envAddress("BENQI_COMPTROLLER"));
@@ -60,6 +57,9 @@ contract BenqiERC4626ReinvestTest is Test {
         swapToken = vm.envAddress("BENQI_SWAPTOKEN_DAI");
         pair1 = vm.envAddress("BENQI_PAIR1_DAI");
         pair2 = vm.envAddress("BENQI_PAIR2_DAI");
+
+        vm.prank(manager);
+        vault.setRoute(rewardType_, address(reward), swapToken, pair1, pair2);
 
         alice = address(0x1);
         bob = address(0x2);
@@ -101,36 +101,53 @@ contract BenqiERC4626ReinvestTest is Test {
         vm.stopPrank();
     }
 
-    function testRewards() public {
-        vm.startPrank(manager);
-        vault.setRoute(rewardType_, address(reward), swapToken, pair1, pair2);
+    function testDepositWithdraw() public {
+        uint256 amount = 1000000 ether;
 
-        /// @dev Transfer 1 QI token
-        deal(address(reward), address(vault), 1000000 ether);
-        vault.harvest(rewardType_, 0);
+        vm.startPrank(alice);
+        uint256 aliceUnderlyingAmount = amount;
+
+        asset.approve(address(vault), aliceUnderlyingAmount);
+        assertEq(asset.allowance(alice, address(vault)), aliceUnderlyingAmount);
+        uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
+
+        uint256 aliceAssetsToWithdraw = vault.convertToAssets(aliceShareAmount);
+        assertEq(aliceUnderlyingAmount, aliceShareAmount);
+        assertEq(vault.totalSupply(), aliceShareAmount);
+        assertEq(vault.balanceOf(alice), aliceShareAmount);
+        
+        uint256 preWithdrawBalance = asset.balanceOf(alice);
+        uint256 sharesBurned = vault.withdraw(aliceAssetsToWithdraw, alice, alice);
+        uint256 totalBalance = aliceAssetsToWithdraw + preWithdrawBalance;
+
+        assertEq(totalBalance, asset.balanceOf(alice));
+        assertEq(aliceShareAmount, sharesBurned);
+        assertEq(vault.balanceOf(alice), 0);        
     }
 
-    function testDepositWithdraw() public {
+    /// @dev Contracts require a careful selection of blocks to roll
+    function testHarvest() public {
         uint256 amount = 10000 ether;
 
         //////////////////////////////////////////////////////////////
-        
+
         vm.startPrank(alice);
         uint256 aliceUnderlyingAmount = amount;
         asset.approve(address(vault), aliceUnderlyingAmount);
-        uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
+        vault.deposit(aliceUnderlyingAmount, alice);
 
         console.log("--------FIRST ROLL FORK--------");
-        // vm.roll(block.number + 6494444); /// 26458292
         vm.rollFork(26_458_292);
-        // vm.warp(26458292);
 
         uint256 rewardsAccrued = vault.getRewardsAccrued(0);
         console.log(block.timestamp, block.number);
         console.log("rewardsAccrued", rewardsAccrued);
         console.log("totalAssets", vault.totalAssets());
 
-        (uint224 index, uint32 timestamp) = comptroller.rewardSupplyState(0, address(cToken));
+        (uint224 index, uint32 timestamp) = comptroller.rewardSupplyState(
+            0,
+            address(cToken)
+        );
         console.log("index", index);
         console.log("timestamp", timestamp);
 
@@ -138,25 +155,25 @@ contract BenqiERC4626ReinvestTest is Test {
 
         //////////////////////////////////////////////////////////////
         
+        /// @dev Next deposit
         vm.startPrank(bob);
         uint256 bobUnderlyingAmount = amount;
         asset.approve(address(vault), bobUnderlyingAmount);
         vault.deposit(bobUnderlyingAmount, bob);
-        
+
         console.log("--------SECOND ROLL FORK--------");
-        // vm.roll(block.number + 1000);
         vm.rollFork(26_460_292);
-        // vm.warp(26459292);
 
         console.log("totalAssets", vault.totalAssets());
         vm.stopPrank();
 
         ///////////////////////////////////////////////////////////////
 
+        /// @dev Next deposit
         vm.startPrank(alice);
         asset.approve(address(vault), aliceUnderlyingAmount);
         vault.deposit(aliceUnderlyingAmount, alice);
-        
+
         rewardsAccrued = vault.getRewardsAccrued(0);
         console.log(block.timestamp, block.number);
         console.log("rewardsAccrued", rewardsAccrued);
@@ -165,9 +182,7 @@ contract BenqiERC4626ReinvestTest is Test {
         console.log("timestamp", timestamp);
 
         console.log("--------HARVEST CALL--------");
-        // vm.roll(block.number + 1000);
         vm.rollFork(26_461_292);
-        // vm.warp(26460292);
 
         rewardsAccrued = vault.getRewardsAccrued(0);
         (index, timestamp) = comptroller.rewardSupplyState(0, address(cToken));
@@ -176,9 +191,9 @@ contract BenqiERC4626ReinvestTest is Test {
         console.log("rewardsAccruedPost", rewardsAccrued);
         console.log(block.timestamp, block.number);
 
-        uint256 aliceAssetsToWithdraw = vault.convertToAssets(aliceShareAmount);
-        assertEq(aliceUnderlyingAmount, aliceShareAmount);
-
-        vault.withdraw(aliceAssetsToWithdraw, alice, alice);
+        uint256 totalAssetsBeforeHarvest = vault.totalAssets();
+        vault.harvest(0, 0);
+        uint256 totalAssetsAfterHarvest = vault.totalAssets();
+        assertGt(totalAssetsAfterHarvest, totalAssetsBeforeHarvest);
     }
 }
