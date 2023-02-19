@@ -42,7 +42,7 @@ test-uniswapV2swap-withdraw :; forge test --match-contract UniswapV2TestSwap --m
 test-uniswapV2swap-localhost :; forge test --match-contract UniswapV2TestSwapLocalHost -vvv
 
 # Benqi-Staking tests
-test-benqi-staking :; forge test --match-contract BenqiERC4626StakingTest -vvv
+test-benqi-staking :; forge test --match-contract BenqiERC4626StakingTest -vvvvv
 
 # KYCDao4626 tests
 test-kycdao :; forge test --match-contract kycDAO4626Test -vvv
