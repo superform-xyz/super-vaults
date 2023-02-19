@@ -12,16 +12,19 @@ import {IWETH} from "../lido/interfaces/IWETH.sol";
 
 import "forge-std/console.sol";
 
-/// @notice Lido's stETH ERC4626 Wrapper
-/// Accepts WETH through ERC4626 interface, but can also accept ETH directly through other deposit() function.
-/// Returns assets as ETH for brevity (community-version should return stEth)
-/// Assets Under Managment (totalAssets()) operates on rebasing balance, re-calculated to the current value in ETH.
-/// Uses ETH/stETH CurvePool for a fast-exit with 1% slippage hardcoded.
+/// @notice Benqi AVAX Liquid Staking Adapter
+/// Accepts WAVAX to deposit into Benqi's staking contract - sAVAX, provides ERC4626 interface over token
+/// Withdraw/Redeem to AVAX is not a part of this base contract. Withdraw/Redeem is only possible to sAVAX token.
+/// Two possible ways of extending this contract: https://docs.benqi.fi/benqi-liquid-staking/staking-and-unstaking
+/// In contrast to Lido's stETH, sAVAX can be Unstaked with 15d cooldown period. Not a part of this base contract.
 /// @author ZeroPoint Labs
 contract BenqiERC4626Staking is ERC4626 {
+    
     IStakedAvax public sAVAX;
     IWETH public wavax;
-    IPair public traderJoePool;
+    ERC20 public sAvaxAsset;
+
+    /// IPair public traderJoePool;
 
     /// -----------------------------------------------------------------------
     /// Libraries usage
@@ -38,13 +41,15 @@ contract BenqiERC4626Staking is ERC4626 {
     /// @param sAvax_ sAVAX (Benqi staking contract) address
     constructor(
         address wavax_,
-        address sAvax_,
-        address tradeJoePool_
+        address sAvax_
+        // address tradeJoePool_
     ) ERC4626(ERC20(wavax_), "ERC4626-Wrapped sAVAX", "wLsAVAX") {
         sAVAX = IStakedAvax(sAvax_);
+        sAvaxAsset = ERC20(sAvax_);
         wavax = IWETH(wavax_);
-        traderJoePool = IPair(tradeJoePool_);
-        sAVAX.approve(address(traderJoePool), type(uint256).max);
+        
+        // traderJoePool = IPair(tradeJoePool_);
+        // sAVAX.approve(address(traderJoePool), type(uint256).max);
     }
 
     receive() external payable {}
@@ -53,22 +58,29 @@ contract BenqiERC4626Staking is ERC4626 {
                           INTERNAL HOOKS LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function beforeWithdraw(uint256 assets, uint256) internal override {
-        uint256 sAVAXAssets = sAVAX.getSharesByPooledAvax(assets);
-        uint256 amount = DexSwap.swap(
-            sAVAXAssets,
-            address(sAVAX),
-            address(wavax),
-            address(traderJoePool)
-        );
-        console.log("amount", amount);
+    /// NOTE: Disabled in base implementation
+    /// NOTE: It would require extending totalAssets calculation for reliable previews
+
+    // function beforeWithdraw(uint256 assets, uint256) internal override {
+    //     uint256 sAVAXAssets = sAVAX.getSharesByPooledAvax(assets);
+    //     uint256 amount = DexSwap.swap(
+    //         sAVAXAssets,
+    //         address(sAVAX),
+    //         address(wavax),
+    //         address(traderJoePool)
+    //     );
+    // }
+
+    // function afterDeposit(uint256 ethAmount, uint256) internal override {
+    //     uint256 stEthAmount = sAVAX.submit{value: ethAmount}();
+    // }
+
+    function addLiquidity(uint256 wAvaxAmt, uint256) internal returns (uint256 sAvaxAmt) {
+        console.log("ethAmount aD", wAvaxAmt);
+        sAvaxAmt = sAVAX.submit{value: wAvaxAmt}();
+        console.log("stEthAmount aD", sAvaxAmt);
     }
 
-    function afterDeposit(uint256 ethAmount, uint256) internal override {
-        console.log("ethAmount aD", ethAmount);
-        uint256 stEthAmount = sAVAX.submit{value: ethAmount}(); /// Lido's submit() accepts only native ETH
-        console.log("stEthAmount aD", stEthAmount);
-    }
 
     /// -----------------------------------------------------------------------
     /// ERC4626 overrides
@@ -82,33 +94,27 @@ contract BenqiERC4626Staking is ERC4626 {
         returns (uint256 shares)
     {
         require((shares = previewDeposit(assets)) != 0, "ZERO_SHARES");
-
-        console.log("deposit shares", shares);
-
+        
         asset.safeTransferFrom(msg.sender, address(this), assets);
 
         wavax.withdraw(assets);
-
-        console.log("eth balance deposit", address(this).balance);
+        
+        shares = addLiquidity(assets, shares);
 
         _mint(receiver, shares);
 
         emit Deposit(msg.sender, receiver, assets, shares);
-
-        afterDeposit(assets, shares);
     }
 
     /// Deposit function accepting ETH (Native) directly
     function deposit(address receiver) public payable returns (uint256 shares) {
-        require(msg.value != 0, "0");
-
         require((shares = previewDeposit(msg.value)) != 0, "ZERO_SHARES");
+
+        shares = addLiquidity(msg.value, shares);
 
         _mint(receiver, shares);
 
         emit Deposit(msg.sender, receiver, msg.value, shares);
-
-        afterDeposit(msg.value, shares);
     }
 
     function mint(uint256 shares, address receiver)
@@ -122,11 +128,11 @@ contract BenqiERC4626Staking is ERC4626 {
 
         wavax.withdraw(assets);
 
+        shares = addLiquidity(assets, shares);
+
         _mint(receiver, shares);
 
         emit Deposit(msg.sender, receiver, assets, shares);
-
-        afterDeposit(assets, shares);
     }
 
     function withdraw(
@@ -134,9 +140,9 @@ contract BenqiERC4626Staking is ERC4626 {
         address receiver,
         address owner
     ) public override returns (uint256 shares) {
-        shares = previewWithdraw(assets);
 
-        console.log("shares withdraw", shares);
+        /// @dev In base implementation, previeWithdraw allows to get sAvax amount to withdraw for virtual amount from convertToAssets
+        shares = previewWithdraw(assets);
 
         if (msg.sender != owner) {
             uint256 allowed = allowance[owner][msg.sender];
@@ -145,17 +151,11 @@ contract BenqiERC4626Staking is ERC4626 {
                 allowance[owner][msg.sender] = allowed - shares;
         }
 
-        beforeWithdraw(assets, shares);
-
-        assets = wavax.balanceOf(address(this));
-
-        console.log("weth balance withdraw", assets);
-
         _burn(owner, shares);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
-        asset.safeTransfer(receiver, assets);
+        sAvaxAsset.safeTransfer(receiver, assets);
     }
 
     function redeem(
@@ -172,14 +172,11 @@ contract BenqiERC4626Staking is ERC4626 {
 
         require((assets = previewRedeem(shares)) != 0, "ZERO_ASSETS");
 
-        beforeWithdraw(assets, shares);
-        assets = wavax.balanceOf(address(this));
-
         _burn(owner, shares);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
-        asset.safeTransfer(receiver, assets);
+        sAvaxAsset.safeTransfer(receiver, shares);
     }
 
     function totalAssets() public view virtual override returns (uint256) {
@@ -245,4 +242,14 @@ contract BenqiERC4626Staking is ERC4626 {
     {
         return convertToAssets(shares);
     }
+
+    /// @notice maxWithdraw is equal to shares balance only in base implementation
+    function maxWithdraw(address owner) public view override returns (uint256) {
+        return balanceOf[owner];
+    }
+
+    function maxRedeem(address owner) public view override returns (uint256) {
+        return balanceOf[owner];
+    }
+
 }

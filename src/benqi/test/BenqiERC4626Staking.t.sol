@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.14;
 
 import "forge-std/Test.sol";
@@ -30,13 +30,14 @@ contract BenqiERC4626StakingTest is Test {
 
     IWETH public _weth = IWETH(weth);
     IStETH public _stEth = IStETH(stEth);
-    IPair public _traderJoePool = IPair(traderJoePool);
+
+    /// IPair public _traderJoePool = IPair(traderJoePool);
 
     function setUp() public {
         ethFork = vm.createFork(ETH_RPC_URL);
         vm.selectFork(ethFork);
 
-        vault = new BenqiERC4626Staking(weth, stEth, traderJoePool);
+        vault = new BenqiERC4626Staking(weth, stEth);
         alice = address(0x1);
         manager = msg.sender;
 
@@ -45,7 +46,7 @@ contract BenqiERC4626StakingTest is Test {
         deal(alice, 2 ether);
     }
 
-    function testDepositWithdraw() public {
+    function testFailDepositWithdraw() public {
         uint256 aliceUnderlyingAmount = HUNDRED_E18;
 
         vm.startPrank(alice);
@@ -62,8 +63,54 @@ contract BenqiERC4626StakingTest is Test {
         uint256 aliceAssetsFromShares = vault.previewRedeem(aliceShareAmount);
         console.log("aliceAssetsFromShares", aliceAssetsFromShares);
 
+        /// @dev This fails for base implementation because we request sAVAX to be withdraw and not AVAX (swapped)
         vault.withdraw(aliceAssetsFromShares, alice, alice);
     }
+
+    function testDepositWithdraw() public {
+        uint256 aliceUnderlyingAmount = HUNDRED_E18;
+
+        vm.startPrank(alice);
+
+        _weth.approve(address(vault), aliceUnderlyingAmount);
+        assertEq(_weth.allowance(alice, address(vault)), aliceUnderlyingAmount);
+
+        uint256 expectedSharesFromAssets = vault.previewDeposit(aliceUnderlyingAmount);
+        uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
+        
+        assertEq(expectedSharesFromAssets, aliceShareAmount);
+        console.log("aliceShareAmount", aliceShareAmount);
+
+        uint256 aliceMaxWithdraw = vault.maxWithdraw(alice);
+        console.log("aliceMaxWithdraw", aliceMaxWithdraw);
+
+        vault.withdraw(aliceMaxWithdraw, alice, alice);
+    }
+
+    function testDepositWithdrawSimulatingVirtAmount() public {
+        uint256 aliceUnderlyingAmount = HUNDRED_E18;
+
+        vm.startPrank(alice);
+
+        _weth.approve(address(vault), aliceUnderlyingAmount);
+        assertEq(_weth.allowance(alice, address(vault)), aliceUnderlyingAmount);
+
+        uint256 expectedSharesFromAssets = vault.previewDeposit(aliceUnderlyingAmount);
+        uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
+        
+        assertEq(expectedSharesFromAssets, aliceShareAmount);
+        console.log("aliceShareAmount", aliceShareAmount);
+
+        /// @dev The best way to calculate withdraw amount which virtually reflects amount in AVAX (accrued yield)
+        /// Here, we just withdraw all available shares 
+        uint256 aliceAssetsFromShares = vault.previewRedeem(aliceShareAmount);
+        uint256 aliceSharesToBurnForAssets = vault.previewWithdraw(aliceAssetsFromShares);
+        console.log("aliceAssetsFromShares", aliceAssetsFromShares);
+        console.log("aliceSharesToBurnForAssets", aliceSharesToBurnForAssets);
+        
+        vault.withdraw(aliceSharesToBurnForAssets, alice, alice);
+    }
+
 
     function testMintRedeem() public {
         uint256 aliceSharesMint = HUNDRED_E18;
