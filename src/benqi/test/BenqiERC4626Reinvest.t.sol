@@ -42,7 +42,6 @@ contract BenqiERC4626ReinvestTest is Test {
         manager = msg.sender;
         comptroller = IComptroller(vm.envAddress("BENQI_COMPTROLLER"));
 
-        /// Set vault as fallback
         setVault(
             ERC20(vm.envAddress("BENQI_DAI_ASSET")),
             ICERC20(vm.envAddress("BENQI_DAI_CTOKEN")),
@@ -194,6 +193,9 @@ contract BenqiERC4626ReinvestTest is Test {
         uint256 totalAssetsBeforeHarvest = vault.totalAssets();
         vault.harvest(0, 0);
         uint256 totalAssetsAfterHarvest = vault.totalAssets();
+        uint256 rewardsBalanceAfterHarvest = vault.getRewardsAccrued(0);
+
         assertGt(totalAssetsAfterHarvest, totalAssetsBeforeHarvest);
+        assertEq(rewardsBalanceAfterHarvest, 0);
     }
 }

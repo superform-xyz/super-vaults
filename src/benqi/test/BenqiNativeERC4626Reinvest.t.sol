@@ -83,25 +83,25 @@ contract BenqiNativeERC4626ReinvestTest is Test {
     function testDepositWithdraw() public {
         uint256 amount = 1000000 ether;
 
-        vm.prank(alice);
+        vm.startPrank(alice);
         uint256 aliceUnderlyingAmount = amount;
 
         asset.approve(address(vault), aliceUnderlyingAmount);
         assertEq(asset.allowance(alice, address(vault)), aliceUnderlyingAmount);
-
-        uint256 alicePreDepositBal = asset.balanceOf(alice);
-
-        vm.prank(alice);
         uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
-        uint256 rewardsAccrued = comptroller.rewardAccrued(1, address(vault));
 
         uint256 aliceAssetsToWithdraw = vault.convertToAssets(aliceShareAmount);
         assertEq(aliceUnderlyingAmount, aliceShareAmount);
         assertEq(vault.totalSupply(), aliceShareAmount);
         assertEq(vault.balanceOf(alice), aliceShareAmount);
+        
+        uint256 preWithdrawBalance = asset.balanceOf(alice);
+        uint256 sharesBurned = vault.withdraw(aliceAssetsToWithdraw, alice, alice);
+        uint256 totalBalance = aliceAssetsToWithdraw + preWithdrawBalance;
 
-        vm.prank(alice);
-        vault.withdraw(aliceAssetsToWithdraw, alice, alice);
+        assertEq(totalBalance, asset.balanceOf(alice));
+        assertEq(aliceShareAmount, sharesBurned);
+        assertEq(vault.balanceOf(alice), 0);        
     }
 
     function testDepositWithdrawAVAX() public {
