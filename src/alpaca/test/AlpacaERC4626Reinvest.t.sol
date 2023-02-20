@@ -19,21 +19,28 @@ contract AlpacaERC4626ReinvestTest is Test {
 
     AlpacaERC4626Reinvest public vault;
 
-    IBToken public token = IBToken(0x800933D685E7Dc753758cEb77C8bd34aBF1E26d7); /// @dev ibUSDC
+    IBToken public token = IBToken(0x7C9e73d4C71dae564d41F78d56439bB4ba87592f); /// @dev ibBUSD
     IFairLaunch public fairLaunch = IFairLaunch(0xA625AB01B08ce023B2a342Dbb12a16f2C8489A8F); /// @dev Same addr accross impls
 
-    uint256 poolId; /// @dev Check mainnet.json for poolId
-    ERC20 public asset; /// @dev USDC from ib(Token)
+    uint256 poolId = 3; /// @dev Check mainnet.json for poolId
+    ERC20 public asset; /// @dev BUSD from ib(Token)
+
     ERC20 public alpacaToken = ERC20(0x8F0528cE5eF7B51152A59745bEfDD91D97091d2F); /// @dev AlpacaToken (reward token)
+    address swapPair1 = 0x7752e1FA9F3a2e860856458517008558DEb989e3; /// ALPACA / BUSD
 
     function setUp() public {
         bscFork = vm.createFork(BSC_RPC_URL);
         vm.selectFork(bscFork);
 
-        setVault(token, 24);
-
         manager = msg.sender;
         alice = address(0x1);
+
+        /// @dev Create ibBUSD vault with BUSD as underlying, of poolId 3
+        setVault(token, poolId);
+
+        /// @dev If ibBUSD is underlying, there's a direct pair available
+        vm.prank(manager);
+        vault.setRoute(address(asset), swapPair1, swapPair1);
 
         deal(address(asset), alice, 1000 ether);
     }
@@ -70,97 +77,25 @@ contract AlpacaERC4626ReinvestTest is Test {
         vault.withdraw(aliceAssetsToWithdraw, alice, alice);      
     }
 
-}
+    function testHarvest() public {
+        uint256 amount = 100 ether;
 
-// pragma solidity ^0.8.14;
-
-// import "forge-std/Test.sol";
-// import {ERC20} from "solmate/tokens/ERC20.sol";
-// import {AlpacaERC4626Reinvest} from "../AlpacaERC4626Reinvest.sol";
-
-// import {IBToken} from "../interfaces/IBToken.sol";
-// import {IFairLaunch} from "../interfaces/IFairLaunch.sol";
-
-// import {IERC20} from "openzeppelin-contracts/token/ERC20/IERC20.sol";
-// import {SafeERC20} from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
-
-// interface IERC20Meta is IERC20 {
-//     function name() external view returns (string memory);
-
-//     function symbol() external view returns (string memory);
-// }
-
-// interface Wrapped is IERC20Meta {
-//     function deposit() external payable;
-// }
-
-
-// contract AlpacaERC4626ReinvestTest is Test {
-
-//     AlpacaERC4626Reinvest public AlpacaVault;
-//     Wrapped public WBNB = Wrapped(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
-//     address public alpaca = 0x8F0528cE5eF7B51152A59745bEfDD91D97091d2F;
-//     IBToken public iWBNB = IBToken(0xd7D069493685A581d27824Fc46EdA46B7EfC0063);
-    
-//     function setUp() public {
-
-//         /* ------------------------------- deployments ------------------------------ */
-//         AlpacaVault = new AlpacaERC4626Reinvest(address(iWBNB), 0xA625AB01B08ce023B2a342Dbb12a16f2C8489A8F, 1);
-
-//     }
-
-//     function getWBNB(uint256 amt) internal {
-//         deal(address(this), amt);
-//         WBNB.deposit{value: amt}();
-//     }
-
-
-//     function testDepositSuccess() public {
-//         uint256 amt = 20e18;
-//         // get 2000 wBNB to user
-//         getWBNB(amt);
-
-//         IERC20(address(WBNB)).safeApprove(address(AlpacaVault), 2*amt);
-//         uint256 amount = AlpacaVault.mint(AlpacaVault.previewDeposit(amt), address(this));
-//         console.log("testing this out", amount);
+        vm.startPrank(alice);
         
-//         emit log_named_uint("WBNB Bal", IERC20(WBNB).balanceOf(address(this)));
-//         emit log_named_uint("iWBNB Bal", IBToken(iWBNB).balanceOf(address(AlpacaVault)));
-//     }
+        uint256 aliceUnderlyingAmount = amount;
+        
+        asset.approve(address(vault), aliceUnderlyingAmount);
+        assertEq(asset.allowance(alice, address(vault)), aliceUnderlyingAmount);
 
-//     function testWithdrawSuccess() public {
-//         uint256 amt = 2000e18;
-//         // get 2000 wBNB to user
-//         getWBNB(amt);
-//         IERC20(WBNB).safeApprove(address(AlpacaVault), amt);
-//         AlpacaVault.deposit(amt, address(this));
-//         emit log_named_uint("WBNB Bal", IERC20(WBNB).balanceOf(address(this)));
-//         emit log_named_uint("iWBNB Bal", IBToken(iWBNB).balanceOf(address(AlpacaVault)));
-//         emit log_named_uint("vault shares Bal", AlpacaVault.balanceOf(address(this)));
-//         emit log_named_uint("preview withdrawable before withdraw", AlpacaVault.maxWithdraw(address(this)));
-//         vm.warp(block.timestamp + 12);
-//         AlpacaVault.withdraw(AlpacaVault.maxWithdraw(address(this)), address(this), address(this));
-//         //AlpacaVault.claimRewards();
-//         emit log_named_uint("Alpaca reward after claiming rewards", IERC20(alpaca).balanceOf(address(this)));
-//         emit log_named_uint("WBNB Bal after withdraw", IERC20(WBNB).balanceOf(address(this)));
-//         emit log_named_uint("WBNB Bal after withdraw in Alpaca", IERC20(WBNB).balanceOf(address(AlpacaVault)));
-//         emit log_named_uint("iWBNB Bal after withdraw", IBToken(iWBNB).balanceOf(address(AlpacaVault)));
-//         emit log_named_uint("vault shares Bal", AlpacaVault.balanceOf(address(this)));
-//     }
+        uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
+        uint256 aliceAssetsToWithdraw = vault.convertToAssets(aliceShareAmount);
 
-//     function testRedeemSuccess() public {
-//         uint256 amt = 2000e18;
-//         // get 2000 wBNB to user
-//         getWBNB(amt);
-//         IERC20(WBNB).safeApprove(address(AlpacaVault), amt);
-//         AlpacaVault.deposit(amt, address(this));
-//         emit log_named_uint("WBNB Bal", IERC20(WBNB).balanceOf(address(this)));
-//         emit log_named_uint("iWBNB Bal", IBToken(iWBNB).balanceOf(address(AlpacaVault)));
-//         vm.warp(block.timestamp + 12);
-//         AlpacaVault.redeem(AlpacaVault.balanceOf(address(this)), address(this), address(this));
-//         emit log_named_uint("WBNB Bal after withdraw", IERC20(WBNB).balanceOf(address(this)));
-//         emit log_named_uint("iWBNB Bal after withdraw", IBToken(iWBNB).balanceOf(address(AlpacaVault)));
-//     }
-//     receive() external payable {}
+        assertEq(aliceUnderlyingAmount, aliceShareAmount);
+        assertEq(vault.totalSupply(), aliceShareAmount);
+        assertEq(vault.balanceOf(alice), aliceShareAmount);
 
-// }
+        deal(address(alpacaToken), address(vault), 100000 ether);
+        vault.harvest(1);
+    }
+
+}

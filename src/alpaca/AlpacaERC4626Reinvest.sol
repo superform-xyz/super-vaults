@@ -107,8 +107,6 @@ contract AlpacaERC4626Reinvest is ERC4626 {
     ) external {
         require(msg.sender == manager, "onlyOwner");
         SwapInfo = swapInfo(token, pair1, pair2);
-        // ERC20(alpacaToken).approve(SwapInfo.pair1, type(uint256).max); /// max approve
-        // ERC20(SwapInfo.token).approve(SwapInfo.pair2, type(uint256).max); /// max approve
     }
 
     /// @notice Harvest AlpacaToken rewards for all of the shares held by this vault
@@ -125,7 +123,7 @@ contract AlpacaERC4626Reinvest is ERC4626 {
         /// https://pancakeswap.finance/info/pools
         /// Only one swap needed, in this case - set swapInfo.token0/token/pair2 to 0x
         if (SwapInfo.token == address(asset)) {
-
+            
             rewardToken.approve(SwapInfo.pair1, earned);
             
             reinvestAmount = DexSwap.swap(
