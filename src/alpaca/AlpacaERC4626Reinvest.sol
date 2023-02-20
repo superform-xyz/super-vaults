@@ -25,6 +25,7 @@ contract AlpacaERC4626Reinvest is ERC4626 {
     address public immutable manager;
     IFairLaunch public immutable staking;
     address public immutable alpacaToken;
+    ERC20 public immutable rewardToken;
 
     uint256 public poolId;
 
@@ -45,13 +46,16 @@ contract AlpacaERC4626Reinvest is ERC4626 {
     event RewardsReinvested(address user, uint256 reinvestAmount);
 
     /// @notice CompoundERC4626 constructor
+    /// @param asset_ The address of the ibToken
+    /// @param staking_ The address of the reward pool
+    /// @param poolId_ The poolId of the ibToken
     constructor(
-        IBToken asset_, // ibToken, USDC > ibUSDC
-        IFairLaunch staking_,
-        uint256 poolId_
+        IBToken asset_, // ibToken
+        IFairLaunch staking_, // reward pool
+        uint256 poolId_ // individual ibToken poolId
     )
         ERC4626(
-            ERC20(asset_.token()),
+            ERC20(asset_.token()), // underlying Vault asset out of ibToken
             _vaultName(ERC20(asset_.token())),
             _vaultSymbol(ERC20(asset_.token()))
         )
@@ -60,14 +64,12 @@ contract AlpacaERC4626Reinvest is ERC4626 {
         staking = staking_;
         poolId = poolId_;
         alpacaToken = staking.alpaca();
+        rewardToken = ERC20(staking.alpaca());
         manager = msg.sender;
-        /// max approve to save gas
-        ERC20(address(ibToken)).approve(address(staking_), type(uint256).max);
-        /// We auto-stake anyways, save gas
-        asset.safeApprove(address(ibToken), type(uint256).max);
+
     }
 
-    function beforeWithdraw(uint256 underlyingAmount, uint256 sharesAmount)
+    function beforeWithdraw(uint256 underlyingAmount, uint256)
         internal
         override
     {
@@ -83,7 +85,14 @@ contract AlpacaERC4626Reinvest is ERC4626 {
     }
 
     function afterDeposit(uint256 underlyingAmount, uint256) internal override {
+
+        asset.safeApprove(address(ibToken), underlyingAmount); 
+
         ibToken.deposit(underlyingAmount);
+
+        /// WARN: balanceOf(address(this))
+        ibToken.approve(address(staking), ibToken.balanceOf(address(this)));
+        
         staking.deposit(
             address(this),
             poolId,
@@ -98,10 +107,14 @@ contract AlpacaERC4626Reinvest is ERC4626 {
     ) external {
         require(msg.sender == manager, "onlyOwner");
         SwapInfo = swapInfo(token, pair1, pair2);
-        ERC20(alpacaToken).approve(SwapInfo.pair1, type(uint256).max); /// max approve
-        ERC20(SwapInfo.token).approve(SwapInfo.pair2, type(uint256).max); /// max approve
+        // ERC20(alpacaToken).approve(SwapInfo.pair1, type(uint256).max); /// max approve
+        // ERC20(SwapInfo.token).approve(SwapInfo.pair2, type(uint256).max); /// max approve
     }
 
+    /// @notice Harvest AlpacaToken rewards for all of the shares held by this vault
+    /// Amount gets reinvested into the vault after swap to the underlying
+    /// This implementation is sub-optimal for fair distribution of APY among shareholders
+    /// Ie. Shareholder may request to withdraw his share before harvest accrued value, forfeiting his rewards boosted APY
     function harvest(uint256 minAmountOut_) external {
         staking.harvest(poolId);
 
@@ -112,6 +125,9 @@ contract AlpacaERC4626Reinvest is ERC4626 {
         /// https://pancakeswap.finance/info/pools
         /// Only one swap needed, in this case - set swapInfo.token0/token/pair2 to 0x
         if (SwapInfo.token == address(asset)) {
+
+            rewardToken.approve(SwapInfo.pair1, earned);
+            
             reinvestAmount = DexSwap.swap(
                 earned, /// ALPACA amount to swap
                 alpacaToken, // from ALPACA (because of liquidity)
@@ -119,8 +135,12 @@ contract AlpacaERC4626Reinvest is ERC4626 {
                 SwapInfo.pair1 /// pairToken (pool)
                 /// https://pancakeswap.finance/info/pool/0x2354ef4df11afacb85a5c7f98b624072eccddbb1
             );
+            
             /// Two swaps needed
         } else {
+            
+            rewardToken.approve(SwapInfo.pair1, earned);
+
             uint256 swapTokenAmount = DexSwap.swap(
                 earned, /// ALPACA amount to swap
                 alpacaToken, /// fromToken ALPACA
@@ -128,6 +148,8 @@ contract AlpacaERC4626Reinvest is ERC4626 {
                 SwapInfo.pair1 /// pairToken (pool)
                 /// https://pancakeswap.finance/info/pool/0x7752e1fa9f3a2e860856458517008558deb989e3
             );
+
+            ERC20(SwapInfo.token).approve(SwapInfo.pair2, swapTokenAmount);
 
             reinvestAmount = DexSwap.swap(
                 swapTokenAmount,
@@ -140,6 +162,7 @@ contract AlpacaERC4626Reinvest is ERC4626 {
         if (reinvestAmount < minAmountOut_) {
             revert MIN_AMOUNT_ERROR();
         }
+
         afterDeposit(asset.balanceOf(address(this)), 0);
     }
 
@@ -163,6 +186,7 @@ contract AlpacaERC4626Reinvest is ERC4626 {
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
+        /// WARN: balanceOf(address(this))
         asset.safeTransfer(receiver, asset.balanceOf(address(this)));
     }
 
@@ -193,6 +217,7 @@ contract AlpacaERC4626Reinvest is ERC4626 {
             shares
         );
 
+        /// WARN: balanceOf(address(this))
         asset.safeTransfer(receiver, asset.balanceOf(address(this)));
     }
 
@@ -228,7 +253,8 @@ contract AlpacaERC4626Reinvest is ERC4626 {
             asset.balanceOf(address(ibToken)) + (vaultDebtVal) - (reservePool);
     }
 
-    /// @notice Total amount of the underlying asset that"managed" by Vault.
+    /// @notice AUM of the Vault (ibToken balance)
+    /// @dev This implementation doesn't always refelcts the actual AUM (pre-harvest())
     function totalAssets() public view override returns (uint256) {
         return viewUnderlyingBalanceOf();
     }
@@ -239,7 +265,7 @@ contract AlpacaERC4626Reinvest is ERC4626 {
         virtual
         returns (string memory vaultName)
     {
-        vaultName = string.concat("StratWrapper-4626 ", asset_.symbol());
+        vaultName = string.concat("ERC4626-Wrapped Alpaca-", asset_.symbol());
     }
 
     function _vaultSymbol(ERC20 asset_)
@@ -248,6 +274,6 @@ contract AlpacaERC4626Reinvest is ERC4626 {
         virtual
         returns (string memory vaultSymbol)
     {
-        vaultSymbol = string.concat("w4626-", asset_.symbol());
+        vaultSymbol = string.concat("alp4626-", asset_.symbol());
     }
 }

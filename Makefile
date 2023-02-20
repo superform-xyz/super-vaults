@@ -25,6 +25,7 @@ test-uniswapV2swap :; forge test --match-contract UniswapV2TestSwap -vv
 test-reth :; forge test --match-contract rEthTest -vvv
 test-arrakis :; forge test --match-contract Arrakis_LP_Test -vvv
 test-geist :; forge test --match-contract GeistERC4626ReinvestTest -vvv
+test-alpaca :; forge test --match-contract AlpacaERC4626ReinvestTest -vvv
 
 # Reinvest test
 test-venus-reinvest :; forge test --match-contract VenusERC4626WrapperTest -vvv
