@@ -96,9 +96,10 @@ contract GeistERC4626Reinvest is ERC4626 {
         SwapInfo = swapInfo(token, pair1, pair2);
     }
 
-    /// @notice Claims liquidity providing rewards from Geist for this contract
-    /// MultiFeeDistribution on Geist accrues GEIST token as reward for supplying liq
+    /// @notice Base implementation harvest() is non-operational as Vault is not vesting LP-token in Geist Reward Pool
     function harvest(uint256 minAmountOut_) external {
+        
+        /// Claim only without Penalty
         rewards.getReward();
         rewards.exit();
 
@@ -139,6 +140,10 @@ contract GeistERC4626Reinvest is ERC4626 {
             revert MIN_AMOUNT_ERROR();
         }
         afterDeposit(asset.balanceOf(address(this)), 0);
+    }
+
+    function getRewardsAccrued() public view returns (IMultiFeeDistribution.RewardData[] memory r) {
+        return rewards.claimableRewards(address(this));
     }
 
     /// -----------------------------------------------------------------------

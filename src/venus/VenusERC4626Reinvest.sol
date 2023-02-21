@@ -103,7 +103,6 @@ contract VenusERC4626Reinvest is ERC4626 {
     function harvest(uint256 minAmountOut_) external {
         ICERC20[] memory cTokens = new ICERC20[](1);
         cTokens[0] = cToken;
-        ICERC20[] memory allMarkets = comptroller.getAllMarkets();
 
         comptroller.claimVenus(address(this));
 

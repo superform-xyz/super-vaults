@@ -25,6 +25,7 @@ test-uniswapV2swap :; forge test --match-contract UniswapV2TestSwap -vv
 test-reth :; forge test --match-contract rEthTest -vvv
 test-arrakis :; forge test --match-contract Arrakis_LP_Test -vvv
 test-geist :; forge test --match-contract GeistERC4626ReinvestTest -vvv
+test-alpaca :; forge test --match-contract AlpacaERC4626ReinvestTest -vvv
 
 # Reinvest test
 test-venus-reinvest :; forge test --match-contract VenusERC4626WrapperTest -vvv
@@ -42,7 +43,7 @@ test-uniswapV2swap-withdraw :; forge test --match-contract UniswapV2TestSwap --m
 test-uniswapV2swap-localhost :; forge test --match-contract UniswapV2TestSwapLocalHost -vvv
 
 # Benqi-Staking tests
-test-benqi-staking :; forge test --match-contract BenqiERC4626StakingTest -vvv
+test-benqi-staking :; forge test --match-contract BenqiERC4626StakingTest -vvvvv
 
 # KYCDao4626 tests
 test-kycdao :; forge test --match-contract kycDAO4626Test -vvv

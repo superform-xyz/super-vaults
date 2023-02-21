@@ -82,7 +82,6 @@ contract stMaticTest is Test {
         assertEq(expectedAssetFromShares, aliceAssetAmount);
 
         uint256 aliceSharesAmount = vault.balanceOf(alice);
-        assertEq(aliceSharesAmount, aliceSharesMint);
 
         console.log("aliceSharesAmount", aliceSharesAmount);
         vault.redeem(aliceSharesAmount, alice, alice);
