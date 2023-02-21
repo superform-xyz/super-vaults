@@ -10,8 +10,6 @@ import {IUniswapV2Pair} from "../interfaces/IUniswapV2Pair.sol";
 import {IUniswapV2Router} from "../interfaces/IUniswapV2Router.sol";
 import {UniswapV2Library} from "../utils/UniswapV2Library.sol";
 
-import "forge-std/console.sol";
-
 /// @notice Custom ERC4626 Wrapper for UniV2 Pools without swapping, accepting token0/token1 transfers
 /// @dev WARNING: Change your assumption about asset/share in context of deposit/mint/redeem/withdraw
 
@@ -30,12 +28,11 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
     address public immutable manager;
 
     uint256 public slippage;
-    uint256 public  immutable slippageFloat = 10000;
+    uint256 public immutable slippageFloat = 10000;
 
     IUniswapV2Pair public immutable pair;
     IUniswapV2Router public immutable router;
 
-    /// For simplicity, we use solmate's ERC20 interface
     ERC20 public token0;
     ERC20 public token1;
 
@@ -56,11 +53,6 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         token1 = token1_;
 
         slippage = slippage_;
-        
-        /// Approve management TODO
-        token0.approve(address(router), type(uint256).max);
-        token1.approve(address(router), type(uint256).max);
-        asset.approve(address(router), type(uint256).max);
     }
 
     function setSlippage(uint256 amount) external {
@@ -73,8 +65,10 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         return (amount * slippage) / slippageFloat;
     }
 
-    function beforeWithdraw(uint256 assets, uint256) internal override {
+    function beforeWithdraw(uint256 assets, uint256 shares) internal override {
         (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets);
+
+        pair.approve(address(router), shares);
 
         /// temp implementation, we should call directly on a pair
         router.removeLiquidity(
@@ -90,6 +84,10 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
 
     function afterDeposit(uint256 assets, uint256) internal override {
         (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets);
+
+        /// temp should be more elegant. better than max approve though
+        token0.approve(address(router), assets0);
+        token1.approve(address(router), assets1);
 
         /// temp implementation, we should call directly on a pair
         router.addLiquidity(
@@ -115,10 +113,15 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         returns (uint256 shares)
     {
         /// From 100 uniLP msg.sender gets N shares (of this Vault)
-        require((shares = previewDeposit(getUniLpFromAssets)) != 0, "ZERO_SHARES");
+        require(
+            (shares = previewDeposit(getUniLpFromAssets)) != 0,
+            "ZERO_SHARES"
+        );
 
         /// Ideally, msg.sender should call this function beforehand to get correct "assets" amount
-        (uint256 assets0, uint256 assets1) = getAssetsAmounts(getUniLpFromAssets);
+        (uint256 assets0, uint256 assets1) = getAssetsAmounts(
+            getUniLpFromAssets
+        );
 
         /// Best if we approve exact amounts, but because of UniV2 min() we can sometimes approve to much/to little
         token0.safeTransferFrom(msg.sender, address(this), assets0);
@@ -143,7 +146,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         returns (uint256 assets)
     {
         assets = previewMint(sharesOfThisVault);
-        
+
         (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets);
 
         token0.safeTransferFrom(msg.sender, address(this), assets0);
@@ -158,7 +161,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         afterDeposit(assets, sharesOfThisVault);
     }
 
-    /// User wants to burn 100 UniLP (underlying) for N worth of token0/1
+    /// @notice User wants to burn 100 UniLP (underlying) for N worth of token0/1
     function withdraw(
         uint256 assets, // amount of underlying asset (pool Lp) to withdraw
         address receiver,
@@ -166,10 +169,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
     ) public override returns (uint256 shares) {
         shares = previewWithdraw(assets);
 
-        console.log("shares", shares);
-
         (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets);
-        console.log("a0", assets0, "a1", assets1);
 
         if (msg.sender != owner) {
             uint256 allowed = allowance[owner][msg.sender];
@@ -190,7 +190,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         token1.safeTransfer(receiver, assets1);
     }
 
-    /// User wants to burn 100 VaultLp (vault's token) for N worth of token0/1
+    /// @notice User wants to burn 100 VaultLp (vault's token) for N worth of token0/1
     function redeem(
         uint256 shares,
         address receiver,
@@ -208,8 +208,6 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
 
         (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets);
 
-        console.log("a0", assets0, "a1", assets1);
-
         beforeWithdraw(assets, shares);
 
         _burn(owner, shares);
@@ -221,7 +219,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         token1.safeTransfer(receiver, assets1);
     }
 
-    /// For requested 100 UniLp tokens, how much tok0/1 we need to give?
+    /// @notice for requested 100 UniLp tokens, how much tok0/1 we need to give?
     function getAssetsAmounts(uint256 poolLpAmount)
         public
         view
@@ -241,7 +239,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         assets1 = (reserveB * poolLpAmount) / pairSupply;
     }
 
-    /// For requested N assets0 & N assets1, how much UniV2 LP do we get?
+    /// @notice For requested N assets0 & N assets1, how much UniV2 LP do we get?
     function getLiquidityAmountOutFor(uint256 assets0, uint256 assets1)
         public
         view

@@ -18,6 +18,8 @@ interface IStETH {
 
     function getPooledEthByShares(uint256) external view returns (uint256);
 
+    function getSharesByPooledEth(uint256) external view returns (uint256);
+
     function getPooledAvaxByShares(uint256) external view returns (uint256);
 
     function getSharesByPooledAvax(uint256) external view returns (uint256);
