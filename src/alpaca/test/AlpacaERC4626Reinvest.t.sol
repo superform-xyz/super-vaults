@@ -8,7 +8,6 @@ import {AlpacaERC4626Reinvest} from "../AlpacaERC4626Reinvest.sol";
 import {IBToken} from "../interfaces/IBToken.sol";
 import {IFairLaunch} from "../interfaces/IFairLaunch.sol";
 
-/// NOTE: To fix. Translate all tests, just make it a correct implementation, dont edit.
 /// Deployment addresses: https://github.com/alpaca-finance/bsc-alpaca-contract/blob/main/.mainnet.json
 contract AlpacaERC4626ReinvestTest is Test {
     uint256 public bscFork;
@@ -42,7 +41,7 @@ contract AlpacaERC4626ReinvestTest is Test {
         vm.prank(manager);
         vault.setRoute(address(asset), swapPair1, swapPair1);
 
-        deal(address(asset), alice, 1000 ether);
+        deal(address(asset), alice, 100000000 ether);
     }
 
     function setVault(IBToken asset_, uint256 poolId_) public {
@@ -58,7 +57,7 @@ contract AlpacaERC4626ReinvestTest is Test {
     }
 
     function testDepositWithdraw() public {
-        uint256 amount = 100 ether;
+        uint256 amount = 10000 ether;
 
         vm.startPrank(alice);
         
@@ -78,7 +77,7 @@ contract AlpacaERC4626ReinvestTest is Test {
     }
 
     function testHarvest() public {
-        uint256 amount = 100 ether;
+        uint256 amount = 10000 ether;
 
         vm.startPrank(alice);
         
@@ -88,12 +87,12 @@ contract AlpacaERC4626ReinvestTest is Test {
         assertEq(asset.allowance(alice, address(vault)), aliceUnderlyingAmount);
 
         uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
-        uint256 aliceAssetsToWithdraw = vault.convertToAssets(aliceShareAmount);
 
         assertEq(aliceUnderlyingAmount, aliceShareAmount);
         assertEq(vault.totalSupply(), aliceShareAmount);
         assertEq(vault.balanceOf(alice), aliceShareAmount);
 
+        /// @dev temp hack to get ALPACA, impl should be tested more anyways
         deal(address(alpacaToken), address(vault), 100000 ether);
         vault.harvest(1);
     }
