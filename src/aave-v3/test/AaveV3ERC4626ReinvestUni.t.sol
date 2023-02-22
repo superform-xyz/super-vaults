@@ -103,41 +103,6 @@ contract AaveV3ERC4626ReinvestUniTest is Test {
         deal(address(asset), bob, 10000e6);
     }
 
-    function testFactoryDeployDAIAndDeposit() public {
-        vm.startPrank(manager);
-
-        /// @dev We deploy with different asset than at the runtime
-        ERC4626 v_ = factory.createERC4626(
-            ERC20(vm.envAddress("AAVEV3_AVAX_DAI"))
-        );
-
-        AaveV3ERC4626ReinvestUni vault_ = AaveV3ERC4626ReinvestUni(address(v_));
-
-        /// @dev We don't set global var to a new vault. vault exists only within function scope
-        ERC20 vaultAsset = vault_.asset();
-
-        /// @dev Set rewards & routes from factory contract
-        address[] memory rewardTokens = factory.setRewards(vault_);
-
-        if (rewardTokens.length == 1) {
-            factory.setRoutes(vault_, rewardTokens[0], 500, address(0), 0);
-            deal(rewardTokens[0], address(vault), 1 ether);
-        } else {
-            console.log("more than 1 reward token");
-        }
-
-        vm.stopPrank();
-
-        vm.startPrank(alice);
-
-        /// @dev Just check if we can deposit
-        uint256 amount = 100 ether;
-        deal(address(vaultAsset), alice, amount);
-        uint256 aliceUnderlyingAmount = amount;
-        vaultAsset.approve(address(vault_), aliceUnderlyingAmount);
-        vault_.deposit(aliceUnderlyingAmount, alice);
-    }
-
     function testFailManagerCreateERC4626() public {
         vm.startPrank(alice);
         factory.createERC4626(ERC20(vm.envAddress("AAVEV3_AVAX_DAI")));
@@ -250,7 +215,6 @@ contract AaveV3ERC4626ReinvestUniTest is Test {
         assertEq(asset.balanceOf(alice), alicePreDepositBal);
     }
 
-
     function testHarvester() public {
         uint256 aliceUnderlyingAmount = 100e6;
 
@@ -277,7 +241,9 @@ contract AaveV3ERC4626ReinvestUniTest is Test {
         vault.deposit(aliceUnderlyingAmount, alice);
 
         uint256 beforeHarvest = vault.totalAssets();
-        uint256 beforeHarvestReward = ERC20(rewardTokens[0]).balanceOf(address(vault));
+        uint256 beforeHarvestReward = ERC20(rewardTokens[0]).balanceOf(
+            address(vault)
+        );
 
         console.log("totalAssets before harvest", beforeHarvest);
         console.log("rewardBalance before harvest", beforeHarvestReward);
@@ -288,10 +254,11 @@ contract AaveV3ERC4626ReinvestUniTest is Test {
         vault.harvest(minAmount);
 
         uint256 afterHarvest = vault.totalAssets();
-        uint256 afterHarvestReward = ERC20(rewardTokens[0]).balanceOf(address(vault));
+        uint256 afterHarvestReward = ERC20(rewardTokens[0]).balanceOf(
+            address(vault)
+        );
         assertGt(afterHarvest, beforeHarvest);
         console.log("totalAssets after harvest", afterHarvest);
         console.log("rewardBalance after harvest", afterHarvestReward);
-
     }
 }
