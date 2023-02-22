@@ -14,4 +14,15 @@ interface IComptroller {
     function mintGuardianPaused(address cToken) external view returns (bool);
 
     function rewardAccrued(uint8, address) external view returns (uint256);
+
+    /// mapping(uint8 => mapping(address => RewardMarketState)) public rewardSupplyState;
+    struct RewardMarketState {
+        /// @notice The market's last updated rewardBorrowIndex or rewardSupplyIndex
+        uint224 index;
+
+        /// @notice The block timestamp the index was last updated at
+        uint32 timestamp;
+    }
+
+    function rewardSupplyState(uint8, address) external view returns (uint224, uint32);
 }

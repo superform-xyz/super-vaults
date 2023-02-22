@@ -19,12 +19,13 @@ test-compound :; forge test --match-contract Compound* -vvv
 test-compound-v3 :; forge test --match-contract CompoundV3* -vvv
 test-steth :; forge test --match-contract stEth.*Test -vvv
 test-steth-swap :; forge test --match-contract stEthSwap.*Test -vvv
-test-stmatic :; forge test --match-contract stMatic.*Test -vvv
+test-stmatic :; forge test --match-contract stMatic.*Test -vv
 test-uniswapV2 :; forge test --match-contract UniswapV2Test -vvv
 test-uniswapV2swap :; forge test --match-contract UniswapV2TestSwap -vv
-test-reth :; forge test --match-contract rEthTest -vv
+test-reth :; forge test --match-contract rEthTest -vvv
 test-arrakis :; forge test --match-contract Arrakis_LP_Test -vvv
 test-geist :; forge test --match-contract GeistERC4626ReinvestTest -vvv
+test-alpaca :; forge test --match-contract AlpacaERC4626ReinvestTest -vvv
 test-aavev3-uni :; forge test --match-contract AaveV3ERC4626ReinvestUniTest -vvv
 test-aavev3-incentive :; forge test --match-contract AaveV3ERC4626ReinvestIncentiveTest -vvv
 
@@ -38,13 +39,14 @@ test-aaveV3-uni-reinvest :; forge test --match-contract AaveV3ERC4626ReinvestUni
 
 # Harvester tests (check tests comments)
 test-aaveV3-harvest :; forge test --match-contract AaveV3ERC4626ReinvestTest --match-test testHarvester -vvv
+test-venus-harvest :; forge test --match-contract VenusERC4626HarvestTest -vvv
 
 # Uniswap tests
 test-uniswapV2swap-withdraw :; forge test --match-contract UniswapV2TestSwap --match-test testDepositWithdraw -vvv
 test-uniswapV2swap-localhost :; forge test --match-contract UniswapV2TestSwapLocalHost -vvv
 
 # Benqi-Staking tests
-test-benqi-staking :; forge test --match-contract BenqiERC4626StakingTest -vvv
+test-benqi-staking :; forge test --match-contract BenqiERC4626StakingTest -vvvvv
 
 # KYCDao4626 tests
 test-kycdao :; forge test --match-contract kycDAO4626Test -vvv

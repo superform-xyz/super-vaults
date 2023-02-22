@@ -9,4 +9,22 @@ interface IStMATIC {
     function approve(address, uint256) external returns (bool);
 
     function balanceOf(address) external view returns (uint256);
+
+    function convertStMaticToMatic(uint256 _amountInStMatic)
+        external
+        view
+        returns (
+            uint256 amountInMatic,
+            uint256 totalStMaticAmount,
+            uint256 totalPooledMatic
+        );
+
+    function convertMaticToStMatic(uint256 _amountInMatic)
+        external
+        view
+        returns (
+            uint256 amountInStMatic,
+            uint256 totalStMaticAmount,
+            uint256 totalPooledMatic
+        );
 }

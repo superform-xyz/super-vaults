@@ -23,4 +23,6 @@ interface IBToken {
     function lastAccrueTime() external view returns (uint256);
 
     function pendingInterest(uint256 value) external view returns (uint256);
+
+    function approve(address spender, uint256 amount) external returns (bool);
 }
