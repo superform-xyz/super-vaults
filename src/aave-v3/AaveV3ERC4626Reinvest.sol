@@ -172,7 +172,6 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
         for (uint256 i = 0; i < claimedAmounts.length; i++) {
             swapRewards(rewardList[i], claimedAmounts[i], minAmounts_[i]);
         }
-
         /// reinvest() without minting (no asset.totalSupply() increase == profit)
         afterDeposit(asset.balanceOf(address(this)), 0);
     }

@@ -11,21 +11,21 @@ import {LibCompound} from "./compound/LibCompound.sol";
 import {ICometRewards} from "./compound/ICometRewards.sol";
 import {ISwapRouter} from "../aave-v2/utils/ISwapRouter.sol";
 import {DexSwap} from "./utils/swapUtils.sol";
-/// @title CompoundV3StrategyWrapper - Custom implementation of yield-daddy wrappers with flexible reinvesting logic
+/// @title CompoundV3StrategyWrapper - Custom implementation with flexible reinvesting logic
 /// Rationale: Forked protocols often implement custom functions and modules on top of forked code.
 /// Example: Staking systems. Very common in DeFi. Re-investing/Re-Staking rewards on the Vault level can be included in permissionless way.
 contract CompoundV3ERC4626Wrapper is ERC4626 {
-    /// -----------------------------------------------------------------------
-    /// Libraries usage
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      LIBRARIES USAGE
+    //////////////////////////////////////////////////////////////*/
 
     using LibCompound for CometMainInterface;
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
-    /// -----------------------------------------------------------------------
-    /// Errors
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      ERRORS
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Thrown when reinvest amount is not enough.
     error MIN_AMOUNT_ERROR();
@@ -34,9 +34,9 @@ contract CompoundV3ERC4626Wrapper is ERC4626 {
     /// @notice Thrown when swap path fee in reinvest is invalid.
     error INVALID_FEE_ERROR();
 
-    /// -----------------------------------------------------------------------
-    /// Constants
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      CONSTANTS
+    //////////////////////////////////////////////////////////////*/
 
     uint256 internal constant NO_ERROR = 0;
     /// @notice Pointer to swapInfo
@@ -44,9 +44,9 @@ contract CompoundV3ERC4626Wrapper is ERC4626 {
 
     ERC20 public immutable reward;
 
-    /// -----------------------------------------------------------------------
-    /// Immutable params
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      IMMUTABLES & VARIABLES
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Access Control for harvest() route
     address public immutable manager;
@@ -59,10 +59,15 @@ contract CompoundV3ERC4626Wrapper is ERC4626 {
 
     ISwapRouter public immutable swapRouter = ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
 
-    /// -----------------------------------------------------------------------
-    /// Constructor
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
 
+    /// @notice constructor for the CompoundV3StrategyWrapper
+    /// @param asset_ The address of the underlying asset
+    /// @param cToken_ The address of the Compound comet contract
+    /// @param rewardsManager_ The address of the Compound rewards manager
+    /// @param manager_ The address of the manager
     constructor(
         ERC20 asset_, // underlying
         CometMainInterface cToken_, // compound concept of a share
@@ -76,10 +81,13 @@ contract CompoundV3ERC4626Wrapper is ERC4626 {
         reward = ERC20(reward_);
     }
 
-    /// -----------------------------------------------------------------------
-    /// Compound liquidity mining
-    /// -----------------------------------------------------------------------
-
+    /*//////////////////////////////////////////////////////////////
+                      COMPOUND LIQUIDITY MINING
+    //////////////////////////////////////////////////////////////*/
+    /// @notice sets the swap path for reinvesting rewards
+    /// @param poolFee1_ fee for first swap
+    /// @param tokenMid_ token for first swap
+    /// @param poolFee2_ fee for second swap
     function setRoute(
         uint24 poolFee1_,
         address tokenMid_,
@@ -96,10 +104,9 @@ contract CompoundV3ERC4626Wrapper is ERC4626 {
         ERC20(reward).approve(address(swapRouter), type(uint256).max); /// max approve
     }
 
-    /// -----------------------------------------------------------------------
-    /// ERC4626 overrides
-    /// We can't inherit directly from Yield-daddy because of rewardClaim lock
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                        ERC4626 OVERRIDES
+    //////////////////////////////////////////////////////////////*/
 
     function totalAssets() public view virtual override returns (uint256) {
         return cToken.balanceOf(address(this));
@@ -109,9 +116,6 @@ contract CompoundV3ERC4626Wrapper is ERC4626 {
         uint256 assets,
         uint256 /*shares*/
     ) internal virtual override {
-        /// -----------------------------------------------------------------------
-        /// Withdraw assets from Compound
-        /// -----------------------------------------------------------------------
 
         cToken.withdraw(address(asset), assets);
     }
@@ -120,10 +124,6 @@ contract CompoundV3ERC4626Wrapper is ERC4626 {
         uint256 assets,
         uint256 /*shares*/
     ) internal virtual override {
-        /// -----------------------------------------------------------------------
-        /// Deposit assets into Compound
-        /// -----------------------------------------------------------------------
-
         // approve to cToken
         asset.safeApprove(address(cToken), assets);
 
@@ -180,9 +180,9 @@ contract CompoundV3ERC4626Wrapper is ERC4626 {
         return shareBalance;
     }
 
-    /// -----------------------------------------------------------------------
-    /// ERC20 metadata generation
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      ERC20 METADATA
+    //////////////////////////////////////////////////////////////*/
 
     function _vaultName(ERC20 asset_)
         internal

@@ -10,8 +10,6 @@ import {IUniswapV3Pool} from "v3-core/interfaces/IUniswapV3Pool.sol";
 import {TickMath} from "./utils/TickMath.sol";
 import {LiquidityAmounts, FullMath} from "./utils/LiquidityAmounts.sol";
 
-import "forge-std/console.sol";
-
 interface IGauge {
     function withdraw(uint256 amount) external;
 
@@ -35,24 +33,34 @@ interface IArrakisRouter {
         );
 }
 
+/// @title ArrakisUniV3ERC4626 - A vault for wrapping arrakis vault LP tokens and depositing them to the vault - @author diszsid.eth
+/// @dev deposited asset get swapped partially to the non_asset and then deposited to the arrakis vault for an LP.
+
 contract ArrakisNonNativeVault is ERC4626 {
+    /*//////////////////////////////////////////////////////////////
+                      LIBRARIES USAGE
+    //////////////////////////////////////////////////////////////*/
     using SafeTransferLib for *;
     using FixedPointMathLib for uint256;
     using SafeTransferLib for ERC20;
     using TickMath for int24;
-    /// @notice CToken token reference
-    IGUniPool public immutable arrakisVault;
 
+    /*//////////////////////////////////////////////////////////////
+                      IMMUTABLES & VARIABLES
+    //////////////////////////////////////////////////////////////*/
+    /// @notice arrakis vault
+    IGUniPool public immutable arrakisVault;
+    /// @notice zeroForOne is true if token0 is the asset, else token1 is the asset
     bool zeroForOne;
 
     IArrakisRouter public arrakisRouter;
-
+    /// @notice gauge is the contract which gives staking Rewards
     IGauge public gauge;
 
     uint160 X96 = 2**96;
 
     uint160 slippage;
-
+    /// @notice non_asset is the token which is not the asset in a univ3 pool
     ERC20 public non_asset;
 
     struct swapParams {
@@ -63,42 +71,50 @@ contract ArrakisNonNativeVault is ERC4626 {
         bytes data;
     }
 
+    /*//////////////////////////////////////////////////////////////
+                      CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
+
     /// @notice ArrakisUniV3ERC4626 constructor
-    /// @param _gUniPool Compound cToken to wrap
-    /// @param _name ERC20 name of the vault shares token
-    /// @param _symbol ERC20 symbol of the vault shares token
+    /// @param gUniPool_ Compound cToken to wrap
+    /// @param name_ ERC20 name of the vault shares token
+    /// @param symbol_ ERC20 symbol of the vault shares token
+    /// @param isToken0_ if true, token0 in the pool is the asset, else token1 is the asset
+    /// @param arrakisRouter_ the arrakis router contract
+    /// @param gauge_ the contract which gives staking Rewards
+    /// @param slippage_ 50 would give you 2% slippage which  means sqrtPrice +/- 2 tickSpaces
     constructor(
-        address _gUniPool,
-        string memory _name,
-        string memory _symbol,
-        bool isToken0, //if true, token0 in the pool is the asset, else token1 is the asset
-        address _arrakisRouter,
-        address _gauge,  // the contract which gives staking Rewards
-        uint160 _slippage  // 50 would give you 2% slippage which  means sqrtPrice +/- 2 tickSpaces
+        address gUniPool_,
+        string memory name_,
+        string memory symbol_,
+        bool isToken0_,
+        address arrakisRouter_,
+        address gauge_,
+        uint160 slippage_
     )
         ERC4626(
             ERC20(
-                isToken0
-                    ? address(IGUniPool(_gUniPool).token0())
-                    : address(IGUniPool(_gUniPool).token1())
+                isToken0_
+                    ? address(IGUniPool(gUniPool_).token0())
+                    : address(IGUniPool(gUniPool_).token1())
             ),
-            _name,
-            _symbol
+            name_,
+            symbol_
         )
     {
-        arrakisVault = IGUniPool(_gUniPool);
-        zeroForOne = isToken0;
-        arrakisRouter = IArrakisRouter(_arrakisRouter);
-        gauge = IGauge(_gauge);
-        slippage = _slippage;
-        non_asset = zeroForOne? arrakisVault.token1(): arrakisVault.token0();
+        arrakisVault = IGUniPool(gUniPool_);
+        zeroForOne = isToken0_;
+        arrakisRouter = IArrakisRouter(arrakisRouter_);
+        gauge = IGauge(gauge_);
+        slippage = slippage_;
+        non_asset = zeroForOne ? arrakisVault.token1() : arrakisVault.token0();
         // doing it one time instead of each and every deposit/withdrawal swaps
         _approveTokenIfNeeded(address(asset), address(arrakisRouter));
         _approveTokenIfNeeded(address(non_asset), address(arrakisRouter));
         _approveTokenIfNeeded(address(non_asset), address(arrakisVault.pool()));
     }
 
-    function beforeWithdraw(uint256 underlyingLiquidity, uint256)
+    function beforeWithdraw(uint256 underlyingLiquidity_, uint256)
         internal
         override
     {
@@ -107,9 +123,9 @@ contract ArrakisNonNativeVault is ERC4626 {
         (uint128 liquidity_, , , , ) = uniPool.positions(
             arrakisVault.getPositionID()
         );
-        uint256 sharesToWithdraw = (underlyingLiquidity *
+        uint256 sharesToWithdraw = (underlyingLiquidity_ *
             arrakisVault.totalSupply()) / liquidity_;
-        // withdraw from staking contract 
+        // withdraw from staking contract
         gauge.withdraw(sharesToWithdraw);
         // burn arrakis lp
         arrakisVault.burn(sharesToWithdraw, address(this));
@@ -134,37 +150,58 @@ contract ArrakisNonNativeVault is ERC4626 {
 
     /// Underlying balance of the assets (notional value in terms of asset) this contract holds.
     function viewUnderlyingBalanceOf() internal view returns (uint256) {
-        (uint256 gross0,uint256 gross1) = _getUnderlyingOrLiquidity(arrakisVault);
-        console.log(gross0, gross1);
+        (uint256 gross0, uint256 gross1) = _getUnderlyingOrLiquidity(
+            arrakisVault
+        );
         (uint160 sqrtRatioX96, , , , , , ) = arrakisVault.pool().slot0();
-         uint256 priceDecimals;
+        uint256 priceDecimals;
         uint256 liquidity;
         uint256 grossLiquidity;
         // calculating non_asset price in terms on asset price to find virtual total assets in terms of deposit asset
-        if(zeroForOne){
-            priceDecimals = ((10**non_asset.decimals()) *
-            X96 / ((sqrtRatioX96 * sqrtRatioX96) / X96));
-            grossLiquidity = (((priceDecimals)*(gross1 * (10**asset.decimals())/(10**non_asset.decimals())) /(10**asset.decimals())) + gross0);
-            liquidity = grossLiquidity * gauge.balanceOf(address(this))/arrakisVault.totalSupply();
-        }
-        else {
-            priceDecimals = ((10**non_asset.decimals()) *
-            ((sqrtRatioX96 * sqrtRatioX96) / X96)) / X96;
-            grossLiquidity = (((priceDecimals)*(gross0 * (10**asset.decimals())/(10**non_asset.decimals()))) /(10**asset.decimals()) + gross1);
-            liquidity = grossLiquidity * gauge.balanceOf(address(this)) / arrakisVault.totalSupply();
+        if (zeroForOne) {
+            /// @dev using sqrtPriceX96 * sqrtPriceX96 to calculate the price of non_asset in terms of asset
+            priceDecimals = (((10**non_asset.decimals()) * X96) /
+                ((sqrtRatioX96 * sqrtRatioX96) / X96));
+            grossLiquidity = ((((priceDecimals) *
+                ((gross1 * (10**asset.decimals())) /
+                    (10**non_asset.decimals()))) / (10**asset.decimals())) +
+                gross0);
+            liquidity =
+                (grossLiquidity * gauge.balanceOf(address(this))) /
+                arrakisVault.totalSupply();
+        } else {
+            priceDecimals =
+                ((10**non_asset.decimals()) *
+                    ((sqrtRatioX96 * sqrtRatioX96) / X96)) /
+                X96;
+            grossLiquidity = (((priceDecimals) *
+                ((gross0 * (10**asset.decimals())) /
+                    (10**non_asset.decimals()))) /
+                (10**asset.decimals()) +
+                gross1);
+            liquidity =
+                (grossLiquidity * gauge.balanceOf(address(this))) /
+                arrakisVault.totalSupply();
         }
         return liquidity;
     }
 
-    function afterDeposit(uint256 underlyingAmount, uint256) internal override {
+    function afterDeposit(uint256 underlyingAmount_, uint256)
+        internal
+        override
+    {
         (uint160 sqrtRatioX96, , , , , , ) = arrakisVault.pool().slot0();
-         uint256 priceDecimals = (1 ether *
+        uint256 priceDecimals = (1 ether *
             ((sqrtRatioX96 * sqrtRatioX96) / X96)) / X96;
 
         // multiplying the price decimals by 1e12 as the price you get from sqrtRationX96 is 6 decimals but need 18 decimal value for this method
-        (bool _direction,uint256 swapAmount) = getRebalanceParams(arrakisVault, zeroForOne ? underlyingAmount: 0, !zeroForOne ? underlyingAmount: 0, 
-        priceDecimals * 1e12);
-        
+        (bool _direction, uint256 swapAmount) = getRebalanceParams(
+            arrakisVault,
+            zeroForOne ? underlyingAmount_ : 0,
+            !zeroForOne ? underlyingAmount_ : 0,
+            priceDecimals * 1e12
+        );
+
         uint160 twoPercentSqrtPrice = sqrtRatioX96 / slippage;
         uint160 lowerLimit = sqrtRatioX96 - (twoPercentSqrtPrice);
         uint160 upperLimit = sqrtRatioX96 + (twoPercentSqrtPrice);
@@ -182,70 +219,63 @@ contract ArrakisNonNativeVault is ERC4626 {
         // we need a final swap to put the remaining amount of tokens into liquidity as before swap might have moved the liquidity positions needed.
         uint256 token0Bal = arrakisVault.token0().balanceOf(address(this));
         uint256 token1Bal = arrakisVault.token1().balanceOf(address(this));
-        (uint256 amount0Used,uint256 amount1Used, ) = arrakisVault.getMintAmounts(
+        (uint256 amount0Used, uint256 amount1Used, ) = arrakisVault
+            .getMintAmounts(token0Bal, token1Bal);
+        arrakisRouter.addLiquidityAndStake(
+            gauge,
             token0Bal,
-            token1Bal
+            token1Bal,
+            amount0Used,
+            amount1Used,
+            address(this)
         );
-        arrakisRouter
-            .addLiquidityAndStake(
-                gauge,
-                token0Bal,
-                token1Bal,
-                amount0Used,
-                amount1Used,
-                address(this)
-            );
-
-        // dust measure 
-        console.log("Amounts used", amount0Used, amount1Used);
-        console.log("balance of non_asset",non_asset.name(), non_asset.balanceOf(address(this)));
-        console.log("balance of asset",asset.name(), asset.balanceOf(address(this)));
     }
 
-
     function redeem(
-        uint256 shares,
-        address receiver,
-        address owner
+        uint256 shares_,
+        address receiver_,
+        address owner_
     ) public override returns (uint256 assets) {
-        if (msg.sender != owner) {
-            uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
+        if (msg.sender != owner_) {
+            uint256 allowed = allowance[owner_][msg.sender]; // Saves gas for limited approvals.
 
-            if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
+            if (allowed != type(uint256).max)
+                allowance[owner_][msg.sender] = allowed - shares_;
         }
         uint256 liquidity;
         // Check for rounding error since we round down in previewRedeem.
-        require((liquidity = previewRedeem(shares)) != 0, "ZERO_ASSETS");
-        beforeWithdraw(liquidity, shares);
+        require((liquidity = previewRedeem(shares_)) != 0, "ZERO_ASSETS");
+        beforeWithdraw(liquidity, shares_);
 
-        _burn(owner, shares);
+        _burn(owner_, shares_);
         assets = asset.balanceOf(address(this));
-        emit Withdraw(msg.sender, receiver, owner, assets, shares);
+        emit Withdraw(msg.sender, receiver_, owner_, assets, shares_);
 
-        asset.safeTransfer(receiver, assets);
+        asset.safeTransfer(receiver_, assets);
     }
 
     function withdraw(
-        uint256 assets,
-        address receiver,
-        address owner
+        uint256 assets_,
+        address receiver_,
+        address owner_
     ) public override returns (uint256 shares) {
-        uint256 liquidity = previewWithdraw(assets); // No need to check for rounding error, previewWithdraw rounds up.
+        uint256 liquidity = previewWithdraw(assets_); // No need to check for rounding error, previewWithdraw rounds up.
 
-        if (msg.sender != owner) {
-            uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
+        if (msg.sender != owner_) {
+            uint256 allowed = allowance[owner_][msg.sender]; // Saves gas for limited approvals.
 
-            if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
+            if (allowed != type(uint256).max)
+                allowance[owner_][msg.sender] = allowed - shares;
         }
         shares = liquidity.mulDivDown(totalSupply, totalLiquidity());
         beforeWithdraw(liquidity, shares);
 
-        _burn(owner, shares);
+        _burn(owner_, shares);
 
-        assets = asset.balanceOf(address(this));
-        emit Withdraw(msg.sender, receiver, owner, assets, shares);
+        assets_ = asset.balanceOf(address(this));
+        emit Withdraw(msg.sender, receiver_, owner_, assets_, shares);
 
-        asset.safeTransfer(receiver, assets);
+        asset.safeTransfer(receiver_, assets_);
     }
 
     function totalLiquidity() public view returns (uint256) {
@@ -258,17 +288,33 @@ contract ArrakisNonNativeVault is ERC4626 {
     }
 
     /// @notice returns the liquidity on uniswap that can be redeemable
-    function previewRedeem(uint256 shares) public view override returns (uint256) {
+    function previewRedeem(uint256 shares_)
+        public
+        view
+        override
+        returns (uint256)
+    {
         uint256 supply = totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
 
-        return supply == 0 ? shares : shares.mulDivDown(totalLiquidity(), supply);
+        return
+            supply == 0
+                ? shares_
+                : shares_.mulDivDown(totalLiquidity(), supply);
     }
 
     /// @notice returns the liquidity on uniswap thats withdrawn to get desired assets
-    function previewWithdraw(uint256 assets) public view override returns (uint256) {
+    function previewWithdraw(uint256 assets_)
+        public
+        view
+        override
+        returns (uint256)
+    {
         uint256 supply = totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
 
-        return supply == 0 ? assets : assets.mulDivUp(totalLiquidity(), totalAssets());
+        return
+            supply == 0
+                ? assets_
+                : assets_.mulDivUp(totalLiquidity(), totalAssets());
     }
 
     /// @notice Total amount of the underlying asset that
@@ -314,21 +360,21 @@ contract ArrakisNonNativeVault is ERC4626 {
 
     /// @notice Uniswap v3 callback fn, called back on pool.swap
     function uniswapV3SwapCallback(
-        int256 amount0Delta,
-        int256 amount1Delta,
+        int256 amount0Delta_,
+        int256 amount1Delta_,
         bytes calldata /*data*/
     ) external {
         require(msg.sender == address(arrakisVault.pool()), "callback caller");
 
-        if (amount0Delta > 0)
+        if (amount0Delta_ > 0)
             ERC20(address(arrakisVault.token0())).safeTransfer(
                 msg.sender,
-                uint256(amount0Delta)
+                uint256(amount0Delta_)
             );
-        else if (amount1Delta > 0)
+        else if (amount1Delta_ > 0)
             ERC20(address(arrakisVault.token1())).safeTransfer(
                 msg.sender,
-                uint256(amount1Delta)
+                uint256(amount1Delta_)
             );
     }
 
@@ -336,12 +382,12 @@ contract ArrakisNonNativeVault is ERC4626 {
      * @dev allows calling approve for a token to a specific spender
      * @notice this is an internal function. only used to give approval of
      * @notice the funds in this contract to other contracts
-     * @param token the token to give approval for
-     * @param spender the spender of the token
+     * @param token_ the token to give approval for
+     * @param spender_ the spender of the token
      */
-    function _approveTokenIfNeeded(address token, address spender) private {
-        if (ERC20(token).allowance(address(this), spender) == 0) {
-            ERC20(token).safeApprove(spender, type(uint256).max);
+    function _approveTokenIfNeeded(address token_, address spender_) private {
+        if (ERC20(token_).allowance(address(this), spender_) == 0) {
+            ERC20(token_).safeApprove(spender_, type(uint256).max);
         }
     }
 
@@ -350,26 +396,26 @@ contract ArrakisNonNativeVault is ERC4626 {
     //////////////////////////////////////////////////////////////*/
 
     function getRebalanceParams(
-        IGUniPool pool,
-        uint256 amount0In,
-        uint256 amount1In,
-        uint256 price18Decimals
+        IGUniPool pool_,
+        uint256 amount0In_,
+        uint256 amount1In_,
+        uint256 price18Decimals_
     ) public view returns (bool direction, uint256 swapAmount) {
         uint256 amount0Left;
         uint256 amount1Left;
-        try pool.getMintAmounts(amount0In, amount1In) returns (
+        try pool_.getMintAmounts(amount0In_, amount1In_) returns (
             uint256 amount0,
             uint256 amount1,
             uint256
         ) {
-            amount0Left = amount0In - amount0;
-            amount1Left = amount1In - amount1;
+            amount0Left = amount0In_ - amount0;
+            amount1Left = amount1In_ - amount1;
         } catch {
-            amount0Left = amount0In;
-            amount1Left = amount1In;
+            amount0Left = amount0In_;
+            amount1Left = amount1In_;
         }
 
-        (uint256 gross0, uint256 gross1) = _getUnderlyingOrLiquidity(pool);
+        (uint256 gross0, uint256 gross1) = _getUnderlyingOrLiquidity(pool_);
 
         if (gross1 == 0) {
             return (false, amount1Left);
@@ -379,16 +425,23 @@ contract ArrakisNonNativeVault is ERC4626 {
             return (true, amount0Left);
         }
 
-        uint256 factor0 =
-            10**(18 - ERC20(address(pool.token0())).decimals());
-        uint256 factor1 =
-            10**(18 - ERC20(address(pool.token1())).decimals());
-        uint256 weightX18 =
-            FullMath.mulDiv(gross0 * factor0, 1 ether, gross1 * factor1);
-        uint256 proportionX18 =
-            FullMath.mulDiv(weightX18, price18Decimals, 1 ether);
-        uint256 factorX18 =
-            FullMath.mulDiv(proportionX18, 1 ether, proportionX18 + 1 ether);
+        uint256 factor0 = 10**(18 - ERC20(address(pool_.token0())).decimals());
+        uint256 factor1 = 10**(18 - ERC20(address(pool_.token1())).decimals());
+        uint256 weightX18 = FullMath.mulDiv(
+            gross0 * factor0,
+            1 ether,
+            gross1 * factor1
+        );
+        uint256 proportionX18 = FullMath.mulDiv(
+            weightX18,
+            price18Decimals_,
+            1 ether
+        );
+        uint256 factorX18 = FullMath.mulDiv(
+            proportionX18,
+            1 ether,
+            proportionX18 + 1 ether
+        );
 
         if (amount0Left > amount1Left) {
             direction = true;
@@ -402,17 +455,17 @@ contract ArrakisNonNativeVault is ERC4626 {
         }
     }
 
-    function _getUnderlyingOrLiquidity(IGUniPool pool)
+    function _getUnderlyingOrLiquidity(IGUniPool pool_)
         internal
         view
         returns (uint256 gross0, uint256 gross1)
     {
-        (gross0, gross1) = pool.getUnderlyingBalances();
+        (gross0, gross1) = pool_.getUnderlyingBalances();
         if (gross0 == 0 && gross1 == 0) {
-            IUniswapV3Pool uniPool = pool.pool();
+            IUniswapV3Pool uniPool = pool_.pool();
             (uint160 sqrtPriceX96, , , , , , ) = uniPool.slot0();
-            uint160 lowerSqrtPrice = pool.lowerTick().getSqrtRatioAtTick();
-            uint160 upperSqrtPrice = pool.upperTick().getSqrtRatioAtTick();
+            uint160 lowerSqrtPrice = pool_.lowerTick().getSqrtRatioAtTick();
+            uint160 upperSqrtPrice = pool_.upperTick().getSqrtRatioAtTick();
             (gross0, gross1) = LiquidityAmounts.getAmountsForLiquidity(
                 sqrtPriceX96,
                 lowerSqrtPrice,
@@ -422,14 +475,14 @@ contract ArrakisNonNativeVault is ERC4626 {
         }
     }
 
-    function _swap(swapParams memory params) internal {
+    function _swap(swapParams memory params_) internal {
         IUniswapV3Pool uniPool = arrakisVault.pool();
         uniPool.swap(
-            params.receiver,
-            params.direction,
-            params.amount,
-            params.sqrtPrice,
-            params.data
+            params_.receiver,
+            params_.direction,
+            params_.amount,
+            params_.sqrtPrice,
+            params_.data
         );
     }
 }
