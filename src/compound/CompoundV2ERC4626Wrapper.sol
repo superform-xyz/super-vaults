@@ -11,27 +11,26 @@ import {LibCompound} from "./compound/LibCompound.sol";
 import {IComptroller} from "./compound/IComptroller.sol";
 import {ISwapRouter} from "../aave-v2/utils/ISwapRouter.sol";
 import {DexSwap} from "./utils/swapUtils.sol";
-import "forge-std/console.sol";
 
 /// @title CompoundV2StrategyWrapper - Custom implementation of yield-daddy wrappers with flexible reinvesting logic
 /// Rationale: Forked protocols often implement custom functions and modules on top of forked code.
 /// Example: Staking systems. Very common in DeFi. Re-investing/Re-Staking rewards on the Vault level can be included in permissionless way.
 contract CompoundV2ERC4626Wrapper is ERC4626 {
-    /// -----------------------------------------------------------------------
-    /// Libraries usage
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      LIBRARIES USAGE
+    //////////////////////////////////////////////////////////////*/
 
     using LibCompound for ICERC20;
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
-    /// -----------------------------------------------------------------------
-    /// Errors
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      ERRORS
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Thrown when a call to Compound returned an error.
     /// @param errorCode The error code returned by Compound
-    error CompoundERC4626__CompoundError(uint256 errorCode);
+    error COMPOUND_ERROR(uint256 errorCode);
     /// @notice Thrown when reinvest amount is not enough.
     error MIN_AMOUNT_ERROR();
     /// @notice Thrown when caller is not the manager.
@@ -39,15 +38,15 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
     /// @notice Thrown when swap path fee in reinvest is invalid.
     error INVALID_FEE_ERROR();
 
-    /// -----------------------------------------------------------------------
-    /// Constants
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      CONSTANTS
+    //////////////////////////////////////////////////////////////*/
 
     uint256 internal constant NO_ERROR = 0;
 
-    /// -----------------------------------------------------------------------
-    /// Immutable params
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      IMMUTABLES & VARIABLES
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Access Control for harvest() route
     address public immutable manager;
@@ -74,10 +73,16 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
         address pair2;
     }
 
-    /// -----------------------------------------------------------------------
-    /// Constructor
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
 
+    /// @notice Constructor for the CompoundV2ERC4626Wrapper
+    /// @param asset_ The address of the underlying asset
+    /// @param reward_ The address of the reward token
+    /// @param cToken_ The address of the cToken
+    /// @param comptroller_ The address of the comptroller
+    /// @param manager_ The address of the manager
     constructor(
         ERC20 asset_, // underlying
         ERC20 reward_, // comp token or other
@@ -94,10 +99,14 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
         comptroller.enterMarkets(cTokens);
     }
 
-    /// -----------------------------------------------------------------------
-    /// Compound liquidity mining
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      COMPOUND LIQUIDITY MINING
+    //////////////////////////////////////////////////////////////*/
 
+    /// @notice sets the swap path for reinvesting rewards
+    /// @param poolFee1_ fee for first swap
+    /// @param tokenMid_ token for first swap
+    /// @param poolFee2_ fee for second swap
     function setRoute(
         uint24 poolFee1_,
         address tokenMid_,
@@ -142,43 +151,37 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
         afterDeposit(asset.balanceOf(address(this)), 0);
     }
 
-    /// -----------------------------------------------------------------------
-    /// ERC4626 overrides
-    /// We can't inherit directly from Yield-daddy because of rewardClaim lock
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                        ERC4626 OVERRIDES
+    We can't inherit directly from Yield-daddy because of rewardClaim lock
+    //////////////////////////////////////////////////////////////*/
 
     function totalAssets() public view virtual override returns (uint256) {
         return cToken.viewUnderlyingBalanceOf(address(this));
     }
     
     function beforeWithdraw(
-        uint256 assets,
+        uint256 assets_,
         uint256 /*shares*/
     ) internal virtual override {
-        /// -----------------------------------------------------------------------
-        /// Withdraw assets from Compound
-        /// -----------------------------------------------------------------------
 
-        uint256 errorCode = cToken.redeemUnderlying(assets);
+        uint256 errorCode = cToken.redeemUnderlying(assets_);
         if (errorCode != NO_ERROR) {
-            revert CompoundERC4626__CompoundError(errorCode);
+            revert COMPOUND_ERROR(errorCode);
         }
     }
 
     function afterDeposit(
-        uint256 assets,
+        uint256 assets_,
         uint256 /*shares*/
     ) internal virtual override {
-        /// -----------------------------------------------------------------------
-        /// Deposit assets into Compound
-        /// -----------------------------------------------------------------------
 
         // approve to cToken
-        asset.safeApprove(address(cToken), assets);
+        asset.safeApprove(address(cToken), assets_);
         // deposit into cToken
-        uint256 errorCode = cToken.mint(assets);
+        uint256 errorCode = cToken.mint(assets_);
         if (errorCode != NO_ERROR) {
-            revert CompoundERC4626__CompoundError(errorCode);
+            revert COMPOUND_ERROR(errorCode);
         }
     }
 
@@ -192,22 +195,22 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
         return type(uint256).max;
     }
 
-    function maxWithdraw(address owner) public view override returns (uint256) {
+    function maxWithdraw(address owner_) public view override returns (uint256) {
         uint256 cash = cToken.getCash();
-        uint256 assetsBalance = convertToAssets(balanceOf[owner]);
+        uint256 assetsBalance = convertToAssets(balanceOf[owner_]);
         return cash < assetsBalance ? cash : assetsBalance;
     }
 
-    function maxRedeem(address owner) public view override returns (uint256) {
+    function maxRedeem(address owner_) public view override returns (uint256) {
         uint256 cash = cToken.getCash();
         uint256 cashInShares = convertToShares(cash);
-        uint256 shareBalance = balanceOf[owner];
+        uint256 shareBalance = balanceOf[owner_];
         return cashInShares < shareBalance ? cashInShares : shareBalance;
     }
 
-    /// -----------------------------------------------------------------------
-    /// ERC20 metadata generation
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      ERC20 METADATA
+    //////////////////////////////////////////////////////////////*/
 
     function _vaultName(ERC20 asset_)
         internal

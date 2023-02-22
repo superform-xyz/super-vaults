@@ -11,7 +11,6 @@ import {ILendingPool} from "./aave/ILendingPool.sol";
 /// @title AaveV2ERC4626Factory forked from @author zefram.eth
 /// @notice Factory for creating AaveV2ERC4626 contracts
 contract AaveV2ERC4626ReinvestFactory {
-
     /// @notice Emitted when a new ERC4626 vault has been created
     /// @param asset The base asset used by the vault
     /// @param vault The vault that was created
@@ -70,7 +69,6 @@ contract AaveV2ERC4626ReinvestFactory {
         aaveMining = aaveMining_;
         lendingPool = lendingPool_;
         rewardToken = rewardToken_;
-
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -84,7 +82,7 @@ contract AaveV2ERC4626ReinvestFactory {
         virtual
         returns (ERC4626 vault)
     {
-        if(msg.sender != manager) revert INVALID_ACCESS();
+        if (msg.sender != manager) revert INVALID_ACCESS();
         ILendingPool.ReserveData memory reserveData = lendingPool
             .getReserveData(address(asset_));
         address aTokenAddress = reserveData.aTokenAddress;
@@ -116,7 +114,7 @@ contract AaveV2ERC4626ReinvestFactory {
         address pair1_,
         address pair2_
     ) external {
-        if(msg.sender != manager) revert INVALID_ACCESS();
+        if (msg.sender != manager) revert INVALID_ACCESS();
         vault_.setRoute(token_, pair1_, pair2_);
 
         emit RoutesSetERC4626Reinvest(vault_);
@@ -125,9 +123,10 @@ contract AaveV2ERC4626ReinvestFactory {
     /// @notice Harvest rewards from specified vault
     /// @param vault_ The vault to harvest from
     /// @param minAmountOut_ Minimum amount of base token to reinvest (for slippage protection)
-    function harvestFrom(AaveV2ERC4626Reinvest vault_, uint256 minAmountOut_) external {
+    function harvestFrom(AaveV2ERC4626Reinvest vault_, uint256 minAmountOut_)
+        external
+    {
         vault_.harvest(minAmountOut_);
         emit HarvestERC4626Reinvest(vault_);
     }
-
 }

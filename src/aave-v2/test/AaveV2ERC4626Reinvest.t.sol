@@ -218,17 +218,4 @@ contract AaveV2ERC4626ReinvestTest is Test {
         assertEq(vault.convertToAssets(vault.balanceOf(alice)), 0);
         assertEq(asset.balanceOf(alice), alicePreDepositBal);
     }
-
-    // function testHarvester() public {
-    //     uint256 aliceShareAmount = makeDeposit();
-
-    //     assertEq(vault.totalSupply(), aliceShareAmount);
-    //     assertEq(vault.totalAssets(), 100 ether);
-    //     console.log("totalAssets before harvest", vault.totalAssets());
-
-    //     assertEq(ERC20(rewardToken).balanceOf(address(vault)), 1000 ether);
-    //     vault.harvest();
-    //     assertEq(ERC20(rewardToken).balanceOf(address(vault)), 0);
-    //     console.log("totalAssets after harvest", vault.totalAssets());
-    // }
 }

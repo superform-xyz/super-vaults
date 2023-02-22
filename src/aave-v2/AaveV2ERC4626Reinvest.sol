@@ -13,7 +13,6 @@ import {DexSwap} from "./utils/swapUtils.sol";
 /// @title AaveV2ERC4626Reinvest - extended implementation of yield-daddy @author zefram.eth
 /// @dev Reinvests rewards accrued for higher APY
 contract AaveV2ERC4626Reinvest is ERC4626 {
-    
     /*//////////////////////////////////////////////////////////////
                       LIBRARIES USED
     //////////////////////////////////////////////////////////////*/
@@ -104,7 +103,7 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
     /*//////////////////////////////////////////////////////////////
                       AAVE-FORK REWARDS
     //////////////////////////////////////////////////////////////*/
-    
+
     /// @notice Set swap routes for selling rewards
     /// @dev Setting wrong addresses here will revert harvest() calls
     /// @param token_ address of intermediary token with high liquidity (no direct pools)
@@ -115,7 +114,7 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
         address pair1_,
         address pair2_
     ) external {
-        if(msg.sender != manager) revert INVALID_ACCESS();
+        if (msg.sender != manager) revert INVALID_ACCESS();
         SwapInfo = swapInfo(token_, pair1_, pair2_);
         rewardsSet = true;
     }
@@ -123,19 +122,21 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
     /// @notice Claims liquidity providing rewards from AAVE-Fork and performs low-lvl swap with instant reinvesting
     /// @param minAmountOut_ minimum amount of asset to receive after 2 swaps
     function harvest(uint256 minAmountOut_) external {
-
         /// @dev Claim rewards from AAVE-Fork
         address[] memory assets = new address[](1);
         assets[0] = address(aToken);
-        uint256 earned = rewards.claimRewards(assets, type(uint256).max, address(this));
-        
+        uint256 earned = rewards.claimRewards(
+            assets,
+            type(uint256).max,
+            address(this)
+        );
+
         ERC20 rewardToken_ = ERC20(rewardToken);
         uint256 reinvestAmount;
 
         /// If one swap needed (high liquidity pair) - set swapInfo.token0/token/pair2 to 0x
         /// @dev Swap AAVE-Fork token for asset
         if (SwapInfo.token == address(asset)) {
-
             rewardToken_.approve(SwapInfo.pair1, earned); /// max approves address
 
             reinvestAmount = DexSwap.swap(
@@ -144,9 +145,8 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
                 address(asset), /// to target underlying of this Vault
                 SwapInfo.pair1 /// pairToken (pool)
             );
-        /// If two swaps needed
+            /// If two swaps needed
         } else {
-
             rewardToken_.approve(SwapInfo.pair1, type(uint256).max); /// max approves address
 
             uint256 swapTokenAmount = DexSwap.swap(
@@ -156,7 +156,7 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
                 SwapInfo.pair1 /// pairToken (pool)
             );
 
-            ERC20(SwapInfo.token).approve(SwapInfo.pair2, swapTokenAmount); 
+            ERC20(SwapInfo.token).approve(SwapInfo.pair2, swapTokenAmount);
 
             reinvestAmount = DexSwap.swap(
                 swapTokenAmount,
@@ -165,13 +165,13 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
                 SwapInfo.pair2 /// pairToken (pool)
             );
         }
-        if(reinvestAmount < minAmountOut_) {
+        if (reinvestAmount < minAmountOut_) {
             revert MIN_AMOUNT_ERROR();
         }
         /// reinvest() without minting (no asset.totalSupply() increase == profit)
         afterDeposit(asset.balanceOf(address(this)), 0);
     }
-    
+
     /// @notice Check how much rewards are available to claim, useful before harvest()
     function getRewardsAccrued() external view returns (uint256) {
         return rewards.getUserUnclaimedRewards(address(this));
@@ -226,7 +226,7 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
         }
 
         // Check for rounding error since we round down in previewRedeem.
-        if((assets = previewRedeem(shares_)) == 0) {
+        if ((assets = previewRedeem(shares_)) == 0) {
             revert ZERO_ASSETS();
         }
 

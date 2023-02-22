@@ -25,6 +25,8 @@ test-uniswapV2swap :; forge test --match-contract UniswapV2TestSwap -vv
 test-reth :; forge test --match-contract rEthTest -vv
 test-arrakis :; forge test --match-contract Arrakis_LP_Test -vvv
 test-geist :; forge test --match-contract GeistERC4626ReinvestTest -vvv
+test-aavev3-uni :; forge test --match-contract AaveV3ERC4626ReinvestUniTest -vvv
+test-aavev3-incentive :; forge test --match-contract AaveV3ERC4626ReinvestIncentiveTest -vvv
 
 # Reinvest test
 test-venus-reinvest :; forge test --match-contract VenusERC4626WrapperTest -vvv
@@ -32,6 +34,7 @@ test-aaveV2-reinvest :; forge test --match-contract AaveV2ERC4626ReinvestTest -v
 test-aaveV3-reinvest :; forge test --match-contract AaveV3ERC4626ReinvestTest -vvv
 test-benqi-reinvest :; forge test --match-contract BenqiERC4626ReinvestTest -vvv
 test-benqiNative-reinvest :; forge test --match-contract BenqiNativeERC4626ReinvestTest -vvv
+test-aaveV3-uni-reinvest :; forge test --match-contract AaveV3ERC4626ReinvestUniTest --match-test testHarvester -vvv
 
 # Harvester tests (check tests comments)
 test-aaveV3-harvest :; forge test --match-contract AaveV3ERC4626ReinvestTest --match-test testHarvester -vvv

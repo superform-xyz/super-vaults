@@ -250,49 +250,49 @@ contract AaveV3ERC4626ReinvestTest is Test {
         assertEq(asset.balanceOf(alice), alicePreDepositBal);
     }
 
-    /// @dev This tests requires harvest() claimedAmounts[] to be set manually on forked state
-    /// @dev TODO: find a better test method
-    // claimedAmounts[0] = 1 ether;
-    // function testHarvester() public {
-    //     uint256 aliceUnderlyingAmount = 100e6;
 
-    //     /// Spoof IncentiveV3 contract storage var
-    //     vm.startPrank(manager);
-    //     address[] memory rewardTokens = factory.setRewards(vault);
 
-    //     console.log("rewardTokens", rewardTokens[0]);
-    //     console.log("routes", swapToken, pair1, pair2);
+    function testHarvester() public {
+        uint256 aliceUnderlyingAmount = 100e6;
 
-    //     if (rewardTokens.length == 1) {
-    //         factory.setRoutes(vault, rewardTokens[0], swapToken, pair1, pair2);
-    //         deal(rewardTokens[0], address(vault), 1 ether);
-    //     } else {
-    //         console.log("more than 1 reward token");
-    //     }
+        /// Spoof Manager to setRoutes
+        vm.startPrank(manager);
+        address[] memory rewardTokens = factory.setRewards(vault);
 
-    //     vm.stopPrank();
-    //     ///////////////////////////
+        console.log("rewardTokens", rewardTokens[0]);
+        console.log("routes", swapToken, pair1, pair2);
 
-    //     vm.startPrank(alice);
+        if (rewardTokens.length == 1) {
+            factory.setRoutes(vault, rewardTokens[0], swapToken, pair1, pair2);
+        } else {
+            console.log("more than 1 reward token");
+        }
 
-    //     asset.approve(address(vault), aliceUnderlyingAmount);
-    //     uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
+        vm.stopPrank();
+        ///////////////////////////
 
-    //     uint256 beforeHarvest = vault.totalAssets();
-    //     uint256 beforeHarvestReward = ERC20(rewardTokens[0]).balanceOf(address(vault));
+        vm.startPrank(alice);
 
-    //     console.log("totalAssets before harvest", beforeHarvest);
-    //     console.log("rewardBalance before harvest", beforeHarvestReward);
+        asset.approve(address(vault), aliceUnderlyingAmount);
+        vault.deposit(aliceUnderlyingAmount, alice);
 
-    //     assertEq(ERC20(rewardTokens[0]).balanceOf(address(vault)), 1 ether);
+        uint256 beforeHarvest = vault.totalAssets();
+        uint256 beforeHarvestReward = ERC20(rewardTokens[0]).balanceOf(address(vault));
 
-    //     vault.harvest();
+        console.log("totalAssets before harvest", beforeHarvest);
+        console.log("rewardBalance before harvest", beforeHarvestReward);
 
-    //     uint256 afterHarvest = vault.totalAssets();
-    //     uint256 afterHarvestReward = ERC20(rewardTokens[0]).balanceOf(address(vault));
+        //(ERC20(rewardTokens[0]).balanceOf(address(vault)), 1 ether);
+        uint256[] memory minAmount = new uint256[](1);
+        minAmount[0] = 0;
+        vm.warp(block.timestamp + 100 days);
+        vault.harvest(minAmount);
 
-    //     console.log("totalAssets after harvest", afterHarvest);
-    //     console.log("rewardBalance after harvest", afterHarvestReward);
+        uint256 afterHarvest = vault.totalAssets();
+        uint256 afterHarvestReward = ERC20(rewardTokens[0]).balanceOf(address(vault));
+        assertGe(afterHarvest, beforeHarvest);
+        console.log("totalAssets after harvest", afterHarvest);
+        console.log("rewardBalance after harvest", afterHarvestReward);
 
-    // }
+    }
 }

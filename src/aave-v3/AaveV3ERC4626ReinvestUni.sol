@@ -179,7 +179,7 @@ contract AaveV3ERC4626ReinvestUni is ERC4626 {
         ISwapRouter.ExactInputParams memory params =
             ISwapRouter.ExactInputParams({
                 path: swapMap,
-                recipient: msg.sender,
+                recipient: address(this),
                 deadline: block.timestamp,
                 amountIn: earned,
                 amountOutMinimum: minAmountOut_
@@ -187,7 +187,6 @@ contract AaveV3ERC4626ReinvestUni is ERC4626 {
 
         // Executes the swap.
         swapRouter.exactInput(params);
-
         /// reinvest() without minting (no asset.totalSupply() increase == profit)
         afterDeposit(asset.balanceOf(address(this)), 0);
     }
