@@ -9,7 +9,8 @@ import {IMultiFeeDistribution} from "./external/IMultiFeeDistribution.sol";
 import {ILendingPool} from "./external/ILendingPool.sol";
 import {DexSwap} from "./utils/swapUtils.sol";
 
-/// @title GeistERC4626Reinvest
+/// @title GeistERC4626Reinvest - AAVE-V2 Forked protocol with Curve-like rewards distribution in place of IAaveMining.
+/// NOTE: Base implementation contract with harvest() disabled as it would require vesting vault's balance.
 contract GeistERC4626Reinvest is ERC4626 {
     address public immutable manager;
 

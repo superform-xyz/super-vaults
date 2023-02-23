@@ -172,7 +172,6 @@ contract BenqiERC4626Reinvest is ERC4626 {
     }
 
     function totalAssets() public view virtual override returns (uint256) {
-        /// TODO: Investigate why libcompound fails for benqi fork?
         return viewUnderlyingBalanceOf();
     }
 

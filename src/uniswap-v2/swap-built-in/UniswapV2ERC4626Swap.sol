@@ -16,9 +16,12 @@ import {DexSwap} from "../utils/swapUtils.sol";
 
 import "forge-std/console.sol";
 
-/// @notice WIP: ERC4626 UniswapV2 Adapter - Allows exit & join to UniswapV2 LP Pools from ERC4626 interface
-/// Uses virtual price to calculate exit/entry amounts, which is vulnerable to pool reserve manipulation without usage of protected functions
-/// Example Pool: https://v2.info.uniswap.org/pair/0xae461ca67b15dc8dc81ce7615e0320da1a9ab8d5 (DAI-USDC LP/PAIR on ETH)
+/// @notice WIP: ERC4626 UniswapV2 Adapter - Allows exit & join to UniswapV2 LP Pools from ERC4626 interface. Single sided liquidity adapter. 
+/// Provides a set of helpful functions to calculate different aspects of liquidity providing to the UniswapV2-style pools.
+/// Accept tokenX || tokenY as ASSET. Uses UniswapV2Pair LP-TOKEN as AUM (totalAssets()). 
+/// BASIC FLOW: Deposit tokenX > tokenX swap to tokenX && tokenY optimal amount > tokenX/Y deposited into UniswapV2 
+/// > shares minted to the Vault from the Uniswap Pool > shares minted to the user from the Vault
+/// Example Pool: https://v2.info.uniswap.org/pair/0xae461ca67b15dc8dc81ce7615e0320da1a9ab8d5 (DAI-USDC LP/PAIR on ETH).
 contract UniswapV2ERC4626Swap is ERC4626 {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
@@ -62,6 +65,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         }
     }
 
+    /// @notice Remove liquidity from the underlying UniswapV2Pair. Receive both token0 and token1 on the Vault address.
     function liquidityRemove(uint256, uint256 shares)
         internal
         returns (uint256 assets0, uint256 assets1)
@@ -83,15 +87,15 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         );
     }
 
+    /// @notice Add liquidity to the underlying UniswapV2Pair. Send both token0 and token1 from the Vault address.
     function liquidityAdd(uint256 assets0, uint256 assets1)
         internal
         returns (uint256 li)
     {
-        
         /// temp should be more elegant. better than max approve though
         token0.approve(address(router), assets0);
         token1.approve(address(router), assets1);
-        
+
         /// temp implementation, we should call directly on a pair
         (, , li) = router.addLiquidity(
             address(token0),
@@ -105,12 +109,12 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         );
     }
 
-    /// @notice deposit function taking additional protection parameters for execution
-    /// Caller can calculate minSharesOut using previewDeposit function range of outputs
+    /// @notice Non-ERC4626 deposit function taking additional protection parameters for execution
+    /// @dev Caller can calculate minSharesOut using previewDeposit function range of outputs
     function deposit(
         uint256 assets,
         address receiver,
-        uint256 minSharesOut /// @dev calculated off-chain, "secure" deposit function. could be using tick-like calculations?
+        uint256 minSharesOut
     ) public returns (uint256 shares) {
         asset.safeTransferFrom(msg.sender, address(this), assets);
 
@@ -131,9 +135,8 @@ contract UniswapV2ERC4626Swap is ERC4626 {
 
     /// @notice receives tokenX of UniV2 pair and mints shares of this vault for deposited tokenX/Y into UniV2 pair
     /// @dev unsecure deposit function, trusting external asset reserves
-    /// NOTE: At this point, what good does it to have strict ERC4626 deposit if its so prone to manipulation?
-    /// @notice Caller can calculate shares through previewDeposit and trust previewDeposit returned value to revert here
-    /// any minSharesOut check should be performed by the caller and his contract (TODO: Can we provide low/high bounds for shares?)
+    /// NOTE: Standard ERC4626 deposit is prone to manipulation because of no minSharesOut argument allowed
+    /// @dev Caller can calculate shares through previewDeposit and trust previewDeposit returned value to revert here
     function deposit(uint256 assets, address receiver)
         public
         override
@@ -174,7 +177,12 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         emit Deposit(msg.sender, receiver, assets, uniShares);
     }
 
-    function mint(uint256 shares, address receiver, uint256 minSharesOut) public returns (uint256 assets) {
+    /// @notice Non-ERC4626 mint function taking additional protection parameters for execution
+    function mint(
+        uint256 shares,
+        address receiver,
+        uint256 minSharesOut
+    ) public returns (uint256 assets) {
         assets = previewMint(shares);
 
         asset.safeTransferFrom(msg.sender, address(this), assets);
@@ -188,8 +196,11 @@ contract UniswapV2ERC4626Swap is ERC4626 {
 
         _mint(receiver, uniShares);
 
-        emit Deposit(msg.sender, receiver, assets, uniShares);    }
+        emit Deposit(msg.sender, receiver, assets, uniShares);
+    }
 
+    /// @notice mint exact amount of this Vault shares and effectivley UniswapV2Pair shares (1:1 relation)
+    /// @dev Requires caller to have a prior knowledge of what amount of `assets` to approve (use this contract helper functions)
     function mint(uint256 shares, address receiver)
         public
         override
@@ -214,6 +225,8 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         emit Deposit(msg.sender, receiver, assets, uniShares);
     }
 
+    /// @notice Non-ERC4626 withdraw function taking additional protection parameters for execution
+    /// @dev Caller specifies minAmountOut of this Vault's underlying to receive for burning Vault's shares (and UniswapV2Pair shares)
     function withdraw(
         uint256 assets,
         address receiver,
@@ -244,10 +257,10 @@ contract UniswapV2ERC4626Swap is ERC4626 {
 
         asset.safeTransfer(receiver, amount);
 
-        emit Withdraw(msg.sender, receiver, owner, amount, shares);        
+        emit Withdraw(msg.sender, receiver, owner, amount, shares);
     }
 
-    /// @notice burns shares from owner and sends exactly assets of underlying tokens to receiver.
+    /// @notice Receive amount of `assets` of underlying token of this Vault (token0 or token1 of underlying UniswapV2Pair)
     function withdraw(
         uint256 assets,
         address receiver,
@@ -283,6 +296,8 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         emit Withdraw(msg.sender, receiver, owner, amount, shares);
     }
 
+    /// @notice Non-ERC4626 redeem function taking additional protection parameters for execution
+    /// @dev Caller needs to know the amount of minAmountOut to receive for burning amount of shares beforehand
     function redeem(
         uint256 shares,
         address receiver,
@@ -314,6 +329,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         emit Withdraw(msg.sender, receiver, owner, amount, shares);
     }
 
+    /// @notice Burn amount of 'shares' of this Vault (and UniswapV2Pair shares) to receive some amount of underlying token of this vault
     function redeem(
         uint256 shares,
         address receiver,
@@ -634,6 +650,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         }
     }
 
+    /// @notice Calculate amount of UniswapV2Pair lp-token you will get for supply X & Y amount of token0/token1
     function getLiquidityAmountOutFor(uint256 assets0, uint256 assets1)
         public
         view
