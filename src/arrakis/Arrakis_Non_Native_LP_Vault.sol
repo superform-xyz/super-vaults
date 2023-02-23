@@ -108,7 +108,7 @@ contract ArrakisNonNativeVault is ERC4626 {
         gauge = IGauge(gauge_);
         slippage = slippage_;
         non_asset = zeroForOne ? arrakisVault.token1() : arrakisVault.token0();
-        // doing it one time instead of each and every deposit/withdrawal swaps
+        /// @dev doing it one time instead of each and every deposit/withdrawal swaps
         _approveTokenIfNeeded(address(asset), address(arrakisRouter));
         _approveTokenIfNeeded(address(non_asset), address(arrakisRouter));
         _approveTokenIfNeeded(address(non_asset), address(arrakisVault.pool()));
@@ -118,20 +118,19 @@ contract ArrakisNonNativeVault is ERC4626 {
         internal
         override
     {
-        // getting the pool liquidity from arrakis vault
+        /// @notice getting the pool liquidity from arrakis vault
         IUniswapV3Pool uniPool = arrakisVault.pool();
         (uint128 liquidity_, , , , ) = uniPool.positions(
             arrakisVault.getPositionID()
         );
         uint256 sharesToWithdraw = (underlyingLiquidity_ *
             arrakisVault.totalSupply()) / liquidity_;
-        // withdraw from staking contract
+        /// @notice withdraw from staking contract
         gauge.withdraw(sharesToWithdraw);
-        // burn arrakis lp
+        /// @notice burn arrakis lp
         arrakisVault.burn(sharesToWithdraw, address(this));
 
         uint256 nonAssetBal = non_asset.balanceOf(address(this));
-        // should be moved to new place later!
         (uint160 sqrtPriceX96, , , , , , ) = uniPool.slot0();
         uint160 twoPercentSqrtPrice = sqrtPriceX96 / slippage;
         // calculating slippage for 2% +/- the current tick of the uniPool for swapping
