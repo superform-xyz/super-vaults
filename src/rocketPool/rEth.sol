@@ -350,6 +350,10 @@ contract rEthERC4626 is ERC4626 {
         return previewRedeem(balance);
     }
 
+    /*//////////////////////////////////////////////////////////////
+                        ROCKET POOL CHECKS
+    //////////////////////////////////////////////////////////////*/
+
     /// @notice Check if Rocket's Deposit Pool has free slots to stake
     function freeSlots() public view returns (uint256) {
         uint256 _freeSlots = rEth.getBalance();
