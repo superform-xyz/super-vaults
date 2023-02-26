@@ -1,16 +1,18 @@
 # Super-vaults
 
-ERC4626 Wrappers/Adapters for SuperForm's multichain Vault system.
+Repository contains different types of ERC4626 adapters/wrappers for non-standardized DeFi Vaults. We follow [yield-daddy](https://github.com/timeless-fi/yield-daddy) implementation for some of the AAVE & Compound forked protocols, adding reward harvesting, but we also provide a set of original adapters over protocols like Arrakis, Lido, Uniswap or Compound-V3. 
 
-Main extension over standard ERC4626 is `harvest()` capability, exchanging and reinvesting rewards distributed to the Vault adapter in form of its underlying token. In-development feature is ERC4626 adapter over UniswapV2 Pair, providing built-in capability of flexible join/exit into UniswapV2 type pools from single or double token transfers handled by ERC4626 interface. Repository utilizes [yield-daddy](https://github.com/timeless-fi/yield-daddy) set of ERC4626 wrappers for its base.
+A goal of this repository is to build a useful reference codebase to follow when implementing ERC4626 compatible adapters and vaults.
 
-Early release, a lot of code is not deployment ready!
+You can find individual `README.md` files in some of the protocol directories inside of `/src` expanding on adapter implementation. Some of the adapters are still considered experimental and/or not fully tested. 
 
 # Build
 
 Repository uses MakeFile to streamline testing operations. 
 
 Create `.env` file with RPC_URLs, otherwise tests will fail!
+
+Copy contents of `constants.env` to your local `.env` file (Tests are run against forked state, we read target addresses from env)
 
 `make install`
 
@@ -26,17 +28,17 @@ You can match individual test files with:
 
 `make test-steth` for testing lido's stEth
 
-_(see MakeFile)_
+_(see MakeFile for more examples)_
 
 # Slither
 
-To run Slither over the specific file: 
+To run Slither over the specific file. 
 
-`slither src/uniswap-v2/swap-built-in/UniswapV2ERC4626Swap.sol --config-file slither.config.json`
+`slither src/<PROTOCOL-DIR>/<NAME-OF-THE-VAULT>.sol --config-file slither.config.json`
 
 # Structure
 
-Each protocol is hosted inside of a separate directory. For a single protocol we expect to see many different types of ERC4626 Vaults and Wrappers/Adapters. Starting from the most basic, allowing only zapIn/zapOut to the non-ERC4626 Vault through the ERC4626 interface ending on complex yield applications. If you plan on adding your own wrapper or standalone ERC4626 Vault, create a PR following existing root directory structure, like: 
+Each protocol is hosted inside of a separate directory. For a single protocol we expect to see many different types of ERC4626 Vaults and Wrappers/Adapters. Starting from the most basic, allowing only zapIn/zapOut to the non-ERC4626 Vault through the ERC4626 interface ending on "unique" ERC4626 implementations. If you plan on adding your own wrapper or standalone ERC4626 Vault, create a PR following existing root directory structure: 
 
 General view:
 
