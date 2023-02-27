@@ -247,6 +247,7 @@ contract Arrakis_LP_Test is Test {
             address(this)
         );
         console.log("Underlying balance :", vault.totalAssets());
+        /// @dev we simulate the swaps on the same pool we are adding liquidity to, so we can get the fees accrued and test the reinvest.
         console.log("Starting swap simulation on uniswap....");
         uint256 countLoop = 2;
         ERC20(address(WMATIC)).transfer(address(this), 298000e18);

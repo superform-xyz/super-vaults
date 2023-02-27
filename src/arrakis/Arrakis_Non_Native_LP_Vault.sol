@@ -133,7 +133,7 @@ contract ArrakisNonNativeVault is ERC4626 {
         uint256 nonAssetBal = non_asset.balanceOf(address(this));
         (uint160 sqrtPriceX96, , , , , , ) = uniPool.slot0();
         uint160 twoPercentSqrtPrice = sqrtPriceX96 / slippage;
-        // calculating slippage for 2% +/- the current tick of the uniPool for swapping
+        /// @notice calculating slippage for 2% +/- the current tick of the uniPool for swapping
         swapParams memory params = swapParams({
             receiver: address(this),
             direction: !zeroForOne,
@@ -143,7 +143,7 @@ contract ArrakisNonNativeVault is ERC4626 {
                 : sqrtPriceX96 + (twoPercentSqrtPrice),
             data: ""
         });
-        // swap the non_asset total amount to withdrawable asset
+        /// @notice swap the non_asset total amount to withdrawable asset
         _swap(params);
     }
 
@@ -156,7 +156,7 @@ contract ArrakisNonNativeVault is ERC4626 {
         uint256 priceDecimals;
         uint256 liquidity;
         uint256 grossLiquidity;
-        // calculating non_asset price in terms on asset price to find virtual total assets in terms of deposit asset
+        /// @dev calculating non_asset price in terms on asset price to find virtual total assets in terms of deposit asset
         if (zeroForOne) {
             /// @dev using sqrtPriceX96 * sqrtPriceX96 to calculate the price of non_asset in terms of asset
             priceDecimals = (((10**non_asset.decimals()) * X96) /
@@ -193,7 +193,7 @@ contract ArrakisNonNativeVault is ERC4626 {
         uint256 priceDecimals = (1 ether *
             ((sqrtRatioX96 * sqrtRatioX96) / X96)) / X96;
 
-        // multiplying the price decimals by 1e12 as the price you get from sqrtRationX96 is 6 decimals but need 18 decimal value for this method
+        /// @dev multiplying the price decimals by 1e12 as the price you get from sqrtRationX96 is 6 decimals but need 18 decimal value for this method
         (bool _direction, uint256 swapAmount) = getRebalanceParams(
             arrakisVault,
             zeroForOne ? underlyingAmount_ : 0,
@@ -215,7 +215,7 @@ contract ArrakisNonNativeVault is ERC4626 {
 
         _swap(params);
 
-        // we need a final swap to put the remaining amount of tokens into liquidity as before swap might have moved the liquidity positions needed.
+        /// @notice we need a final swap to put the remaining amount of tokens into liquidity as before swap might have moved the liquidity positions needed.
         uint256 token0Bal = arrakisVault.token0().balanceOf(address(this));
         uint256 token1Bal = arrakisVault.token1().balanceOf(address(this));
         (uint256 amount0Used, uint256 amount1Used, ) = arrakisVault
@@ -236,13 +236,13 @@ contract ArrakisNonNativeVault is ERC4626 {
         address owner_
     ) public override returns (uint256 assets) {
         if (msg.sender != owner_) {
-            uint256 allowed = allowance[owner_][msg.sender]; // Saves gas for limited approvals.
+            uint256 allowed = allowance[owner_][msg.sender]; /// @dev Saves gas for limited approvals.
 
             if (allowed != type(uint256).max)
                 allowance[owner_][msg.sender] = allowed - shares_;
         }
         uint256 liquidity;
-        // Check for rounding error since we round down in previewRedeem.
+        /// @dev Check for rounding error since we round down in previewRedeem.
         require((liquidity = previewRedeem(shares_)) != 0, "ZERO_ASSETS");
         beforeWithdraw(liquidity, shares_);
 
@@ -258,10 +258,10 @@ contract ArrakisNonNativeVault is ERC4626 {
         address receiver_,
         address owner_
     ) public override returns (uint256 shares) {
-        uint256 liquidity = previewWithdraw(assets_); // No need to check for rounding error, previewWithdraw rounds up.
+        uint256 liquidity = previewWithdraw(assets_); /// @dev No need to check for rounding error, previewWithdraw rounds up.
 
         if (msg.sender != owner_) {
-            uint256 allowed = allowance[owner_][msg.sender]; // Saves gas for limited approvals.
+            uint256 allowed = allowance[owner_][msg.sender]; /// @dev Saves gas for limited approvals.
 
             if (allowed != type(uint256).max)
                 allowance[owner_][msg.sender] = allowed - shares;
@@ -293,7 +293,7 @@ contract ArrakisNonNativeVault is ERC4626 {
         override
         returns (uint256)
     {
-        uint256 supply = totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
+        uint256 supply = totalSupply; /// @dev Saves an extra SLOAD if totalSupply is non-zero.
 
         return
             supply == 0
@@ -308,7 +308,7 @@ contract ArrakisNonNativeVault is ERC4626 {
         override
         returns (uint256)
     {
-        uint256 supply = totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
+        uint256 supply = totalSupply; /// @dev Saves an extra SLOAD if totalSupply is non-zero.
 
         return
             supply == 0

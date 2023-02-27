@@ -50,6 +50,7 @@ contract AaveV2ERC4626ReinvestTest is Test {
         manager = msg.sender;
 
         vm.selectFork(polyFork);
+        vm.rollFork(39700000);
 
         /// @dev Original AAVE v2 reward mining is disabled on each network
         /// @dev We can leave this set to whatever on V2, harvest() is just not used
