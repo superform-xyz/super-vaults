@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.14;
-import "forge-std/console.sol";
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
@@ -107,12 +106,11 @@ contract VenusERC4626Reinvest is ERC4626 {
         comptroller.claimVenus(address(this));
 
         uint256 earned = reward.balanceOf(address(this));
-        console.log("earned", earned);
 
         address rewardToken = address(reward);
         uint256 reinvestAmount;
-        /// If only one swap needed (high liquidity pair) - set swapInfo.token0/token/pair2 to 0x
-        /// XVS => WBNB => USDC
+
+        /// XVS => WBNB => ASSET
         if (SwapInfo.token == address(asset)) {
             reward.approve(SwapInfo.pair1, earned);
 

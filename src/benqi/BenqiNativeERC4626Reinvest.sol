@@ -66,6 +66,8 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
         address pair2;
     }
 
+    WrappedNative public wavax;
+
     /// -----------------------------------------------------------------------
     /// Errors
     /// -----------------------------------------------------------------------
@@ -94,6 +96,7 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
         reward = reward_;
         cEther = cEther_;
         comptroller = IComptroller(cEther.comptroller());
+        wavax = WrappedNative(address(asset_));
         manager = manager_;
     }
 
@@ -189,12 +192,18 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
             );
     }
 
+    /// @notice "Regular" ERC20 deposit for WAVAX
     function afterDeposit(uint256 assets, uint256) internal override {
-        WrappedNative(address(asset)).withdraw(assets);
-        // mint tokens
+        wavax.withdraw(assets);
         cEther.mint{value: assets}();
     }
 
+    /// @notice "Payable" afterDeposit for special case when we deposit native token
+    function afterDeposit(uint256 avaxAmt) internal {
+        cEther.mint{value: avaxAmt}();
+    }
+
+    /// @notice Accept native token (AVAX) for deposit. Non-ERC4626 function.
     function deposit(address receiver)
         public
         payable
@@ -205,16 +214,14 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
             revert CompoundERC4626_ZEROSHARES_Error();
         require((shares = previewDeposit(msg.value)) != 0, "ZERO_SHARES");
 
-        WrappedNative(address(asset)).deposit{value: msg.value}();
-
         _mint(receiver, shares);
 
         emit Deposit(msg.sender, receiver, msg.value, shares);
 
-        afterDeposit(msg.value, shares);
+        afterDeposit(msg.value);
     }
 
-    /// Standard ERC4626 deposit can only accept ERC20
+    /// @notice Standard ERC4626 deposit can only accept ERC20
     function deposit(uint256 assets, address receiver)
         public
         override
@@ -294,7 +301,10 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
         _burn(owner, shares);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
-        WrappedNative(address(asset)).deposit{value: assets}();
+        
+        /// @dev Output token is WAVAX, same as input token (consitency vs gas cost)
+        wavax.deposit{value: assets}();
+        
         asset.safeTransfer(receiver, assets);
     }
 
@@ -319,7 +329,10 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
         _burn(owner, shares);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
-        WrappedNative(address(asset)).deposit{value: assets}();
+
+        /// @dev Output token is WAVAX, same as input token (consitency vs gas cost)
+        wavax.deposit{value: assets}();
+        
         asset.safeTransfer(receiver, assets);
     }
 
@@ -335,7 +348,7 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
         virtual
         returns (string memory vaultName)
     {
-        vaultName = string.concat("ERC4626-Wrapped Benqi - ", asset_.symbol());
+        vaultName = string.concat("ERC4626-Wrapped Benqi -", asset_.symbol());
     }
 
     function _vaultSymbol(ERC20 asset_)

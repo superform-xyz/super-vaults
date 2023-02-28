@@ -11,11 +11,12 @@ import {IWETH} from "./interfaces/IWETH.sol";
 
 import "forge-std/console.sol";
 
-/// @notice Lido's stETH ERC4626 Wrapper - stEth as Vault's underlying token (and token received after withdraw).
+/// @notice (WIP) Lido's stETH ERC4626 Wrapper - stEth as Vault's underlying token (and token received after withdraw).
 /// Accepts WETH through ERC4626 interface, but can also accept ETH directly through different deposit() function signature.
 /// Vault balance holds stEth. Value is updated for each accounting call.
 /// Assets Under Managment (totalAssets()) operates on rebasing balance.
-/// This stEth ERC4626 wrapper is prefered way to deal with stEth wrapping over other solutions.
+/// @dev This Wrapper is a base implementation, providing ERC4626 interface over stEth without any additional strategy.
+/// hence, withdraw/redeem token from this Vault is still stEth and not Eth+accrued eth.
 /// @author ZeroPoint Labs
 contract StETHERC4626 is ERC4626 {
 
@@ -61,7 +62,7 @@ contract StETHERC4626 is ERC4626 {
     /// ERC4626 overrides
     /// -----------------------------------------------------------------------
 
-    /// @notice Standard ERC4626 deposit can only accept ERC20
+    /// @notice Deposit WETH. Standard ERC4626 deposit can only accept ERC20.
     /// Vault's underlying is WETH (ERC20), Lido expects ETH (Native), we use WETH wraper
     function deposit(uint256 assets, address receiver)
         public
@@ -96,6 +97,7 @@ contract StETHERC4626 is ERC4626 {
 
     }
 
+    /// @notice Mint amount of stEth / ERC4626-stEth
     function mint(uint256 shares, address receiver)
         public
         override
@@ -117,6 +119,7 @@ contract StETHERC4626 is ERC4626 {
 
     }
 
+    /// @notice Withdraw amount of ETH represented by stEth / ERC4626-stEth. Output token is stEth.
     function withdraw(
         uint256 assets,
         address receiver,
@@ -143,6 +146,7 @@ contract StETHERC4626 is ERC4626 {
 
     }
 
+    /// @notice Redeem exact amount of stEth / ERC4626-stEth from this Vault. Output token is stEth.
     function redeem(
         uint256 shares,
         address receiver,
@@ -164,11 +168,12 @@ contract StETHERC4626 is ERC4626 {
         stEthAsset.safeTransfer(receiver, assets);
     }
 
-    /// stETH as AUM. Rebasing!
+    /// @notice stEth is used as AUM of this Vault
     function totalAssets() public view virtual override returns (uint256) {
         return stEth.balanceOf(address(this));
     }
 
+    /// @notice Calculate amount of stEth you get in exchange for ETH (WETH)
     function convertToShares(uint256 assets)
         public
         view
@@ -179,6 +184,8 @@ contract StETHERC4626 is ERC4626 {
         return stEth.getSharesByPooledEth(assets);
     }
 
+    /// @notice Calculate amount of ETH you get in exchange for stEth (ERC4626-stEth)
+    /// Used as "virtual" amount in base implementation. No ETH is ever withdrawn.
     function convertToAssets(uint256 shares)
         public
         view
