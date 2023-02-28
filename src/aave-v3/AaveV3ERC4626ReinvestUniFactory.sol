@@ -12,13 +12,24 @@ import {Bytes32AddressLib} from "solmate/utils/Bytes32AddressLib.sol";
 /// @title AaveV3ERC4626Factory forked from @author zefram.eth
 /// @notice Factory for creating AaveV3ERC4626 contracts
 contract AaveV3ERC4626ReinvestUniFactory {
+    /*//////////////////////////////////////////////////////////////
+                      LIBRARIES USAGE
+    //////////////////////////////////////////////////////////////*/
     using Bytes32AddressLib for bytes32;
+
+    /*//////////////////////////////////////////////////////////////
+                      VARIABLES
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Manager for setting swap routes for harvest() per each vault
     address public manager;
 
     /// @notice Mapping of vaults by asset
     mapping(address => AaveV3ERC4626ReinvestUni) public vaults;
+
+    /*//////////////////////////////////////////////////////////////
+                    EVENTS
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Emitted when a new ERC4626 vault has been created
     /// @param asset The base asset used by the vault
@@ -37,16 +48,16 @@ contract AaveV3ERC4626ReinvestUniFactory {
     /// @notice Emitted when harvest has been called for a given aToken vault
     event HarvestERC4626Reinvest(AaveV3ERC4626ReinvestUni vault);
 
-    /// -----------------------------------------------------------------------
-    /// Errors
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      ERRORS
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Thrown when trying to deploy an AaveV3ERC4626 vault using an asset without an aToken
     error AaveV3ERC4626Factory__ATokenNonexistent();
 
-    /// -----------------------------------------------------------------------
-    /// Immutable params
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      IMMUTABLES
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice The Aave Pool contract
     IPool public immutable lendingPool;
@@ -54,10 +65,14 @@ contract AaveV3ERC4626ReinvestUniFactory {
     /// @notice The Aave RewardsController contract
     IRewardsController public immutable rewardsController;
 
-    /// -----------------------------------------------------------------------
-    /// Constructor
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
 
+    /// @notice Construct a new AaveV3ERC4626ReinvestUniFactory
+    /// @param lendingPool_ The Aave Pool contract
+    /// @param rewardsController_ The Aave RewardsController contract
+    /// @param manager_ The manager for setting swap routes
     constructor(
         IPool lendingPool_,
         IRewardsController rewardsController_,
@@ -70,18 +85,20 @@ contract AaveV3ERC4626ReinvestUniFactory {
         manager = manager_;
     }
 
-    /// -----------------------------------------------------------------------
-    /// External functions
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      EXTERNAL FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
 
-    function createERC4626(ERC20 asset)
+    /// @notice Create a new AaveV3ERC4626ReinvestUni vault
+    /// @param asset_ The base asset used by the vault
+    function createERC4626(ERC20 asset_)
         external
         virtual
         returns (AaveV3ERC4626ReinvestUni vault)
     {
         require(msg.sender == manager, "onlyOwner");
         IPool.ReserveData memory reserveData = lendingPool.getReserveData(
-            address(asset)
+            address(asset_)
         );
         address aTokenAddress = reserveData.aTokenAddress;
         if (aTokenAddress == address(0)) {
@@ -89,24 +106,25 @@ contract AaveV3ERC4626ReinvestUniFactory {
         }
 
         vault = new AaveV3ERC4626ReinvestUni(
-            asset,
+            asset_,
             ERC20(aTokenAddress),
             lendingPool,
             rewardsController,
             address(this)
         );
 
-        vaults[address(asset)] = vault;
+        vaults[address(asset_)] = vault;
 
         /// @dev TODO: Seed initial deposit, requires approve to factory
         // init(vault, initAmount);
 
-        emit CreateERC4626Reinvest(asset, vault);
+        emit CreateERC4626Reinvest(asset_, vault);
     }
 
     /// @notice Get all rewards from AAVE market
     /// @dev Call before setting routes
     /// @dev Requires manual management of Routes
+    /// @param vault_ The vault to set rewards for
     function setRewards(AaveV3ERC4626ReinvestUni vault_)
         external
         returns (address[] memory rewards)
@@ -119,20 +137,27 @@ contract AaveV3ERC4626ReinvestUniFactory {
 
     /// @notice Set swap routes for selling rewards
     /// @dev Centralizes setRoutes on all createERC4626 deployments
+    /// @param vault_ The vault to set routes for
+    /// @param rewardToken_ The reward token to set route for
+    /// @param poolFee1_ The fee for the first pool
+    /// @param tokenMid_ The token to swap to before the second pool
+    /// @param poolFee2_ The fee for the second pool
     function setRoutes(
         AaveV3ERC4626ReinvestUni vault_,
-        address rewardToken,
+        address rewardToken_,
         uint24 poolFee1_,
         address tokenMid_,
         uint24 poolFee2_
     ) external {
         require(msg.sender == manager, "onlyOwner");
-        vault_.setRoutes(rewardToken, poolFee1_, tokenMid_, poolFee2_);
+        vault_.setRoutes(rewardToken_, poolFee1_, tokenMid_, poolFee2_);
 
         emit RoutesSetERC4626Reinvest(vault_);
     }
 
     /// @notice Harvest rewards from specified vault
+    /// @param vault_ The vault to harvest from
+    /// @param minAmountOuts_ The minimum amount of underlying asset to receive for each reward token we harvest from
     function harvestFrom(AaveV3ERC4626ReinvestUni vault_, uint256[] calldata minAmountOuts_) external {
         vault_.harvest(minAmountOuts_);
         emit HarvestERC4626Reinvest(vault_);

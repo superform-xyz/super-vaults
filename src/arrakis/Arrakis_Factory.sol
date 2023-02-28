@@ -13,9 +13,9 @@ interface IStakePool {
 /// @author diszsid.eth
 /// @notice Factory for creating ArrakisERC4626 contracts
 contract ArrakisFactory {
-    /// -----------------------------------------------------------------------
-    /// Errors
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      ERRORS
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Thrown when trying to deploy an Arrakis vault using an asset with an invalid Arrakis pool
     error ArrakisFactory__UniPoolInvalid();
@@ -26,9 +26,9 @@ contract ArrakisFactory {
    /// @notice Thrown when trying to deploy an Arrakis factory using an invalid arrakis router
     error ArrakisFactory__routerInvalid();
 
-    /// -----------------------------------------------------------------------
-    /// Events
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      EVENTS
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Emitted when a new ERC4626 vault has been created
     /// @param gUniPool The base pool used to create the vaults
@@ -36,45 +36,47 @@ contract ArrakisFactory {
     /// @param vaultB The vault that was created with token1 as asset
     event ArrakisVaultsCreated(address indexed gUniPool, ArrakisNonNativeVault vaultA, ArrakisNonNativeVault vaultB);
 
-    /// -----------------------------------------------------------------------
-    /// Immutable params
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      IMMUTABLES & VARIABLES
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice The Arrakis Router contract
     IArrakisRouter public immutable arrakisRouter;
 
-    /// -----------------------------------------------------------------------
-    /// Constructor
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
 
+    /// @notice Construct a new ArrakisFactory contract
+    /// @param arrakisRouter_ The Arrakis Router contract
     constructor(
-        address _arrakisRouter
+        address arrakisRouter_
     ) {
-        if(address(_arrakisRouter) == address(0))
+        if(address(arrakisRouter_) == address(0))
             revert ArrakisFactory__routerInvalid();
-        arrakisRouter = IArrakisRouter(_arrakisRouter);
+        arrakisRouter = IArrakisRouter(arrakisRouter_);
     }
 
-    /// -----------------------------------------------------------------------
-    /// External functions
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      EXTERNAL FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
 
     function createArrakisVaults(
-        address _gUniPool,
-        string memory _name,
-        string memory _symbol,
-        address _gauge,
-        uint160 _slippage
+        address gUniPool_,
+        string memory name_,
+        string memory symbol_,
+        address gauge_,
+        uint160 slippage_
     ) external returns(ArrakisNonNativeVault vaultA, ArrakisNonNativeVault vaultB) {
-        IGUniPool pool = IGUniPool(_gUniPool);
+        IGUniPool pool = IGUniPool(gUniPool_);
         ERC20 token0 = pool.token0();
         ERC20 token1 = pool.token1();
         if(address(token0) == address(0) || address(token1) == address(0) || address(token0) == address(token1) )
             revert ArrakisFactory__UniPoolInvalid();
-        if(address(_gauge) == address(0) || IStakePool(_gauge).staking_token() != address(_gUniPool))
+        if(address(gauge_) == address(0) || IStakePool(gauge_).staking_token() != address(gUniPool_))
             revert ArrakisFactory__GaugeInvalid();
-        vaultA = new ArrakisNonNativeVault{salt: bytes32(0)}(_gUniPool, _name, _symbol, true, address(arrakisRouter), _gauge, _slippage);
-        vaultB = new ArrakisNonNativeVault{salt: bytes32(0)}(_gUniPool, _name, _symbol, false, address(arrakisRouter), _gauge, _slippage);
-        emit ArrakisVaultsCreated(_gUniPool, vaultA, vaultB);
+        vaultA = new ArrakisNonNativeVault{salt: bytes32(0)}(gUniPool_, name_, symbol_, true, address(arrakisRouter), gauge_, slippage_);
+        vaultB = new ArrakisNonNativeVault{salt: bytes32(0)}(gUniPool_, name_, symbol_, false, address(arrakisRouter), gauge_, slippage_);
+        emit ArrakisVaultsCreated(gUniPool_, vaultA, vaultB);
     }
 }

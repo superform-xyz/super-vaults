@@ -55,7 +55,7 @@ contract AaveV3ERC4626ReinvestIncentiveTest is Test {
         manager = msg.sender;
 
         vm.selectFork(avaxFork);
-
+        vm.rollFork(26800000);
         rewards = IRewardsController(vm.envAddress("AAVEV3_AVAX_REWARDS"));
         lendingPool = IPool(vm.envAddress("AAVEV3_AVAX_LENDINGPOOL"));
 
@@ -87,7 +87,7 @@ contract AaveV3ERC4626ReinvestIncentiveTest is Test {
         /// @dev If we need strict ERC4626 interface
         vault_ = factory.createERC4626(_asset);
 
-        /// @dev If we need to use the AaveV2ERC4626Reinvest interface with harvest
+        /// @dev If we need to use the AaveV3ERC4626ReinvestIncentive interface with harvest
         vaultERC4626_ = AaveV3ERC4626ReinvestIncentive(address(vault_));
 
         asset = vault_.asset();

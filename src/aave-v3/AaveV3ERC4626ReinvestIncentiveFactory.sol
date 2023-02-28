@@ -12,13 +12,24 @@ import {Bytes32AddressLib} from "solmate/utils/Bytes32AddressLib.sol";
 /// @title AaveV3ERC4626Factory forked from @author zefram.eth
 /// @notice Factory for creating AaveV3ERC4626 contracts
 contract AaveV3ERC4626ReinvestIncentiveFactory {
+    /*//////////////////////////////////////////////////////////////
+                        LIBRARIES USAGE
+    //////////////////////////////////////////////////////////////*/
     using Bytes32AddressLib for bytes32;
+
+    /*//////////////////////////////////////////////////////////////
+                        VARIABLES
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Manager for setting swap routes for harvest() per each vault
     address public manager;
 
     /// @notice Mapping of vaults by asset
     mapping(address => AaveV3ERC4626ReinvestIncentive) public vaults;
+
+    /*//////////////////////////////////////////////////////////////
+                      EVENTS
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Emitted when a new ERC4626 vault has been created
     /// @param asset The base asset used by the vault
@@ -43,16 +54,20 @@ contract AaveV3ERC4626ReinvestIncentiveFactory {
     /// @notice Emitted when reinvestRewardBps has been updated for a given aToken vault
     event UpdateReinvestRewardBps(AaveV3ERC4626ReinvestIncentive vault, uint256 reinvestRewardBps);
 
-    /// -----------------------------------------------------------------------
-    /// Errors
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      ERRORS
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Thrown when trying to deploy an AaveV3ERC4626 vault using an asset without an aToken
     error AaveV3ERC4626Factory__ATokenNonexistent();
+    /// @notice Thrown when trying to call a permissioned function with an invalid access
+    error INVALID_ACCESS();
+    /// @notice Thrown when reinvest reward bps is too high
+    error REINVEST_BPS_TOO_HIGH();
 
-    /// -----------------------------------------------------------------------
-    /// Immutable params
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      IMMUATABLES
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice The Aave Pool contract
     IPool public immutable lendingPool;
@@ -60,10 +75,14 @@ contract AaveV3ERC4626ReinvestIncentiveFactory {
     /// @notice The Aave RewardsController contract
     IRewardsController public immutable rewardsController;
 
-    /// -----------------------------------------------------------------------
-    /// Constructor
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
 
+    /// @notice Construct a new AaveV3ERC4626Factory
+    /// @param lendingPool_ The Aave Pool contract
+    /// @param rewardsController_ The Aave RewardsController contract
+    /// @param manager_ The manager for setting swap routes
     constructor(
         IPool lendingPool_,
         IRewardsController rewardsController_,
@@ -76,18 +95,20 @@ contract AaveV3ERC4626ReinvestIncentiveFactory {
         manager = manager_;
     }
 
-    /// -----------------------------------------------------------------------
-    /// External functions
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      EXTERNAL FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
 
-    function createERC4626(ERC20 asset)
+    /// @notice Create a new AaveV3ERC4626 vault
+    /// @param asset_ The base asset used by the vault
+    function createERC4626(ERC20 asset_)
         external
         virtual
         returns (AaveV3ERC4626ReinvestIncentive vault)
     {
-        require(msg.sender == manager, "onlyOwner");
+        if (msg.sender != manager) revert INVALID_ACCESS();
         IPool.ReserveData memory reserveData = lendingPool.getReserveData(
-            address(asset)
+            address(asset_)
         );
         address aTokenAddress = reserveData.aTokenAddress;
         if (aTokenAddress == address(0)) {
@@ -95,29 +116,30 @@ contract AaveV3ERC4626ReinvestIncentiveFactory {
         }
 
         vault = new AaveV3ERC4626ReinvestIncentive(
-            asset,
+            asset_,
             ERC20(aTokenAddress),
             lendingPool,
             rewardsController,
             address(this)
         );
 
-        vaults[address(asset)] = vault;
+        vaults[address(asset_)] = vault;
 
         /// @dev TODO: Seed initial deposit, requires approve to factory
         // init(vault, initAmount);
 
-        emit CreateERC4626Reinvest(asset, vault);
+        emit CreateERC4626Reinvest(asset_, vault);
     }
 
     /// @notice Get all rewards from AAVE market
     /// @dev Call before setting routes
     /// @dev Requires manual management of Routes
+    /// @param vault_ The vault to harvest rewards from
     function setRewards(AaveV3ERC4626ReinvestIncentive vault_)
         external
         returns (address[] memory rewards)
     {
-        require(msg.sender == manager, "onlyOwner");
+        if (msg.sender != manager) revert INVALID_ACCESS();
         rewards = vault_.setRewards();
 
         emit RewardsSetERC4626Reinvest(vault_);
@@ -125,31 +147,37 @@ contract AaveV3ERC4626ReinvestIncentiveFactory {
 
     /// @notice Set swap routes for selling rewards
     /// @dev Centralizes setRoutes on all createERC4626 deployments
+    /// @param vault_ The vault to set routes for
+    /// @param rewardToken_ The reward token address
+    /// @param token_ The token to swap to
+    /// @param pair1_ The first pair to swap for token_
+    /// @param pair2_ The second pair to swap from token_ to asset_
     function setRoutes(
         AaveV3ERC4626ReinvestIncentive vault_,
-        address rewardToken,
-        address token,
-        address pair1,
-        address pair2
+        address rewardToken_,
+        address token_,
+        address pair1_,
+        address pair2_
     ) external {
-        require(msg.sender == manager, "onlyOwner");
-        vault_.setRoutes(rewardToken, token, pair1, pair2);
+        if (msg.sender != manager) revert INVALID_ACCESS();
+        vault_.setRoutes(rewardToken_, token_, pair1_, pair2_);
 
         emit RoutesSetERC4626Reinvest(vault_);
     }
 
-    /**
-     * @notice Update reinvest min threshold
-     * @param newValue threshold
-     */
-    function updateReinvestRewardBps(AaveV3ERC4626ReinvestIncentive vault_, uint256 newValue) external {
-        require(msg.sender == manager, "onlyOwner");
-        require(newValue <= 150, "reward too high");
-        emit UpdateReinvestRewardBps(vault_, newValue);
-        vault_.updateReinvestRewardBps(newValue);
+    /// @notice Update minTokensToReinvest
+    /// @param vault_ The vault to update
+    /// @param newValue_ The new bps value to set
+    function updateReinvestRewardBps(AaveV3ERC4626ReinvestIncentive vault_, uint256 newValue_) external {
+        if (msg.sender != manager) revert INVALID_ACCESS();
+        if(newValue_ > 150) revert REINVEST_BPS_TOO_HIGH();
+        emit UpdateReinvestRewardBps(vault_, newValue_);
+        vault_.updateReinvestRewardBps(newValue_);
     }
 
     /// @notice Harvest rewards from specified vault
+    /// @param vault_ The vault to harvest rewards from
+    /// @param minAmountOut_ The minimum amount of asset to receive
     function harvestFrom(AaveV3ERC4626ReinvestIncentive vault_, uint256 minAmountOut_) external {
         vault_.harvest(minAmountOut_);
         emit HarvestERC4626Reinvest(vault_);

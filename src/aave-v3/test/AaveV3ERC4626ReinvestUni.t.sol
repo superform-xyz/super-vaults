@@ -50,7 +50,7 @@ contract AaveV3ERC4626ReinvestUniTest is Test {
         ftmFork = vm.createFork(FTM_RPC_URL);
         polyFork = vm.createFork(POLYGON_RPC_URL);
 
-        /// @dev WAVAX REWARDS on Avax
+        /// @dev OP REWARDS on Optimism
         optiFork = vm.createFork(OPTIMISM_RPC_URL);
 
         manager = msg.sender;
@@ -146,7 +146,7 @@ contract AaveV3ERC4626ReinvestUniTest is Test {
         vm.prank(alice);
         uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
 
-        // Expect exchange rate to be 1:1 on initial deposit.
+        /// @notice Expect exchange rate to be 1:1 on initial deposit.
         assertEq(aliceUnderlyingAmount, aliceShareAmount);
         assertEq(
             vault.previewWithdraw(aliceShareAmount),
@@ -188,7 +188,7 @@ contract AaveV3ERC4626ReinvestUniTest is Test {
 
         uint256 aliceUnderlyingAmount = vault.mint(aliceShareAmount, alice);
 
-        // Expect exchange rate to be 1:1 on initial mint.
+        /// @notice Expect exchange rate to be 1:1 on initial mint.
         assertEq(aliceShareAmount, aliceUnderlyingAmount);
         assertEq(
             vault.previewWithdraw(aliceShareAmount),

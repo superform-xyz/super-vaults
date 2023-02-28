@@ -12,39 +12,35 @@ import {DexSwap} from "./utils/swapUtils.sol";
 import {ISwapRouter} from '../aave-v2/utils/ISwapRouter.sol';
 
 
-/// @title AaveV3ERC4626Reinvest - extended implementation of yield-daddy @author zefram.eth
+/// @title AaveV3ERC4626Reinvest - extended implementation of yield-daddy @author dizsid.eth
 /// @dev Reinvests rewards accrued for higher APY
 /// @notice ERC4626 wrapper for Aave V3 with rewards reinvesting
 contract AaveV3ERC4626ReinvestUni is ERC4626 {
-    /// @notice Manager for setting swap routes for harvest()
-    address public manager;
 
-    /// @notice Check if rewards have been set before harvest() and setRoutes()
-    bool public rewardsSet;
-
-    /// -----------------------------------------------------------------------
-    /// Libraries usage
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      LIBRARIES USAGE
+    //////////////////////////////////////////////////////////////*/
 
     using SafeTransferLib for ERC20;
 
-    /// -----------------------------------------------------------------------
-    /// Events
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      EVENTS
+    //////////////////////////////////////////////////////////////*/
 
     event ClaimRewards(uint256 amount);
 
-    /// -----------------------------------------------------------------------
-    /// Errors
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      ERRORS
+    //////////////////////////////////////////////////////////////*/
 
-    error INVALID_FEE_ERROR();
-    error INVALID_ACCESS_ERROR();
-    error REWARDS_NOT_SET_ERROR();
+    error INVALID_FEE();
+    error INVALID_ACCESS();
+    error REWARDS_NOT_SET();
+    error ZERO_ASSETS();
 
-    /// -----------------------------------------------------------------------
-    /// Constants
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      CONSTANTS
+    //////////////////////////////////////////////////////////////*/
 
     uint256 internal constant DECIMALS_MASK =
         0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00FFFFFFFFFFFF;
@@ -60,9 +56,9 @@ contract AaveV3ERC4626ReinvestUni is ERC4626 {
     uint256 internal constant SUPPLY_CAP_START_BIT_POSITION = 116;
     uint256 internal constant RESERVE_DECIMALS_START_BIT_POSITION = 48;
 
-    /// -----------------------------------------------------------------------
-    /// Immutable params
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      IMMUATABLES & VARIABLES
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice The Aave aToken contract
     ERC20 public immutable aToken;
@@ -80,10 +76,23 @@ contract AaveV3ERC4626ReinvestUni is ERC4626 {
     mapping(address => bytes) public swapInfoMap;
 
     ISwapRouter public immutable swapRouter = ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
-    /// -----------------------------------------------------------------------
-    /// Constructor
-    /// -----------------------------------------------------------------------
+    
+    /// @notice Manager for setting swap routes for harvest()
+    address public manager;
 
+    /// @notice Check if rewards have been set before harvest() and setRoutes()
+    bool public rewardsSet;
+
+    /*//////////////////////////////////////////////////////////////
+                      CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Construct a new AaveV3ERC4626ReinvestUni contract
+    /// @param asset_ The underlying asset
+    /// @param aToken_ The Aave aToken contract
+    /// @param lendingPool_ The Aave Pool contract
+    /// @param rewardsController_ The Aave RewardsController contract
+    /// @param manager_ The manager for setting swap routes for harvest()
     constructor(
         ERC20 asset_,
         ERC20 aToken_,
@@ -102,15 +111,15 @@ contract AaveV3ERC4626ReinvestUni is ERC4626 {
         rewardsSet = false;
     }
 
-    /// -----------------------------------------------------------------------
-    /// Aave liquidity mining
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      AAVE LIQUIDITY MINING
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Get all rewards from AAVE market
     /// @dev Call before setting routes
     /// @dev Requires manual management of Routes
     function setRewards() external returns (address[] memory tokens) {
-        require(msg.sender == manager, "onlyOwner");
+        if (msg.sender != manager) revert INVALID_ACCESS();
         tokens = rewardsController.getRewardsByAsset(address(aToken));
 
         for (uint256 i = 0; i < tokens.length; i++) {
@@ -123,32 +132,36 @@ contract AaveV3ERC4626ReinvestUni is ERC4626 {
     /// @notice Set swap routes for selling rewards
     /// @dev Set route for each rewardToken separately
     /// @dev Setting wrong addresses here will revert harvest() calls
+    /// @param rewardToken_ The reward token to set route for
+    /// @param poolFee1_ The fee for the first pool
+    /// @param tokenMid_ The token to swap to before the second pool
+    /// @param poolFee2_ The fee for the second pool
     function setRoutes(
-        address rewardToken,
+        address rewardToken_,
         uint24 poolFee1_,
         address tokenMid_,
         uint24 poolFee2_
     ) external {
         if(msg.sender != manager)
-            revert INVALID_ACCESS_ERROR();
+            revert INVALID_ACCESS();
         if(!rewardsSet)
-            revert REWARDS_NOT_SET_ERROR();
-        require(rewardsSet, "rewards not set"); /// @dev Soft-check
+            revert REWARDS_NOT_SET();  /// @dev Soft-check
         if(poolFee1_ == 0)
-            revert INVALID_FEE_ERROR();
+            revert INVALID_FEE();
         for (uint256 i = 0; i < rewardTokens.length; i++) {
             /// @dev if rewardToken given as arg matches any rewardToken found by setRewards()
             ///      set route for that token
-            if (rewardTokens[i] == rewardToken) {
+            if (rewardTokens[i] == rewardToken_) {
                 if(poolFee2_ == 0 || tokenMid_ == address(0))
-                    swapInfoMap[rewardToken]  = abi.encodePacked(rewardToken, poolFee1_, address(asset));
+                    swapInfoMap[rewardToken_]  = abi.encodePacked(rewardToken_, poolFee1_, address(asset));
                 else 
-                    swapInfoMap[rewardToken]  = abi.encodePacked(rewardToken, poolFee1_, tokenMid_, poolFee2_, address(asset));
+                    swapInfoMap[rewardToken_]  = abi.encodePacked(rewardToken_, poolFee1_, tokenMid_, poolFee2_, address(asset));
             }
         }
     }
 
     /// @notice Claims liquidity mining rewards from Aave and sends it to this Vault
+    /// @param minAmountOuts_ The minimum amount of underlying asset to receive for each reward token
     function harvest(uint256[] calldata minAmountOuts_) external {
         /// @dev Wrapper exists only for single aToken
         address[] memory assets = new address[](1);
@@ -168,20 +181,20 @@ contract AaveV3ERC4626ReinvestUni is ERC4626 {
     }
 
     /// @notice Swap reward token for underlying asset
-    function swapRewards(address rewardToken, uint256 earned, uint256 minAmountOut_) internal {
+    function swapRewards(address rewardToken_, uint256 earned_, uint256 minAmountOut_) internal {
         /// @dev Used just for approve
-        ERC20 rewardToken_ = ERC20(rewardToken);
+        ERC20 rewardToken = ERC20(rewardToken_);
 
-        bytes memory swapMap = swapInfoMap[rewardToken];
+        bytes memory swapMap = swapInfoMap[rewardToken_];
 
-        rewardToken_.approve(address(swapRouter), earned);
+        rewardToken.approve(address(swapRouter), earned_);
         /// @dev Swap rewards to asset
         ISwapRouter.ExactInputParams memory params =
             ISwapRouter.ExactInputParams({
                 path: swapMap,
                 recipient: address(this),
                 deadline: block.timestamp,
-                amountIn: earned,
+                amountIn: earned_,
                 amountOutMinimum: minAmountOut_
             });
 
@@ -206,59 +219,61 @@ contract AaveV3ERC4626ReinvestUni is ERC4626 {
         );
     }
 
-    /// -----------------------------------------------------------------------
-    /// ERC4626 overrides
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      ERC4626 OVERRIDES
+    //////////////////////////////////////////////////////////////*/
 
     function withdraw(
-        uint256 assets,
-        address receiver,
-        address owner
+        uint256 assets_,
+        address receiver_,
+        address owner_
     ) public virtual override returns (uint256 shares) {
-        shares = previewWithdraw(assets); // No need to check for rounding error, previewWithdraw rounds up.
+        shares = previewWithdraw(assets_); // No need to check for rounding error, previewWithdraw rounds up.
 
-        if (msg.sender != owner) {
-            uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
+        if (msg.sender != owner_) {
+            uint256 allowed = allowance[owner_][msg.sender]; // Saves gas for limited approvals.
 
             if (allowed != type(uint256).max) {
-                allowance[owner][msg.sender] = allowed - shares;
+                allowance[owner_][msg.sender] = allowed - shares;
             }
         }
 
-        beforeWithdraw(assets, shares);
+        beforeWithdraw(assets_, shares);
 
-        _burn(owner, shares);
+        _burn(owner_, shares);
 
-        emit Withdraw(msg.sender, receiver, owner, assets, shares);
+        emit Withdraw(msg.sender, receiver_, owner_, assets_, shares);
 
         // withdraw assets directly from Aave
-        lendingPool.withdraw(address(asset), assets, receiver);
+        lendingPool.withdraw(address(asset), assets_, receiver_);
     }
 
     function redeem(
-        uint256 shares,
-        address receiver,
-        address owner
+        uint256 shares_,
+        address receiver_,
+        address owner_
     ) public virtual override returns (uint256 assets) {
-        if (msg.sender != owner) {
-            uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
+        if (msg.sender != owner_) {
+            uint256 allowed = allowance[owner_][msg.sender]; // Saves gas for limited approvals.
 
             if (allowed != type(uint256).max) {
-                allowance[owner][msg.sender] = allowed - shares;
+                allowance[owner_][msg.sender] = allowed - shares_;
             }
         }
 
         // Check for rounding error since we round down in previewRedeem.
-        require((assets = previewRedeem(shares)) != 0, "ZERO_ASSETS");
+        if ((assets = previewRedeem(shares_)) == 0) {
+            revert ZERO_ASSETS();
+        }
 
-        beforeWithdraw(assets, shares);
+        beforeWithdraw(assets, shares_);
 
-        _burn(owner, shares);
+        _burn(owner_, shares_);
 
-        emit Withdraw(msg.sender, receiver, owner, assets, shares);
+        emit Withdraw(msg.sender, receiver_, owner_, assets, shares_);
 
         // withdraw assets directly from Aave
-        lendingPool.withdraw(address(asset), assets, receiver);
+        lendingPool.withdraw(address(asset), assets, receiver_);
     }
 
     function totalAssets() public view virtual override returns (uint256) {
@@ -267,19 +282,16 @@ contract AaveV3ERC4626ReinvestUni is ERC4626 {
     }
 
     function afterDeposit(
-        uint256 assets,
+        uint256 assets_,
         uint256 /*shares*/
     ) internal virtual override {
-        /// -----------------------------------------------------------------------
-        /// Deposit assets into Aave
-        /// -----------------------------------------------------------------------
 
         // approve to lendingPool
         // TODO: Approve management arc. Save gas for callers
-        asset.safeApprove(address(lendingPool), assets);
+        asset.safeApprove(address(lendingPool), assets_);
 
         // deposit into lendingPool
-        lendingPool.supply(address(asset), assets, address(this), 0);
+        lendingPool.supply(address(asset), assets_, address(this), 0);
     }
 
     function maxDeposit(address)
@@ -338,7 +350,7 @@ contract AaveV3ERC4626ReinvestUni is ERC4626 {
         return convertToShares(supplyCap - aToken.totalSupply());
     }
 
-    function maxWithdraw(address owner)
+    function maxWithdraw(address owner_)
         public
         view
         virtual
@@ -355,11 +367,11 @@ contract AaveV3ERC4626ReinvestUni is ERC4626 {
         }
 
         uint256 cash = asset.balanceOf(address(aToken));
-        uint256 assetsBalance = convertToAssets(balanceOf[owner]);
+        uint256 assetsBalance = convertToAssets(balanceOf[owner_]);
         return cash < assetsBalance ? cash : assetsBalance;
     }
 
-    function maxRedeem(address owner)
+    function maxRedeem(address owner_)
         public
         view
         virtual
@@ -377,13 +389,13 @@ contract AaveV3ERC4626ReinvestUni is ERC4626 {
 
         uint256 cash = asset.balanceOf(address(aToken));
         uint256 cashInShares = convertToShares(cash);
-        uint256 shareBalance = balanceOf[owner];
+        uint256 shareBalance = balanceOf[owner_];
         return cashInShares < shareBalance ? cashInShares : shareBalance;
     }
 
-    /// -----------------------------------------------------------------------
-    /// ERC20 metadata generation
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      METADATA
+    //////////////////////////////////////////////////////////////*/
 
     function _vaultName(ERC20 asset_)
         internal
@@ -403,31 +415,31 @@ contract AaveV3ERC4626ReinvestUni is ERC4626 {
         vaultSymbol = string.concat("wa", asset_.symbol());
     }
 
-    /// -----------------------------------------------------------------------
-    /// Internal functions
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      INTERNAL HELPERS
+    //////////////////////////////////////////////////////////////*/
 
-    function _getDecimals(uint256 configData) internal pure returns (uint8) {
+    function _getDecimals(uint256 configData_) internal pure returns (uint8) {
         return
             uint8(
-                (configData & ~DECIMALS_MASK) >>
+                (configData_ & ~DECIMALS_MASK) >>
                     RESERVE_DECIMALS_START_BIT_POSITION
             );
     }
 
-    function _getActive(uint256 configData) internal pure returns (bool) {
-        return configData & ~ACTIVE_MASK != 0;
+    function _getActive(uint256 configData_) internal pure returns (bool) {
+        return configData_ & ~ACTIVE_MASK != 0;
     }
 
-    function _getFrozen(uint256 configData) internal pure returns (bool) {
-        return configData & ~FROZEN_MASK != 0;
+    function _getFrozen(uint256 configData_) internal pure returns (bool) {
+        return configData_ & ~FROZEN_MASK != 0;
     }
 
-    function _getPaused(uint256 configData) internal pure returns (bool) {
-        return configData & ~PAUSED_MASK != 0;
+    function _getPaused(uint256 configData_) internal pure returns (bool) {
+        return configData_ & ~PAUSED_MASK != 0;
     }
 
-    function _getSupplyCap(uint256 configData) internal pure returns (uint256) {
-        return (configData & ~SUPPLY_CAP_MASK) >> SUPPLY_CAP_START_BIT_POSITION;
+    function _getSupplyCap(uint256 configData_) internal pure returns (uint256) {
+        return (configData_ & ~SUPPLY_CAP_MASK) >> SUPPLY_CAP_START_BIT_POSITION;
     }
 }
