@@ -15,17 +15,17 @@ import {DexSwap} from "./utils/swapUtils.sol";
 /// @title VenusERC4626Reinvest - extended implementation of yield-daddy CompoundV2 wrapper
 /// @dev Reinvests rewards accrued for higher APY
 contract VenusERC4626Reinvest is ERC4626 {
-    /// -----------------------------------------------------------------------
-    /// Libraries usage
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+     Libraries usage
+    //////////////////////////////////////////////////////////////*/
 
     using LibCompound for ICERC20;
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
-    /// -----------------------------------------------------------------------
-    /// Errors
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+     Errors
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Thrown when a call to Compound returned an error.
     /// @param errorCode The error code returned by Compound
@@ -34,15 +34,15 @@ contract VenusERC4626Reinvest is ERC4626 {
     /// @notice Thrown when reinvest amount is not enough.
     error MIN_AMOUNT_ERROR();
 
-    /// -----------------------------------------------------------------------
-    /// Constants
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+     Constants
+    //////////////////////////////////////////////////////////////*/
 
     uint256 internal constant NO_ERROR = 0;
 
-    /// -----------------------------------------------------------------------
-    /// Immutable params
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+     Immutable params
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Access Control for harvest() route
     address public immutable manager;
@@ -67,9 +67,9 @@ contract VenusERC4626Reinvest is ERC4626 {
         address pair2;
     }
 
-    /// -----------------------------------------------------------------------
-    /// Constructor
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+     Constructor
+    //////////////////////////////////////////////////////////////*/
 
     constructor(
         ERC20 asset_,
@@ -84,9 +84,9 @@ contract VenusERC4626Reinvest is ERC4626 {
         manager = manager_;
     }
 
-    /// -----------------------------------------------------------------------
-    /// Compound liquidity mining
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+     Compound liquidity mining
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Set swap route for XVS rewards
     function setRoute(
@@ -151,9 +151,9 @@ contract VenusERC4626Reinvest is ERC4626 {
         amount = comptroller.venusAccrued(address(this));
     }
 
-    /// -----------------------------------------------------------------------
-    /// ERC4626 overrides
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+     ERC4626 overrides
+    //////////////////////////////////////////////////////////////*/
 
     function totalAssets() public view virtual override returns (uint256) {
         return cToken.viewUnderlyingBalanceOf(address(this));
@@ -163,9 +163,9 @@ contract VenusERC4626Reinvest is ERC4626 {
         uint256 assets,
         uint256 /*shares*/
     ) internal virtual override {
-        /// -----------------------------------------------------------------------
-        /// Withdraw assets from Compound
-        /// -----------------------------------------------------------------------
+        /*//////////////////////////////////////////////////////////////
+         Withdraw assets from Compound
+        //////////////////////////////////////////////////////////////*/
 
         uint256 errorCode = cToken.redeemUnderlying(assets);
         if (errorCode != NO_ERROR) {
@@ -177,9 +177,9 @@ contract VenusERC4626Reinvest is ERC4626 {
         uint256 assets,
         uint256 /*shares*/
     ) internal virtual override {
-        /// -----------------------------------------------------------------------
-        /// Deposit assets into Compound
-        /// -----------------------------------------------------------------------
+        /*//////////////////////////////////////////////////////////////
+         Deposit assets into Compound
+        //////////////////////////////////////////////////////////////*/
 
         // approve to cToken
         asset.safeApprove(address(cToken), assets);
@@ -214,9 +214,9 @@ contract VenusERC4626Reinvest is ERC4626 {
         return cashInShares < shareBalance ? cashInShares : shareBalance;
     }
 
-    /// -----------------------------------------------------------------------
-    /// ERC20 metadata generation
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+     ERC20 metadata generation
+    //////////////////////////////////////////////////////////////*/
 
     function _vaultName(ERC20 asset_)
         internal

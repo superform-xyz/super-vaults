@@ -18,16 +18,16 @@ contract StMATIC4626 is ERC4626 {
     IStMATIC public stMatic;
     ERC20 public stMaticAsset;
 
-    /// -----------------------------------------------------------------------
-    /// Libraries usage
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+     Libraries usage
+    //////////////////////////////////////////////////////////////*/
 
     using FixedPointMathLib for uint256;
     using SafeTransferLib for ERC20;
 
-    /// -----------------------------------------------------------------------
-    /// Constructor
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+     Constructor
+    //////////////////////////////////////////////////////////////*/
 
     /// @param matic_ matic address (Vault's underlying / deposit token)
     /// @param stMatic_ stMatic (Lido contract) address
@@ -54,9 +54,9 @@ contract StMATIC4626 is ERC4626 {
         stMaticAmount = stMatic.submit(assets, address(0));
     }
 
-    /// -----------------------------------------------------------------------
-    /// ERC4626 overrides
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+     ERC4626 overrides
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Deposit MATIC, receive ERC4626-stMatic shares for 1:1 stMatic
     function deposit(uint256 assets, address receiver)

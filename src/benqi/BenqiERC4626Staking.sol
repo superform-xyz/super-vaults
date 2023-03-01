@@ -19,33 +19,30 @@ import "forge-std/console.sol";
 /// In contrast to Lido's stETH, sAVAX can be Unstaked with 15d cooldown period. TODO: Extend with Timelock
 /// @author ZeroPoint Labs
 contract BenqiERC4626Staking is ERC4626 {
-    
     IStakedAvax public sAVAX;
     IWETH public wavax;
     ERC20 public sAvaxAsset;
 
-    /// -----------------------------------------------------------------------
-    /// Libraries usage
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+     Libraries usage
+    //////////////////////////////////////////////////////////////*/
 
     using FixedPointMathLib for uint256;
     using SafeTransferLib for ERC20;
 
-    /// -----------------------------------------------------------------------
-    /// Constructor
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+     Constructor
+    //////////////////////////////////////////////////////////////*/
 
     /// @param wavax_ wavax address (Vault's underlying / deposit token)
     /// @param sAvax_ sAVAX (Benqi staking contract) address
-    constructor(
-        address wavax_,
-        address sAvax_
+    constructor(address wavax_, address sAvax_)
         // address tradeJoePool_
-    ) ERC4626(ERC20(wavax_), "ERC4626-Wrapped sAVAX", "wLsAVAX") {
+        ERC4626(ERC20(wavax_), "ERC4626-Wrapped sAVAX", "wLsAVAX")
+    {
         sAVAX = IStakedAvax(sAvax_);
         sAvaxAsset = ERC20(sAvax_);
         wavax = IWETH(wavax_);
-        
     }
 
     receive() external payable {}
@@ -54,16 +51,18 @@ contract BenqiERC4626Staking is ERC4626 {
                           INTERNAL HOOKS LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function addLiquidity(uint256 wAvaxAmt, uint256) internal returns (uint256 sAvaxAmt) {
+    function addLiquidity(uint256 wAvaxAmt, uint256)
+        internal
+        returns (uint256 sAvaxAmt)
+    {
         console.log("ethAmount aD", wAvaxAmt);
         sAvaxAmt = sAVAX.submit{value: wAvaxAmt}();
         console.log("stEthAmount aD", sAvaxAmt);
     }
 
-
-    /// -----------------------------------------------------------------------
-    /// ERC4626 overrides
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+     ERC4626 overrides
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Deposit AVAX. Standard ERC4626 deposit can only accept ERC20.
     /// Vault's underlying is WAVAX (ERC20), Benqi expects AVAX (Native), we use WAVAX wraper
@@ -73,11 +72,11 @@ contract BenqiERC4626Staking is ERC4626 {
         returns (uint256 shares)
     {
         require((shares = previewDeposit(assets)) != 0, "ZERO_SHARES");
-        
+
         asset.safeTransferFrom(msg.sender, address(this), assets);
 
         wavax.withdraw(assets);
-        
+
         /// @dev Difference from Lido fork is useful return amount here
         shares = addLiquidity(assets, shares);
 
@@ -122,7 +121,6 @@ contract BenqiERC4626Staking is ERC4626 {
         address receiver,
         address owner
     ) public override returns (uint256 shares) {
-
         /// @dev In base implementation, previeWithdraw allows to get sAvax amount to withdraw for virtual amount from convertToAssets
         shares = previewWithdraw(assets);
 
@@ -241,5 +239,4 @@ contract BenqiERC4626Staking is ERC4626 {
     function maxRedeem(address owner) public view override returns (uint256) {
         return balanceOf[owner];
     }
-
 }

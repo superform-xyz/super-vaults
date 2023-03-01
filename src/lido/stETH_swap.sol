@@ -32,16 +32,16 @@ contract StETHERC4626Swap is ERC4626 {
     int128 public immutable index_eth = 0; /// ETH
     int128 public immutable index_stEth = 1; /// stETH
 
-    /// -----------------------------------------------------------------------
-    /// Libraries usage
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+     Libraries usage
+    //////////////////////////////////////////////////////////////*/
 
     using FixedPointMathLib for uint256;
     using SafeTransferLib for ERC20;
 
-    /// -----------------------------------------------------------------------
-    /// Constructor
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+     Constructor
+    //////////////////////////////////////////////////////////////*/
 
     /// @param weth_ weth address (Vault's underlying / deposit token)
     /// @param stEth_ stETH (Lido contract) address
@@ -78,9 +78,9 @@ contract StETHERC4626Swap is ERC4626 {
         console.log("stEthAmount aD", stEthAmount);
     }
 
-    /// -----------------------------------------------------------------------
-    /// ERC4626 overrides
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+     ERC4626 overrides
+    //////////////////////////////////////////////////////////////*/
 
     /// Standard ERC4626 deposit can only accept ERC20
     /// Vault's underlying is WETH (ERC20), Lido expects ETH (Native), we make wraperooo magic

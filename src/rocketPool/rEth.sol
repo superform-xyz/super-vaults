@@ -32,16 +32,16 @@ contract rEthERC4626 is ERC4626 {
     IRETHTOKEN public rEthToken;
     ERC20 public rEthAsset;
 
-    /// -----------------------------------------------------------------------
-    /// Libraries usage
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+     Libraries usage
+    //////////////////////////////////////////////////////////////*/
 
     using FixedPointMathLib for uint256;
     using SafeTransferLib for ERC20;
 
-    /// -----------------------------------------------------------------------
-    /// Constructor
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+     Constructor
+    //////////////////////////////////////////////////////////////*/
 
     /// @param weth_ weth address (Vault's underlying / deposit token)
     /// @param rStorage_ rocketPool Storage contract address to read current implementation details
@@ -73,9 +73,9 @@ contract rEthERC4626 is ERC4626 {
 
     receive() external payable {}
 
-    /// -----------------------------------------------------------------------
-    /// ERC4626 overrides
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+     ERC4626 overrides
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Deposit into active RocketDepositPool. Standard ERC4626 deposit can only accept ERC20
     /// @return shares - rEth as both Vault's shares (wrEth) and underlying virtually backed by ETH

@@ -68,8 +68,6 @@ contract UniswapV2ERC4626PoolFactory {
         );
     }
 
-    /// cast call 0x1F98431c8aD98523631AE4a59f267346ea31F984 "getPool(address,address,uint24)(address)" / 
-    /// 0x6B175474E89094C44Da98b954EedeAC495271d0F 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 3000 --rpc-url $ETHEREUM_RPC_URL
     function twap(address token0, address token1, uint24 fee) public view returns (address) {
         return oracleFactory.getPool(token0, token1, fee);
     }

@@ -16,23 +16,23 @@ import {WrappedNative} from "./utils/wrappedNative.sol";
 /// @title BenqiERC4626Reinvest - Custom implementation of yield-daddy wrappers with flexible reinvesting logic
 /// @notice Extended with payable function to accept native token transfer
 contract BenqiNativeERC4626Reinvest is ERC4626 {
-    /// -----------------------------------------------------------------------
-    /// Libraries usage
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+     Libraries usage
+    //////////////////////////////////////////////////////////////*/
 
     using LibCompound for ICEther;
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
-    /// -----------------------------------------------------------------------
-    /// Constants
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+     Constants
+    //////////////////////////////////////////////////////////////*/
 
     uint256 internal constant NO_ERROR = 0;
 
-    /// -----------------------------------------------------------------------
-    /// Immutable params
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+     Immutable params
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice cEther token reference
     ICEther public immutable cEther;
@@ -68,9 +68,9 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
 
     WrappedNative public wavax;
 
-    /// -----------------------------------------------------------------------
-    /// Errors
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+     Errors
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Thrown when a call to Compound returned an error.
     /// @param errorCode The error code returned by Compound
@@ -84,9 +84,10 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
 
     // @notice Thrown when reinvested amounts are not enough.
     error MIN_AMOUNT_ERROR();
-    /// -----------------------------------------------------------------------
-    /// Constructor
-    /// -----------------------------------------------------------------------
+
+    /*//////////////////////////////////////////////////////////////
+     Constructor
+    //////////////////////////////////////////////////////////////*/
     constructor(
         ERC20 asset_, // underlying
         ERC20 reward_, // comp token or other
@@ -100,9 +101,9 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
         manager = manager_;
     }
 
-    /// -----------------------------------------------------------------------
-    /// Compound liquidity mining
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+     Compound liquidity mining
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Set swap routes for selling rewards
     /// @notice Set type of reward we are harvesting and selling
@@ -122,7 +123,6 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
 
     /// @notice Claims liquidity mining rewards from Benqi and sends it to this Vault
     function harvest(uint8 rewardType_, uint256 minAmountOut_) external {
-        
         swapInfo memory swapMap = swapInfoMap[rewardType_];
         address rewardToken = rewardTokenMap[rewardType_];
         ERC20 rewardToken_ = ERC20(rewardToken);
@@ -132,8 +132,7 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
         uint256 reinvestAmount;
         /// If only one swap needed (high liquidity pair) - set swapInfo.token0/token/pair2 to 0x
         if (swapMap.token == address(asset)) {
-
-            rewardToken_.approve(swapMap.pair1, earned); 
+            rewardToken_.approve(swapMap.pair1, earned);
 
             reinvestAmount = DexSwap.swap(
                 earned, /// REWARDS amount to swap
@@ -143,7 +142,6 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
             );
             /// If two swaps needed
         } else {
-
             rewardToken_.approve(swapMap.pair1, earned);
 
             uint256 swapTokenAmount = DexSwap.swap(
@@ -153,7 +151,7 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
                 swapMap.pair1 /// pairToken (pool)
             );
 
-            ERC20(swapMap.token).approve(swapMap.pair2, swapTokenAmount); 
+            ERC20(swapMap.token).approve(swapMap.pair2, swapTokenAmount);
 
             reinvestAmount = DexSwap.swap(
                 swapTokenAmount,
@@ -162,20 +160,24 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
                 swapMap.pair2 /// pairToken (pool)
             );
         }
-        if(reinvestAmount < minAmountOut_) {
+        if (reinvestAmount < minAmountOut_) {
             revert MIN_AMOUNT_ERROR();
         }
         afterDeposit(asset.balanceOf(address(this)), 0);
     }
 
     /// @notice Check how much rewards are available to claim, useful before harvest()
-    function getRewardsAccrued(uint8 rewardType_) external view returns (uint256 amount) {
+    function getRewardsAccrued(uint8 rewardType_)
+        external
+        view
+        returns (uint256 amount)
+    {
         amount = comptroller.rewardAccrued(rewardType_, address(this));
     }
 
-    /// -----------------------------------------------------------------------
-    /// ERC4626 overrides
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+     ERC4626 overrides
+    //////////////////////////////////////////////////////////////*/
 
     function beforeWithdraw(uint256 assets, uint256) internal override {
         // Withdraw the underlying tokens from the cEther.
@@ -204,11 +206,7 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
     }
 
     /// @notice Accept native token (AVAX) for deposit. Non-ERC4626 function.
-    function deposit(address receiver)
-        public
-        payable
-        returns (uint256 shares)
-    {
+    function deposit(address receiver) public payable returns (uint256 shares) {
         // Check for rounding error since we round down in previewDeposit.
         if ((shares = previewDeposit(msg.value)) == 0)
             revert CompoundERC4626_ZEROSHARES_Error();
@@ -301,10 +299,10 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
         _burn(owner, shares);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
-        
+
         /// @dev Output token is WAVAX, same as input token (consitency vs gas cost)
         wavax.deposit{value: assets}();
-        
+
         asset.safeTransfer(receiver, assets);
     }
 
@@ -332,15 +330,15 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
 
         /// @dev Output token is WAVAX, same as input token (consitency vs gas cost)
         wavax.deposit{value: assets}();
-        
+
         asset.safeTransfer(receiver, assets);
     }
 
     receive() external payable {}
 
-    /// -----------------------------------------------------------------------
-    /// ERC20 metadata generation
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+     ERC20 metadata generation
+    //////////////////////////////////////////////////////////////*/
 
     function _vaultName(ERC20 asset_)
         internal
