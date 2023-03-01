@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0
 
-pragma solidity 0.8.14;
+pragma solidity 0.8.19;
 
 interface IKycValidity {
     /// @dev Check whether a given address has a valid kycNFT token
