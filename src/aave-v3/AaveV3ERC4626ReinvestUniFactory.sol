@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.14;
+pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
@@ -9,8 +9,9 @@ import {AaveV3ERC4626ReinvestUni} from "./AaveV3ERC4626ReinvestUni.sol";
 import {IRewardsController} from "./external/IRewardsController.sol";
 import {Bytes32AddressLib} from "solmate/utils/Bytes32AddressLib.sol";
 
-/// @title AaveV3ERC4626Factory forked from @author zefram.eth
-/// @notice Factory for creating AaveV3ERC4626 contracts
+/// @title AaveV3ERC4626ReinvestUniFactory
+/// @notice Forked from yield-daddy AaveV3ERC4626Factory for creating AaveV3ERC4626 contracts
+/// @author ZeroPoint Labs
 contract AaveV3ERC4626ReinvestUniFactory {
     /*//////////////////////////////////////////////////////////////
                       LIBRARIES USAGE
@@ -28,7 +29,7 @@ contract AaveV3ERC4626ReinvestUniFactory {
     mapping(address => AaveV3ERC4626ReinvestUni) public vaults;
 
     /*//////////////////////////////////////////////////////////////
-                    EVENTS
+                        EVENTS
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Emitted when a new ERC4626 vault has been created
@@ -158,7 +159,10 @@ contract AaveV3ERC4626ReinvestUniFactory {
     /// @notice Harvest rewards from specified vault
     /// @param vault_ The vault to harvest from
     /// @param minAmountOuts_ The minimum amount of underlying asset to receive for each reward token we harvest from
-    function harvestFrom(AaveV3ERC4626ReinvestUni vault_, uint256[] calldata minAmountOuts_) external {
+    function harvestFrom(
+        AaveV3ERC4626ReinvestUni vault_,
+        uint256[] calldata minAmountOuts_
+    ) external {
         vault_.harvest(minAmountOuts_);
         emit HarvestERC4626Reinvest(vault_);
     }

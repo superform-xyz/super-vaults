@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.14;
+// SPDX-License-Identifier: AGPL-3.0
+pragma solidity 0.8.19;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
@@ -51,9 +51,11 @@ contract stEthTest is Test {
         _weth.approve(address(vault), aliceUnderlyingAmount);
         assertEq(_weth.allowance(alice, address(vault)), aliceUnderlyingAmount);
 
-        uint256 expectedSharesFromAssets = vault.previewDeposit(aliceUnderlyingAmount);
+        uint256 expectedSharesFromAssets = vault.previewDeposit(
+            aliceUnderlyingAmount
+        );
         uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
-        
+
         assertEq(expectedSharesFromAssets, aliceShareAmount);
         console.log("aliceShareAmount", aliceShareAmount);
 
@@ -68,11 +70,12 @@ contract stEthTest is Test {
 
         vm.startPrank(alice);
 
-        uint256 expectedAssetFromShares = vault.previewMint(
-            aliceSharesMint
-        );
+        uint256 expectedAssetFromShares = vault.previewMint(aliceSharesMint);
 
-        console.log("expectedAssetFromShares (to approve)", expectedAssetFromShares);
+        console.log(
+            "expectedAssetFromShares (to approve)",
+            expectedAssetFromShares
+        );
 
         _weth.approve(address(vault), expectedAssetFromShares);
 
@@ -95,7 +98,5 @@ contract stEthTest is Test {
         uint256 expectedSharesFromAsset = vault.convertToShares(aliceEth);
         uint256 aliceShareAmount = vault.deposit{value: aliceEth}(alice);
         assertEq(expectedSharesFromAsset, aliceShareAmount);
-
     }
-
 }

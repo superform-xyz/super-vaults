@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.14;
+pragma solidity 0.8.19;
 
 /// https://github.com/rocket-pool/rocketpool/blob/master/contracts/interface/dao/protocol/settings/RocketDAOProtocolSettingsDepositInterface.sol
 interface IRPROTOCOL {

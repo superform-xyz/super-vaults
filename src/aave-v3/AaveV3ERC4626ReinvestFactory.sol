@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.14;
+pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
@@ -9,10 +9,11 @@ import {AaveV3ERC4626Reinvest} from "./AaveV3ERC4626Reinvest.sol";
 import {IRewardsController} from "./external/IRewardsController.sol";
 import {Bytes32AddressLib} from "solmate/utils/Bytes32AddressLib.sol";
 
-/// @title AaveV3ERC4626Factory forked from @author zefram.eth
+/// @title AaveV3ERC4626ReinvestFactory
 /// @notice Factory for creating AaveV3ERC4626 contracts
+/// @notice Forked from zefram.eth
+/// @author ZeroPoint Labs
 contract AaveV3ERC4626ReinvestFactory {
-
     /*//////////////////////////////////////////////////////////////
                       LIBRARIES USAGE
     //////////////////////////////////////////////////////////////*/
@@ -44,7 +45,7 @@ contract AaveV3ERC4626ReinvestFactory {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Thrown when trying to deploy an AaveV3ERC4626 vault using an asset without an aToken
-    error AaveV3ERC4626Factory__ATokenNonexistent();
+    error ATOKEN_NON_EXISTENT();
     /// @notice Thrown when trying to call a permissioned function with an invalid access
     error INVALID_ACCESS();
 
@@ -99,7 +100,7 @@ contract AaveV3ERC4626ReinvestFactory {
         );
         address aTokenAddress = reserveData.aTokenAddress;
         if (aTokenAddress == address(0)) {
-            revert AaveV3ERC4626Factory__ATokenNonexistent();
+            revert ATOKEN_NON_EXISTENT();
         }
 
         vault = new AaveV3ERC4626Reinvest(
@@ -154,7 +155,10 @@ contract AaveV3ERC4626ReinvestFactory {
     /// @notice Harvest rewards from specified vault
     /// @param vault_ The vault to harvest from
     /// @param minAmountOuts_ The minimum amount of underlying asset token to receive for each reward token
-    function harvestFrom(AaveV3ERC4626Reinvest vault_, uint256[] memory minAmountOuts_) external {
+    function harvestFrom(
+        AaveV3ERC4626Reinvest vault_,
+        uint256[] memory minAmountOuts_
+    ) external {
         vault_.harvest(minAmountOuts_);
         emit HarvestERC4626Reinvest(vault_);
     }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.14;
+pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
@@ -10,17 +10,19 @@ import {IAaveMining} from "./aave/IAaveMining.sol";
 
 import {DexSwap} from "./utils/swapUtils.sol";
 
-/// @title AaveV2ERC4626Reinvest - extended implementation of yield-daddy @author zefram.eth
-/// @dev Reinvests rewards accrued for higher APY
+/// @title AaveV2ERC4626Reinvest
+/// @notice Extended implementation of yield-daddy's ERC4626
+/// @notice Reinvests rewards accrued for higher APY
+/// @author ZeroPoint Labs
 contract AaveV2ERC4626Reinvest is ERC4626 {
     /*//////////////////////////////////////////////////////////////
-                      LIBRARIES USED
+                            LIBRARIES USED
     //////////////////////////////////////////////////////////////*/
 
     using SafeTransferLib for ERC20;
 
     /*//////////////////////////////////////////////////////////////
-                      CONSTANTS
+                            CONSTANTS
     //////////////////////////////////////////////////////////////*/
 
     uint256 internal constant ACTIVE_MASK =
@@ -29,7 +31,7 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
         0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDFFFFFFFFFFFFFF;
 
     /*//////////////////////////////////////////////////////////////
-                      ERRORS
+                                ERRORS
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Thrown when reinvested amounts are not enough.
@@ -72,7 +74,7 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
     address public rewardToken;
 
     /*//////////////////////////////////////////////////////////////
-                      CONSTRUCTOR
+                            CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Create a new AaveV2ERC4626Reinvest
@@ -101,7 +103,7 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
     }
 
     /*//////////////////////////////////////////////////////////////
-                      AAVE-FORK REWARDS
+                            AAVE-FORK REWARDS
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Set swap routes for selling rewards
@@ -178,7 +180,7 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
     }
 
     /*//////////////////////////////////////////////////////////////
-                      ERC4626 OVERRIDES
+                            ERC4626 OVERRIDES
     //////////////////////////////////////////////////////////////*/
 
     ///@notice Withdraws assets from Aave and burns shares
@@ -365,7 +367,7 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
     }
 
     /*//////////////////////////////////////////////////////////////
-                      ERC20 METADATA 
+                            ERC20 METADATA 
     //////////////////////////////////////////////////////////////*/
 
     function _vaultName(ERC20 asset_)
@@ -387,7 +389,7 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
     }
 
     /*//////////////////////////////////////////////////////////////
-                      INTERNAL HELPERS
+                            INTERNAL HELPERS
     //////////////////////////////////////////////////////////////*/
 
     function _getActive(uint256 configData) internal pure returns (bool) {

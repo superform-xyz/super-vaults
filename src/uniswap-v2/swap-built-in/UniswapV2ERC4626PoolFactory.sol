@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.14;
+pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
@@ -11,26 +11,45 @@ import {UniswapV2ERC4626Swap} from "./UniswapV2ERC4626Swap.sol";
 import {IUniswapV3Factory} from "../interfaces/IUniswapV3.sol";
 import {IUniswapV3Pool} from "../interfaces/IUniswapV3.sol";
 
+/// @title UniswapV2ERC4626PoolFactory
+/// @notice Uniswap V2 ERC4626 Pool Factory for instant deployment of adapter for two tokens of the Pair.
+/// @notice Use for stress-free deployment of an adapter for a single uniswap V2 pair. Oracle functionality is currently disabled.
+/// @author ZeroPoint Labs
 contract UniswapV2ERC4626PoolFactory {
+    /*//////////////////////////////////////////////////////////////
+                      IMMUATABLES & VARIABLES
+    //////////////////////////////////////////////////////////////*/
+
     IUniswapV2Router router;
     IUniswapV3Factory oracleFactory;
 
+    /*//////////////////////////////////////////////////////////////
+                            CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
     constructor(IUniswapV2Router router_, IUniswapV3Factory oracleFactory_) {
         router = router_;
         oracleFactory = oracleFactory_;
     }
 
-    function create(IUniswapV2Pair pair, uint24 fee)
+    function create(IUniswapV2Pair pair_, uint24 fee_)
         external
-        returns (UniswapV2ERC4626Swap v0, UniswapV2ERC4626Swap v1, address oracle)
+        returns (
+            UniswapV2ERC4626Swap v0,
+            UniswapV2ERC4626Swap v1,
+            address oracle
+        )
     {
         /// @dev Tokens sorted by uniswapV2pair
-        ERC20 token0 = ERC20(pair.token0());
-        ERC20 token1 = ERC20(pair.token1());
+        ERC20 token0 = ERC20(pair_.token0());
+        ERC20 token1 = ERC20(pair_.token1());
 
         /// @dev Each UniV3 Pool is a twap oracle
-        require((oracle = twap(address(token0), address(token1), fee)) != address(0), "twap doesn't exist");
-        
+        require(
+            (oracle = twap(address(token0), address(token1), fee_)) !=
+                address(0),
+            "twap doesn't exist"
+        );
+
         IUniswapV3Pool oracle_ = IUniswapV3Pool(oracle);
 
         /// @dev For uniswap V2 only two tokens pool
@@ -54,7 +73,7 @@ contract UniswapV2ERC4626PoolFactory {
             name0,
             symbol0,
             router,
-            pair,
+            pair_,
             oracle_
         );
 
@@ -63,15 +82,16 @@ contract UniswapV2ERC4626PoolFactory {
             name1,
             symbol1,
             router,
-            pair,
+            pair_,
             oracle_
         );
     }
 
-    /// cast call 0x1F98431c8aD98523631AE4a59f267346ea31F984 "getPool(address,address,uint24)(address)" / 
-    /// 0x6B175474E89094C44Da98b954EedeAC495271d0F 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 3000 --rpc-url $ETHEREUM_RPC_URL
-    function twap(address token0, address token1, uint24 fee) public view returns (address) {
-        return oracleFactory.getPool(token0, token1, fee);
+    function twap(
+        address token0_,
+        address token1_,
+        uint24 fee_
+    ) public view returns (address) {
+        return oracleFactory.getPool(token0_, token1_, fee_);
     }
-
 }

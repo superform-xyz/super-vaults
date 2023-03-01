@@ -9,14 +9,13 @@ import {IPool} from "./external/IPool.sol";
 import {IRewardsController} from "./external/IRewardsController.sol";
 
 import {DexSwap} from "./utils/swapUtils.sol";
-import {ISwapRouter} from '../aave-v2/utils/ISwapRouter.sol';
+import {ISwapRouter} from "../aave-v2/utils/ISwapRouter.sol";
 
-
-/// @title AaveV3ERC4626Reinvest - extended implementation of yield-daddy @author dizsid.eth
-/// @dev Reinvests rewards accrued for higher APY
-/// @notice ERC4626 wrapper for Aave V3 with rewards reinvesting
+/// @title AaveV3ERC4626ReinvestUni -
+/// @notice xtended implementation of yield-daddy ERC4626 wrapper for Aave V3 with rewards reinvesting
+/// Reinvests rewards accrued for higher APY
+/// @author ZeroPoint Labs
 contract AaveV3ERC4626ReinvestUni is ERC4626 {
-
     /*//////////////////////////////////////////////////////////////
                       LIBRARIES USAGE
     //////////////////////////////////////////////////////////////*/
@@ -24,18 +23,16 @@ contract AaveV3ERC4626ReinvestUni is ERC4626 {
     using SafeTransferLib for ERC20;
 
     /*//////////////////////////////////////////////////////////////
-                      EVENTS
-    //////////////////////////////////////////////////////////////*/
-
-    event ClaimRewards(uint256 amount);
-
-    /*//////////////////////////////////////////////////////////////
                       ERRORS
     //////////////////////////////////////////////////////////////*/
 
+    /// @notice Thrown when swap path fee in reinvest is invalid.
     error INVALID_FEE();
+    /// @notice Thrown when trying to call a permissioned function with an invalid access
     error INVALID_ACCESS();
+    /// @notice When rewardsSet is false
     error REWARDS_NOT_SET();
+    /// @notice Thrown when trying to redeem shares worth 0 assets
     error ZERO_ASSETS();
 
     /*//////////////////////////////////////////////////////////////
@@ -75,8 +72,9 @@ contract AaveV3ERC4626ReinvestUni is ERC4626 {
     /// @notice Map rewardToken to its swapInfo for harvest
     mapping(address => bytes) public swapInfoMap;
 
-    ISwapRouter public immutable swapRouter = ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
-    
+    ISwapRouter public immutable swapRouter =
+        ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
+
     /// @notice Manager for setting swap routes for harvest()
     address public manager;
 
@@ -142,20 +140,27 @@ contract AaveV3ERC4626ReinvestUni is ERC4626 {
         address tokenMid_,
         uint24 poolFee2_
     ) external {
-        if(msg.sender != manager)
-            revert INVALID_ACCESS();
-        if(!rewardsSet)
-            revert REWARDS_NOT_SET();  /// @dev Soft-check
-        if(poolFee1_ == 0)
-            revert INVALID_FEE();
+        if (msg.sender != manager) revert INVALID_ACCESS();
+        if (!rewardsSet) revert REWARDS_NOT_SET(); /// @dev Soft-check
+        if (poolFee1_ == 0) revert INVALID_FEE();
         for (uint256 i = 0; i < rewardTokens.length; i++) {
             /// @dev if rewardToken given as arg matches any rewardToken found by setRewards()
             ///      set route for that token
             if (rewardTokens[i] == rewardToken_) {
-                if(poolFee2_ == 0 || tokenMid_ == address(0))
-                    swapInfoMap[rewardToken_]  = abi.encodePacked(rewardToken_, poolFee1_, address(asset));
-                else 
-                    swapInfoMap[rewardToken_]  = abi.encodePacked(rewardToken_, poolFee1_, tokenMid_, poolFee2_, address(asset));
+                if (poolFee2_ == 0 || tokenMid_ == address(0))
+                    swapInfoMap[rewardToken_] = abi.encodePacked(
+                        rewardToken_,
+                        poolFee1_,
+                        address(asset)
+                    );
+                else
+                    swapInfoMap[rewardToken_] = abi.encodePacked(
+                        rewardToken_,
+                        poolFee1_,
+                        tokenMid_,
+                        poolFee2_,
+                        address(asset)
+                    );
             }
         }
     }
@@ -176,12 +181,16 @@ contract AaveV3ERC4626ReinvestUni is ERC4626 {
         /// @dev if pool rewards more than one token
         /// TODO: Better control. Give ability to select what rewards to swap
         for (uint256 i = 0; i < claimedAmounts.length; i++) {
-            swapRewards(rewardList[i], claimedAmounts[i], minAmountOuts_[i] );
+            swapRewards(rewardList[i], claimedAmounts[i], minAmountOuts_[i]);
         }
     }
 
     /// @notice Swap reward token for underlying asset
-    function swapRewards(address rewardToken_, uint256 earned_, uint256 minAmountOut_) internal {
+    function swapRewards(
+        address rewardToken_,
+        uint256 earned_,
+        uint256 minAmountOut_
+    ) internal {
         /// @dev Used just for approve
         ERC20 rewardToken = ERC20(rewardToken_);
 
@@ -189,8 +198,8 @@ contract AaveV3ERC4626ReinvestUni is ERC4626 {
 
         rewardToken.approve(address(swapRouter), earned_);
         /// @dev Swap rewards to asset
-        ISwapRouter.ExactInputParams memory params =
-            ISwapRouter.ExactInputParams({
+        ISwapRouter.ExactInputParams memory params = ISwapRouter
+            .ExactInputParams({
                 path: swapMap,
                 recipient: address(this),
                 deadline: block.timestamp,
@@ -285,7 +294,6 @@ contract AaveV3ERC4626ReinvestUni is ERC4626 {
         uint256 assets_,
         uint256 /*shares*/
     ) internal virtual override {
-
         // approve to lendingPool
         // TODO: Approve management arc. Save gas for callers
         asset.safeApprove(address(lendingPool), assets_);
@@ -439,7 +447,12 @@ contract AaveV3ERC4626ReinvestUni is ERC4626 {
         return configData_ & ~PAUSED_MASK != 0;
     }
 
-    function _getSupplyCap(uint256 configData_) internal pure returns (uint256) {
-        return (configData_ & ~SUPPLY_CAP_MASK) >> SUPPLY_CAP_START_BIT_POSITION;
+    function _getSupplyCap(uint256 configData_)
+        internal
+        pure
+        returns (uint256)
+    {
+        return
+            (configData_ & ~SUPPLY_CAP_MASK) >> SUPPLY_CAP_START_BIT_POSITION;
     }
 }
