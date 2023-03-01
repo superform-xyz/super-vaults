@@ -12,11 +12,13 @@ import {IComptroller} from "./compound/IComptroller.sol";
 import {ISwapRouter} from "../aave-v2/utils/ISwapRouter.sol";
 import {DexSwap} from "./utils/swapUtils.sol";
 
-/// @title CompoundV2StrategyWrapper - Custom implementation of yield-daddy wrappers with flexible reinvesting logic
-/// @dev Rationale: Forked protocols often implement custom functions and modules on top of forked code.
+/// @title CompoundV2ERC4626Wrapper
+/// @notice Custom implementation of yield-daddy wrappers with flexible reinvesting logic
+/// @notice Rationale: Forked protocols often implement custom functions and modules on top of forked code.
+/// @author ZeroPoint Labs
 contract CompoundV2ERC4626Wrapper is ERC4626 {
     /*//////////////////////////////////////////////////////////////
-                      LIBRARIES USAGE
+                            LIBRARIES USAGE
     //////////////////////////////////////////////////////////////*/
 
     using LibCompound for ICERC20;
@@ -24,7 +26,7 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
     using FixedPointMathLib for uint256;
 
     /*//////////////////////////////////////////////////////////////
-                      ERRORS
+                                ERRORS
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Thrown when a call to Compound returned an error.
@@ -38,13 +40,13 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
     error INVALID_FEE_ERROR();
 
     /*//////////////////////////////////////////////////////////////
-                      CONSTANTS
+                            CONSTANTS
     //////////////////////////////////////////////////////////////*/
 
     uint256 internal constant NO_ERROR = 0;
 
     /*//////////////////////////////////////////////////////////////
-                      IMMUTABLES & VARIABLES
+                        IMMUTABLES & VARIABLES
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Access Control for harvest() route
@@ -62,7 +64,8 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
     /// @notice Pointer to swapInfo
     bytes public swapPath;
 
-    ISwapRouter public immutable swapRouter = ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
+    ISwapRouter public immutable swapRouter =
+        ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
 
     /// Compact struct to make two swaps (PancakeSwap on BSC)
     /// A => B (using pair1) then B => asset (of Wrapper) (using pair2)
@@ -73,7 +76,7 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
     }
 
     /*//////////////////////////////////////////////////////////////
-                      CONSTRUCTOR
+                            CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Constructor for the CompoundV2ERC4626Wrapper
@@ -99,7 +102,7 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
     }
 
     /*//////////////////////////////////////////////////////////////
-                      COMPOUND LIQUIDITY MINING
+                            REWARDS
     //////////////////////////////////////////////////////////////*/
 
     /// @notice sets the swap path for reinvesting rewards
@@ -111,14 +114,18 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
         address tokenMid_,
         uint24 poolFee2_
     ) external {
-        if(msg.sender != manager)
-            revert INVALID_ACCESS_ERROR();
-        if(poolFee1_ == 0)
-            revert INVALID_FEE_ERROR();
-        if(poolFee2_ == 0 || tokenMid_ == address(0))
-            swapPath  = abi.encodePacked(reward, poolFee1_, address(asset));
-        else 
-            swapPath  = abi.encodePacked(reward, poolFee1_, tokenMid_, poolFee2_, address(asset));
+        if (msg.sender != manager) revert INVALID_ACCESS_ERROR();
+        if (poolFee1_ == 0) revert INVALID_FEE_ERROR();
+        if (poolFee2_ == 0 || tokenMid_ == address(0))
+            swapPath = abi.encodePacked(reward, poolFee1_, address(asset));
+        else
+            swapPath = abi.encodePacked(
+                reward,
+                poolFee1_,
+                tokenMid_,
+                poolFee2_,
+                address(asset)
+            );
         ERC20(reward).approve(address(swapRouter), type(uint256).max); /// max approve
     }
 
@@ -133,8 +140,8 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
         uint256 earned = ERC20(reward).balanceOf(address(this));
         uint256 reinvestAmount;
         /// @dev Swap rewards to asset
-        ISwapRouter.ExactInputParams memory params =
-            ISwapRouter.ExactInputParams({
+        ISwapRouter.ExactInputParams memory params = ISwapRouter
+            .ExactInputParams({
                 path: swapPath,
                 recipient: msg.sender,
                 deadline: block.timestamp,
@@ -144,7 +151,7 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
 
         // Executes the swap.
         reinvestAmount = swapRouter.exactInput(params);
-        if(reinvestAmount < minAmountOut_) {
+        if (reinvestAmount < minAmountOut_) {
             revert MIN_AMOUNT_ERROR();
         }
         afterDeposit(asset.balanceOf(address(this)), 0);
@@ -158,12 +165,11 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
     function totalAssets() public view virtual override returns (uint256) {
         return cToken.viewUnderlyingBalanceOf(address(this));
     }
-    
+
     function beforeWithdraw(
         uint256 assets_,
         uint256 /*shares*/
     ) internal virtual override {
-
         uint256 errorCode = cToken.redeemUnderlying(assets_);
         if (errorCode != NO_ERROR) {
             revert COMPOUND_ERROR(errorCode);
@@ -174,7 +180,6 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
         uint256 assets_,
         uint256 /*shares*/
     ) internal virtual override {
-
         // approve to cToken
         asset.safeApprove(address(cToken), assets_);
         // deposit into cToken
@@ -194,7 +199,12 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
         return type(uint256).max;
     }
 
-    function maxWithdraw(address owner_) public view override returns (uint256) {
+    function maxWithdraw(address owner_)
+        public
+        view
+        override
+        returns (uint256)
+    {
         uint256 cash = cToken.getCash();
         uint256 assetsBalance = convertToAssets(balanceOf[owner_]);
         return cash < assetsBalance ? cash : assetsBalance;
@@ -208,7 +218,7 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
     }
 
     /*//////////////////////////////////////////////////////////////
-                      ERC20 METADATA
+                        ERC20 METADATA
     //////////////////////////////////////////////////////////////*/
 
     function _vaultName(ERC20 asset_)

@@ -8,10 +8,15 @@ import {AaveV2ERC4626ReinvestIncentive} from "./AaveV2ERC4626ReinvestIncentive.s
 import {IAaveMining} from "./aave/IAaveMining.sol";
 import {ILendingPool} from "./aave/ILendingPool.sol";
 
-/// @title AaveV2ERC4626ReinvestFactory forked from yield daddy Aave-V2-ERC4626-Factory wrapper
+/// @title AaveV2ERC4626ReinvestFactory
 /// @notice Factory for creating AaveV2ERC4626Reinvest contracts
+/// @notice Forked from yield daddy Aave-V2-ERC4626-Factory wrapper
 /// @author ZeroPoint Labs
 contract AaveV2ERC4626ReinvestFactory {
+    /*//////////////////////////////////////////////////////////////
+                                EVENTS
+    //////////////////////////////////////////////////////////////*/
+
     /// @notice Emitted when a new ERC4626 vault has been created
     /// @param asset The base asset used by the vault
     /// @param vault The vault that was created
@@ -36,7 +41,7 @@ contract AaveV2ERC4626ReinvestFactory {
     );
 
     /*//////////////////////////////////////////////////////////////
-                      ERRORS
+                                ERRORS
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Thrown when trying to deploy an AaveV2ERC4626 vault using an asset without an aToken
@@ -62,7 +67,7 @@ contract AaveV2ERC4626ReinvestFactory {
     address public rewardToken;
 
     /*//////////////////////////////////////////////////////////////
-                      CONSTRUCTOR
+                            CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Construct a new AaveV2ERC4626Factory
@@ -85,7 +90,7 @@ contract AaveV2ERC4626ReinvestFactory {
     }
 
     /*//////////////////////////////////////////////////////////////
-                      EXTERNAL FUNCTIONS
+                            EXTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Create a new AaveV2ERC4626 vault

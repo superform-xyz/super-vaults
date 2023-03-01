@@ -10,12 +10,11 @@ import {IRewardsController} from "./external/IRewardsController.sol";
 
 import {DexSwap} from "./utils/swapUtils.sol";
 
-/// @title AaveV3ERC4626ReinvestIncentive - extended implementation of yield-daddy AaveV3 wrapper
-/// @dev Reinvests rewards accrued for higher APY
-/// @notice ERC4626 wrapper for Aave V3 with rewards reinvesting
+/// @title AaveV3ERC4626ReinvestIncentive
+/// @notice Extended implementation of yield-daddy AaveV3 wrapper for Aave V3 with rewards reinvesting
+/// @notice Reinvests rewards accrued for higher APY
 /// @author ZeroPoint Labs
 contract AaveV3ERC4626ReinvestIncentive is ERC4626 {
-
     /*//////////////////////////////////////////////////////////////
                       LIBRARIES USAGE
     //////////////////////////////////////////////////////////////*/
@@ -23,18 +22,14 @@ contract AaveV3ERC4626ReinvestIncentive is ERC4626 {
     using SafeTransferLib for ERC20;
 
     /*//////////////////////////////////////////////////////////////
-                      EVENTS
-    //////////////////////////////////////////////////////////////*/
-
-    event ClaimRewards(uint256 amount);
-
-    /*//////////////////////////////////////////////////////////////
                       ERRORS
     //////////////////////////////////////////////////////////////*/
 
+    /// @notice Thrown when reinvested amounts are not enough.
     error MIN_AMOUNT_ERROR();
     /// @notice Thrown when trying to call a permissioned function with an invalid access
     error INVALID_ACCESS();
+    /// @notice When rewardsSet is false
     error REWARDS_NOT_SET();
     /// @notice Thrown when trying to redeem shares worth 0 assets
     error ZERO_ASSETS();
@@ -157,7 +152,7 @@ contract AaveV3ERC4626ReinvestIncentive is ERC4626 {
         address pair2_
     ) external {
         if (msg.sender != manager) revert INVALID_ACCESS();
-        if(!rewardsSet) revert REWARDS_NOT_SET(); /// @dev Soft-check
+        if (!rewardsSet) revert REWARDS_NOT_SET(); /// @dev Soft-check
 
         for (uint256 i = 0; i < rewardTokens.length; i++) {
             /// @dev if rewardToken given as arg matches any rewardToken found by setRewards()
@@ -172,10 +167,9 @@ contract AaveV3ERC4626ReinvestIncentive is ERC4626 {
     /// @param newValue_ The new manager address
     function updateReinvestRewardBps(uint256 newValue_) external {
         if (msg.sender != manager) revert INVALID_ACCESS();
-        if(newValue_ > 150) revert REINVEST_BPS_TOO_HIGH();
+        if (newValue_ > 150) revert REINVEST_BPS_TOO_HIGH();
         REINVEST_REWARD_BPS = newValue_;
     }
-
 
     /// @notice Claims liquidity mining rewards from Aave and sends it to this Vault
     /// @param minAmountOut_ The minimum amount of asset to receive from each harvest() call
@@ -196,12 +190,12 @@ contract AaveV3ERC4626ReinvestIncentive is ERC4626 {
             reinvestAmount += swapRewards(rewardList[i], claimedAmounts[i]);
         }
 
-        if(reinvestAmount < minAmountOut_) {
-           revert MIN_AMOUNT_ERROR();
+        if (reinvestAmount < minAmountOut_) {
+            revert MIN_AMOUNT_ERROR();
         }
-        
+
         /// @notice rewarding the caller with % of the deposit tokens resulted from the rewards, 50 BPS -> 0.05%
-        uint256 reinvestFee = reinvestAmount * (REINVEST_REWARD_BPS) / (1000);
+        uint256 reinvestFee = (reinvestAmount * (REINVEST_REWARD_BPS)) / (1000);
         if (reinvestFee > 0) {
             asset.safeTransfer(msg.sender, reinvestFee);
         }
@@ -212,7 +206,10 @@ contract AaveV3ERC4626ReinvestIncentive is ERC4626 {
     /// @notice Swap reward token for underlying asset
     /// @param rewardToken_ The reward token address
     /// @param earned_ The amount of reward token to swap
-    function swapRewards(address rewardToken_, uint256 earned_) internal returns (uint256) {
+    function swapRewards(address rewardToken_, uint256 earned_)
+        internal
+        returns (uint256)
+    {
         /// @dev Used just for approve
         ERC20 rewardToken = ERC20(rewardToken_);
 
@@ -224,11 +221,11 @@ contract AaveV3ERC4626ReinvestIncentive is ERC4626 {
             rewardToken.approve(swapMap.pair1, earned_); /// approve only available rewards
 
             swapTokenAmount = DexSwap.swap(
-                    earned_, /// REWARDS amount to swap
-                    rewardToken_, // from REWARD-TOKEN
-                    address(asset), /// to target underlying of this Vault
-                    swapMap.pair1 /// pairToken (pool)
-                );
+                earned_, /// REWARDS amount to swap
+                rewardToken_, // from REWARD-TOKEN
+                address(asset), /// to target underlying of this Vault
+                swapMap.pair1 /// pairToken (pool)
+            );
             /// If two swaps needed
         } else {
             rewardToken.approve(swapMap.pair1, earned_); /// approve only available rewards
@@ -270,7 +267,7 @@ contract AaveV3ERC4626ReinvestIncentive is ERC4626 {
     /*//////////////////////////////////////////////////////////////
                       ERC4626 OVERRIDES
     //////////////////////////////////////////////////////////////*/
-    
+
     function withdraw(
         uint256 assets_,
         address receiver_,
@@ -333,7 +330,6 @@ contract AaveV3ERC4626ReinvestIncentive is ERC4626 {
         uint256 assets_,
         uint256 /*shares*/
     ) internal virtual override {
-
         // approve to lendingPool
         // TODO: Approve management arc. Save gas for callers
         asset.safeApprove(address(lendingPool), assets_);
@@ -487,7 +483,12 @@ contract AaveV3ERC4626ReinvestIncentive is ERC4626 {
         return configData_ & ~PAUSED_MASK != 0;
     }
 
-    function _getSupplyCap(uint256 configData_) internal pure returns (uint256) {
-        return (configData_ & ~SUPPLY_CAP_MASK) >> SUPPLY_CAP_START_BIT_POSITION;
+    function _getSupplyCap(uint256 configData_)
+        internal
+        pure
+        returns (uint256)
+    {
+        return
+            (configData_ & ~SUPPLY_CAP_MASK) >> SUPPLY_CAP_START_BIT_POSITION;
     }
 }

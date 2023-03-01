@@ -2,7 +2,6 @@
 pragma solidity 0.8.19;
 
 interface IComptroller {
-
     function qiAddress() external view returns (address);
 
     function getAllMarkets() external view returns (address[] memory);
@@ -19,10 +18,12 @@ interface IComptroller {
     struct RewardMarketState {
         /// @notice The market's last updated rewardBorrowIndex or rewardSupplyIndex
         uint224 index;
-
         /// @notice The block timestamp the index was last updated at
         uint32 timestamp;
     }
 
-    function rewardSupplyState(uint8, address) external view returns (uint224, uint32);
+    function rewardSupplyState(uint8, address)
+        external
+        view
+        returns (uint224, uint32);
 }

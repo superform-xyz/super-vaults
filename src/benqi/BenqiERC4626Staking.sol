@@ -10,28 +10,29 @@ import {IPair, DexSwap} from "./utils/swapUtils.sol";
 import {IStakedAvax} from "./interfaces/IStakedAvax.sol";
 import {IWETH} from "../lido/interfaces/IWETH.sol";
 
-import "forge-std/console.sol";
-
-/// @title Benqi AVAX Liquid Staking Adapter
+/// @title BenqiERC4626Staking
 /// @notice Accepts WAVAX to deposit into Benqi's staking contract - sAVAX, provides ERC4626 interface over token
-/// Withdraw/Redeem to AVAX is not a part of this base contract. Withdraw/Redeem is only possible to sAVAX token.
-/// Two possible ways of extending this contract: https://docs.benqi.fi/benqi-liquid-staking/staking-and-unstaking
-/// In contrast to Lido's stETH, sAVAX can be Unstaked with 15d cooldown period. TODO: Extend with Timelock
+/// @notice Withdraw/Redeem to AVAX is not a part of this base contract. Withdraw/Redeem is only possible to sAVAX token.
+/// @notice Two possible ways of extending this contract: https://docs.benqi.fi/benqi-liquid-staking/staking-and-unstaking
+/// @notice In contrast to Lido's stETH, sAVAX can be Unstaked with 15d cooldown period. TODO: Extend with Timelock
 /// @author ZeroPoint Labs
 contract BenqiERC4626Staking is ERC4626 {
-    IStakedAvax public sAVAX;
-    IWETH public wavax;
-    ERC20 public sAvaxAsset;
-
     /*//////////////////////////////////////////////////////////////
-     Libraries usage
+                            LIBRARIES
     //////////////////////////////////////////////////////////////*/
 
     using FixedPointMathLib for uint256;
     using SafeTransferLib for ERC20;
 
     /*//////////////////////////////////////////////////////////////
-     Constructor
+                      IMMUATABLES & VARIABLES
+    //////////////////////////////////////////////////////////////*/
+    IStakedAvax public sAVAX;
+    IWETH public wavax;
+    ERC20 public sAvaxAsset;
+
+    /*//////////////////////////////////////////////////////////////
+                            CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
     /// @param wavax_ wavax address (Vault's underlying / deposit token)
@@ -51,113 +52,115 @@ contract BenqiERC4626Staking is ERC4626 {
                           INTERNAL HOOKS LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function addLiquidity(uint256 wAvaxAmt, uint256)
+    function _addLiquidity(uint256 wAvaxAmt_, uint256)
         internal
         returns (uint256 sAvaxAmt)
     {
-        console.log("ethAmount aD", wAvaxAmt);
-        sAvaxAmt = sAVAX.submit{value: wAvaxAmt}();
-        console.log("stEthAmount aD", sAvaxAmt);
+        sAvaxAmt = sAVAX.submit{value: wAvaxAmt_}();
     }
 
     /*//////////////////////////////////////////////////////////////
-     ERC4626 overrides
+                            ERC4626 OVERRIDES
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Deposit AVAX. Standard ERC4626 deposit can only accept ERC20.
-    /// Vault's underlying is WAVAX (ERC20), Benqi expects AVAX (Native), we use WAVAX wraper
-    function deposit(uint256 assets, address receiver)
+    /// @notice Vault's underlying is WAVAX (ERC20), Benqi expects AVAX (Native), we use WAVAX wraper
+    function deposit(uint256 assets_, address receiver_)
         public
         override
         returns (uint256 shares)
     {
-        require((shares = previewDeposit(assets)) != 0, "ZERO_SHARES");
+        require((shares = previewDeposit(assets_)) != 0, "ZERO_SHARES");
 
-        asset.safeTransferFrom(msg.sender, address(this), assets);
+        asset.safeTransferFrom(msg.sender, address(this), assets_);
 
-        wavax.withdraw(assets);
+        wavax.withdraw(assets_);
 
         /// @dev Difference from Lido fork is useful return amount here
-        shares = addLiquidity(assets, shares);
+        shares = _addLiquidity(assets_, shares);
 
-        _mint(receiver, shares);
+        _mint(receiver_, shares);
 
-        emit Deposit(msg.sender, receiver, assets, shares);
+        emit Deposit(msg.sender, receiver_, assets_, shares);
     }
 
     /// @notice Deposit function accepting WAVAX (Native) directly
-    function deposit(address receiver) public payable returns (uint256 shares) {
+    function deposit(address receiver_)
+        public
+        payable
+        returns (uint256 shares)
+    {
         require((shares = previewDeposit(msg.value)) != 0, "ZERO_SHARES");
 
-        shares = addLiquidity(msg.value, shares);
+        shares = _addLiquidity(msg.value, shares);
 
-        _mint(receiver, shares);
+        _mint(receiver_, shares);
 
-        emit Deposit(msg.sender, receiver, msg.value, shares);
+        emit Deposit(msg.sender, receiver_, msg.value, shares);
     }
 
     /// @notice Mint amount of stEth / ERC4626-stEth
-    function mint(uint256 shares, address receiver)
+    function mint(uint256 shares_, address receiver_)
         public
         override
         returns (uint256 assets)
     {
-        assets = previewMint(shares);
+        assets = previewMint(shares_);
 
         asset.safeTransferFrom(msg.sender, address(this), assets);
 
         wavax.withdraw(assets);
 
-        shares = addLiquidity(assets, shares);
+        shares_ = _addLiquidity(assets, shares_);
 
-        _mint(receiver, shares);
+        _mint(receiver_, shares_);
 
-        emit Deposit(msg.sender, receiver, assets, shares);
+        emit Deposit(msg.sender, receiver_, assets, shares_);
     }
 
     /// @notice Withdraw amount of ETH represented by stEth / ERC4626-stEth. Output token is stEth.
     function withdraw(
-        uint256 assets,
-        address receiver,
-        address owner
+        uint256 assets_,
+        address receiver_,
+        address owner_
     ) public override returns (uint256 shares) {
         /// @dev In base implementation, previeWithdraw allows to get sAvax amount to withdraw for virtual amount from convertToAssets
-        shares = previewWithdraw(assets);
+        shares = previewWithdraw(assets_);
 
-        if (msg.sender != owner) {
-            uint256 allowed = allowance[owner][msg.sender];
+        if (msg.sender != owner_) {
+            uint256 allowed = allowance[owner_][msg.sender];
 
             if (allowed != type(uint256).max)
-                allowance[owner][msg.sender] = allowed - shares;
+                allowance[owner_][msg.sender] = allowed - shares;
         }
 
-        _burn(owner, shares);
+        _burn(owner_, shares);
 
-        emit Withdraw(msg.sender, receiver, owner, assets, shares);
+        emit Withdraw(msg.sender, receiver_, owner_, assets_, shares);
 
-        sAvaxAsset.safeTransfer(receiver, assets);
+        sAvaxAsset.safeTransfer(receiver_, assets_);
     }
 
     /// @notice Redeem exact amount of stEth / ERC4626-stEth from this Vault. Output token is stEth.
     function redeem(
-        uint256 shares,
+        uint256 shares_,
         address receiver,
-        address owner
+        address owner_
     ) public override returns (uint256 assets) {
-        if (msg.sender != owner) {
-            uint256 allowed = allowance[owner][msg.sender];
+        if (msg.sender != owner_) {
+            uint256 allowed = allowance[owner_][msg.sender];
 
             if (allowed != type(uint256).max)
-                allowance[owner][msg.sender] = allowed - shares;
+                allowance[owner_][msg.sender] = allowed - shares_;
         }
 
-        require((assets = previewRedeem(shares)) != 0, "ZERO_ASSETS");
+        require((assets = previewRedeem(shares_)) != 0, "ZERO_ASSETS");
 
-        _burn(owner, shares);
+        _burn(owner_, shares_);
 
-        emit Withdraw(msg.sender, receiver, owner, assets, shares);
+        emit Withdraw(msg.sender, receiver, owner_, assets, shares_);
 
-        sAvaxAsset.safeTransfer(receiver, shares);
+        sAvaxAsset.safeTransfer(receiver, shares_);
     }
 
     /// @notice stEth is used as AUM of this Vault
@@ -166,77 +169,82 @@ contract BenqiERC4626Staking is ERC4626 {
     }
 
     /// @notice Calculate amount of stEth you get in exchange for ETH (WETH)
-    function convertToShares(uint256 assets)
+    function convertToShares(uint256 assets_)
         public
         view
         virtual
         override
         returns (uint256)
     {
-        return sAVAX.getSharesByPooledAvax(assets);
+        return sAVAX.getSharesByPooledAvax(assets_);
     }
 
     /// @notice Calculate amount of ETH you get in exchange for stEth (ERC4626-stEth)
-    /// Used as "virtual" amount in base implementation. No ETH is ever withdrawn.
-    function convertToAssets(uint256 shares)
+    /// @notice Used as "virtual" amount in base implementation. No ETH is ever withdrawn.
+    function convertToAssets(uint256 shares_)
         public
         view
         virtual
         override
         returns (uint256)
     {
-        return sAVAX.getPooledAvaxByShares(shares);
+        return sAVAX.getPooledAvaxByShares(shares_);
     }
 
-    function previewDeposit(uint256 assets)
+    function previewDeposit(uint256 assets_)
         public
         view
         virtual
         override
         returns (uint256)
     {
-        return convertToShares(assets);
+        return convertToShares(assets_);
     }
 
-    function previewWithdraw(uint256 assets)
+    function previewWithdraw(uint256 assets_)
         public
         view
         virtual
         override
         returns (uint256)
     {
-        return convertToShares(assets);
+        return convertToShares(assets_);
     }
 
-    function previewRedeem(uint256 shares)
+    function previewRedeem(uint256 shares_)
         public
         view
         virtual
         override
         returns (uint256)
     {
-        return convertToAssets(shares);
+        return convertToAssets(shares_);
     }
 
-    function previewMint(uint256 shares)
+    function previewMint(uint256 shares_)
         public
         view
         virtual
         override
         returns (uint256)
     {
-        return convertToAssets(shares);
+        return convertToAssets(shares_);
     }
 
     /// @notice maxWithdraw is equal to shares balance only in base implementation
-    /// That is because output token is still stEth and not ETH+yield
-    function maxWithdraw(address owner) public view override returns (uint256) {
-        return balanceOf[owner];
+    /// @notice That is because output token is still stEth and not ETH+yield
+    function maxWithdraw(address owner_)
+        public
+        view
+        override
+        returns (uint256)
+    {
+        return balanceOf[owner_];
     }
 
     /// @notice maxRedeem is equal to shares balance only in base implementation
-    /// That is because output token is still stEth and not ETH+yield
-    function maxRedeem(address owner) public view override returns (uint256) {
-        return balanceOf[owner];
+    /// @notice That is because output token is still stEth and not ETH+yield
+    function maxRedeem(address owner_) public view override returns (uint256) {
+        return balanceOf[owner_];
     }
 }

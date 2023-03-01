@@ -10,22 +10,19 @@ import {IAaveMining} from "./aave/IAaveMining.sol";
 
 import {DexSwap} from "./utils/swapUtils.sol";
 
-/// @title AaveV2ERC4626Reinvest - extended implementation of yield-daddy AaveV2 wrapper.
-/// @notice Extended reinvesting logic with incentives to call harvest() built-in
-/// @dev Reinvests rewards accrued for higher APY
+/// @title AaveV2ERC4626ReinvestIncentive
+/// @notice Extended implementation of yield-daddy AaveV2 wrapper with reinvesting logic - with incentives to call harvest() built-in
+/// @notice Reinvests rewards accrued for higher APY
+/// @author ZeroPoint Labs
 contract AaveV2ERC4626ReinvestIncentive is ERC4626 {
-    address public rewardToken;
-    uint256 public MIN_TOKENS_TO_REINVEST;
-    uint256 public REINVEST_REWARD_BPS;
-
     /*//////////////////////////////////////////////////////////////
-                      LIBRARIES USAGE
+                            LIBRARIES USAGE
     //////////////////////////////////////////////////////////////*/
 
     using SafeTransferLib for ERC20;
 
     /*//////////////////////////////////////////////////////////////
-                      CONSTANTS
+                                CONSTANTS
     //////////////////////////////////////////////////////////////*/
 
     uint256 internal constant ACTIVE_MASK =
@@ -34,9 +31,10 @@ contract AaveV2ERC4626ReinvestIncentive is ERC4626 {
         0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDFFFFFFFFFFFFFF;
 
     /*//////////////////////////////////////////////////////////////
-                      ERRORS
+                                ERRORS
     //////////////////////////////////////////////////////////////*/
 
+    /// @notice Thrown when reinvested amounts are not enough.
     error MIN_AMOUNT_ERROR();
     /// @notice Thrown when trying to call a function that is restricted
     error INVALID_ACCESS();
@@ -50,6 +48,10 @@ contract AaveV2ERC4626ReinvestIncentive is ERC4626 {
     /*//////////////////////////////////////////////////////////////
                       IMMUTABLES & VARIABLES
     //////////////////////////////////////////////////////////////*/
+
+    address public rewardToken;
+    uint256 public MIN_TOKENS_TO_REINVEST;
+    uint256 public REINVEST_REWARD_BPS;
 
     /// @notice The Aave aToken contract (rebasing)
     ERC20 public immutable aToken;
@@ -78,7 +80,7 @@ contract AaveV2ERC4626ReinvestIncentive is ERC4626 {
     }
 
     /*//////////////////////////////////////////////////////////////
-                      CONSTRUCTOR
+                            CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Constructor

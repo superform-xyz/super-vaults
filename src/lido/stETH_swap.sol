@@ -10,15 +10,23 @@ import {ICurve} from "./interfaces/ICurve.sol";
 import {IStETH} from "./interfaces/IStETH.sol";
 import {IWETH} from "./interfaces/IWETH.sol";
 
-import "forge-std/console.sol";
-
 /// @title Lido's stETH ERC4626 Wrapper
 /// @notice Accepts WETH through ERC4626 interface, but can also accept ETH directly through other deposit() function.
-/// Returns assets as ETH for brevity (community-version should return stEth)
-/// Assets Under Managment (totalAssets()) operates on rebasing balance, re-calculated to the current value in ETH.
-/// Uses ETH/stETH CurvePool for a fast-exit with 1% slippage hardcoded.
+/// @notice Returns assets as ETH for brevity (community-version should return stEth)
+/// @notice Assets Under Managment (totalAssets()) operates on rebasing balance, re-calculated to the current value in ETH.
+/// @notice Uses ETH/stETH CurvePool for a fast-exit with 1% slippage hardcoded.
 /// @author ZeroPoint Labs
 contract StETHERC4626Swap is ERC4626 {
+    /*//////////////////////////////////////////////////////////////
+                            LIBRARIES
+    //////////////////////////////////////////////////////////////*/
+
+    using FixedPointMathLib for uint256;
+    using SafeTransferLib for ERC20;
+
+    /*//////////////////////////////////////////////////////////////
+                      IMMUATABLES & VARIABLES
+    //////////////////////////////////////////////////////////////*/
 
     address manager;
 
@@ -33,18 +41,13 @@ contract StETHERC4626Swap is ERC4626 {
     int128 public immutable index_stEth = 1; /// stETH
 
     /*//////////////////////////////////////////////////////////////
-     Libraries usage
-    //////////////////////////////////////////////////////////////*/
-
-    using FixedPointMathLib for uint256;
-    using SafeTransferLib for ERC20;
-
-    /*//////////////////////////////////////////////////////////////
-     Constructor
+                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
     /// @param weth_ weth address (Vault's underlying / deposit token)
     /// @param stEth_ stETH (Lido contract) address
+    /// @param curvePool_ CurvePool address
+    /// @param manager_ manager address
     constructor(
         address weth_,
         address stEth_,
@@ -63,140 +66,133 @@ contract StETHERC4626Swap is ERC4626 {
     receive() external payable {}
 
     /*//////////////////////////////////////////////////////////////
-                          INTERNAL HOOKS LOGIC
+                            ERC4626 OVERRIDES
     //////////////////////////////////////////////////////////////*/
 
-    function beforeWithdraw(uint256 assets, uint256) internal override {
-        uint256 min_dy = getSlippage(curvePool.get_dy(index_stEth, index_eth, assets));
-        uint256 amount = curvePool.exchange(index_stEth, index_eth, assets, min_dy);
-        console.log("amount", amount);
+    function beforeWithdraw(uint256 assets_, uint256) internal override {
+        uint256 min_dy = _getSlippage(
+            curvePool.get_dy(index_stEth, index_eth, assets_)
+        );
+        uint256 amount = curvePool.exchange(
+            index_stEth,
+            index_eth,
+            assets_,
+            min_dy
+        );
     }
 
     function afterDeposit(uint256 ethAmount, uint256) internal override {
-        console.log("ethAmount aD", ethAmount);
         uint256 stEthAmount = stEth.submit{value: ethAmount}(address(this)); /// Lido's submit() accepts only native ETH
-        console.log("stEthAmount aD", stEthAmount);
     }
 
-    /*//////////////////////////////////////////////////////////////
-     ERC4626 overrides
-    //////////////////////////////////////////////////////////////*/
-
-    /// Standard ERC4626 deposit can only accept ERC20
-    /// Vault's underlying is WETH (ERC20), Lido expects ETH (Native), we make wraperooo magic
-    function deposit(uint256 assets, address receiver)
+    /// @notice Standard ERC4626 deposit can only accept ERC20
+    /// @notice Vault's underlying is WETH (ERC20), Lido expects ETH (Native), we make wraperooo magic
+    function deposit(uint256 assets_, address receiver_)
         public
         override
         returns (uint256 shares)
     {
-        require((shares = previewDeposit(assets)) != 0, "ZERO_SHARES");
-        
-        console.log("deposit shares", shares);
+        require((shares = previewDeposit(assets_)) != 0, "ZERO_SHARES");
 
-        asset.safeTransferFrom(msg.sender, address(this), assets);
+        asset.safeTransferFrom(msg.sender, address(this), assets_);
 
-        weth.withdraw(assets);
-        
-        console.log("eth balance deposit", address(this).balance);
+        weth.withdraw(assets_);
 
-        _mint(receiver, shares);
+        _mint(receiver_, shares);
 
-        emit Deposit(msg.sender, receiver, assets, shares);
+        emit Deposit(msg.sender, receiver_, assets_, shares);
 
-        afterDeposit(assets, shares);
+        afterDeposit(assets_, shares);
     }
 
-    /// Deposit function accepting ETH (Native) directly
-    function deposit(address receiver) public payable returns (uint256 shares) {
+    /// @notice Deposit function accepting ETH (Native) directly
+    function deposit(address receiver_)
+        public
+        payable
+        returns (uint256 shares)
+    {
         require(msg.value != 0, "0");
 
         require((shares = previewDeposit(msg.value)) != 0, "ZERO_SHARES");
 
-        _mint(receiver, shares);
+        _mint(receiver_, shares);
 
-        emit Deposit(msg.sender, receiver, msg.value, shares);
+        emit Deposit(msg.sender, receiver_, msg.value, shares);
 
         afterDeposit(msg.value, shares);
     }
 
-    function mint(uint256 shares, address receiver)
+    function mint(uint256 shares_, address receiver_)
         public
         override
         returns (uint256 assets)
     {
-        assets = previewMint(shares);
+        assets = previewMint(shares_);
 
         asset.safeTransferFrom(msg.sender, address(this), assets);
 
         weth.withdraw(assets);
 
-        _mint(receiver, shares);
+        _mint(receiver_, shares_);
 
-        emit Deposit(msg.sender, receiver, assets, shares);
+        emit Deposit(msg.sender, receiver_, assets, shares_);
 
-        afterDeposit(assets, shares);
+        afterDeposit(assets, shares_);
     }
 
     function withdraw(
-        uint256 assets,
-        address receiver,
-        address owner
+        uint256 assets_,
+        address receiver_,
+        address owner_
     ) public override returns (uint256 shares) {
+        shares = previewWithdraw(assets_);
 
-        shares = previewWithdraw(assets);
-
-        console.log("shares withdraw", shares);
-
-        if (msg.sender != owner) {
-            uint256 allowed = allowance[owner][msg.sender];
+        if (msg.sender != owner_) {
+            uint256 allowed = allowance[owner_][msg.sender];
 
             if (allowed != type(uint256).max)
-                allowance[owner][msg.sender] = allowed - shares;
+                allowance[owner_][msg.sender] = allowed - shares;
         }
 
-        beforeWithdraw(assets, shares);
+        beforeWithdraw(assets_, shares);
 
-        console.log("eth balance withdraw", address(this).balance);
+        _burn(owner_, shares);
 
-        _burn(owner, shares);
-
-        emit Withdraw(msg.sender, receiver, owner, assets, shares);
-
-        console.log("assets", assets); /// assets value isn't updated to reflect eth value
+        emit Withdraw(msg.sender, receiver_, owner_, assets_, shares);
 
         /// TODO: transfer fails because assets != beforeWithdraw eth on balance
         /// how safe is doing address(this).balance?
-        SafeTransferLib.safeTransferETH(receiver, address(this).balance);
+        SafeTransferLib.safeTransferETH(receiver_, address(this).balance);
     }
 
     function redeem(
-        uint256 shares,
-        address receiver,
-        address owner
+        uint256 shares_,
+        address receiver_,
+        address owner_
     ) public override returns (uint256 assets) {
-        if (msg.sender != owner) {
-            uint256 allowed = allowance[owner][msg.sender];
+        if (msg.sender != owner_) {
+            uint256 allowed = allowance[owner_][msg.sender];
 
             if (allowed != type(uint256).max)
-                allowance[owner][msg.sender] = allowed - shares;
+                allowance[owner_][msg.sender] = allowed - shares_;
         }
 
-        require((assets = previewRedeem(shares)) != 0, "ZERO_ASSETS");
+        require((assets = previewRedeem(shares_)) != 0, "ZERO_ASSETS");
 
-        beforeWithdraw(assets, shares);
+        beforeWithdraw(assets, shares_);
 
-        _burn(owner, shares);
+        _burn(owner_, shares_);
 
-        emit Withdraw(msg.sender, receiver, owner, assets, shares);
+        emit Withdraw(msg.sender, receiver_, owner_, assets, shares_);
 
-        SafeTransferLib.safeTransferETH(receiver, address(this).balance);
+        SafeTransferLib.safeTransferETH(receiver_, address(this).balance);
     }
 
     function totalAssets() public view virtual override returns (uint256) {
         return stEth.balanceOf(address(this));
     }
 
-    function convertToShares(uint256 assets)
+    function convertToShares(uint256 assets_)
         public
         view
         virtual
@@ -205,10 +201,11 @@ contract StETHERC4626Swap is ERC4626 {
     {
         uint256 supply = totalSupply;
 
-        return supply == 0 ? assets : assets.mulDivDown(supply, totalAssets());
+        return
+            supply == 0 ? assets_ : assets_.mulDivDown(supply, totalAssets());
     }
 
-    function convertToAssets(uint256 shares)
+    function convertToAssets(uint256 assets_)
         public
         view
         virtual
@@ -217,10 +214,11 @@ contract StETHERC4626Swap is ERC4626 {
     {
         uint256 supply = totalSupply;
 
-        return supply == 0 ? shares : shares.mulDivDown(totalAssets(), supply);
+        return
+            supply == 0 ? assets_ : assets_.mulDivDown(totalAssets(), supply);
     }
 
-    function previewMint(uint256 shares)
+    function previewMint(uint256 assets_)
         public
         view
         virtual
@@ -229,10 +227,10 @@ contract StETHERC4626Swap is ERC4626 {
     {
         uint256 supply = totalSupply;
 
-        return supply == 0 ? shares : shares.mulDivUp(totalAssets(), supply);
+        return supply == 0 ? assets_ : assets_.mulDivUp(totalAssets(), supply);
     }
 
-    function previewWithdraw(uint256 assets)
+    function previewWithdraw(uint256 assets_)
         public
         view
         virtual
@@ -241,19 +239,16 @@ contract StETHERC4626Swap is ERC4626 {
     {
         uint256 supply = totalSupply;
 
-        return supply == 0 ? assets : assets.mulDivUp(supply, totalAssets());
+        return supply == 0 ? assets_ : assets_.mulDivUp(supply, totalAssets());
     }
 
-
-    function setSlippage(uint256 amount) external {
+    function setSlippage(uint256 amount_) external {
         require(msg.sender == manager, "owner");
-        require(amount < 10000 && amount > 9000); /// 10% max slippage
-        slippage = amount;
+        require(amount_ < 10000 && amount_ > 9000); /// 10% max slippage
+        slippage = amount_;
     }
 
-    function getSlippage(uint256 amount) internal view returns (uint256) {
-        return (amount * slippage) / slippageFloat;
+    function _getSlippage(uint256 amount_) internal view returns (uint256) {
+        return (amount_ * slippage) / slippageFloat;
     }
-
-
 }

@@ -12,11 +12,12 @@ import {IComptroller} from "./compound/IComptroller.sol";
 
 import {DexSwap} from "./utils/swapUtils.sol";
 
-/// @title BenqiERC4626Reinvest - Custom implementation of yield-daddy Compound wrapper with flexible reinvesting logic
+/// @title BenqiERC4626Reinvest
+/// @notice Custom implementation of yield-daddy Compound wrapper with flexible reinvesting logic
 /// @author ZeroPoint Labs
 contract BenqiERC4626Reinvest is ERC4626 {
     /*//////////////////////////////////////////////////////////////
-      Libraries usage
+                        LIBRARIES USAGE
     //////////////////////////////////////////////////////////////*/
 
     using LibCompound for ICERC20;
@@ -24,23 +25,23 @@ contract BenqiERC4626Reinvest is ERC4626 {
     using FixedPointMathLib for uint256;
 
     /*//////////////////////////////////////////////////////////////
-     Errors
+                            ERRORS
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Thrown when a call to Compound returned an error.
     /// @param errorCode The error code returned by Compound
-    error CompoundERC4626__CompoundError(uint256 errorCode);
-
+    error COMPOUND_ERROR(uint256 errorCode);
+    /// @notice Thrown when reinvested amounts are not enough.
     error MIN_AMOUNT_ERROR();
 
     /*//////////////////////////////////////////////////////////////
-     Constants
+                            CONSTANTS
     //////////////////////////////////////////////////////////////*/
 
     uint256 internal constant NO_ERROR = 0;
 
     /*//////////////////////////////////////////////////////////////
-     Immutable params
+                      IMMUTABLES & VARIABLES
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Access Control for harvest() route
@@ -73,9 +74,14 @@ contract BenqiERC4626Reinvest is ERC4626 {
     }
 
     /*//////////////////////////////////////////////////////////////
-     Constructor
+                            CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
+    /// @notice Constructs the BenqiERC4626Reinvest contract
+    /// @dev asset_ is the underlying token of the Vault
+    /// @dev cToken_ is the Compound cToken contract
+    /// @dev comptroller_ is the Compound comptroller contract
+    /// @dev manager_ is the address that can set swap routes
     constructor(
         ERC20 asset_,
         ICERC20 cToken_,
@@ -88,7 +94,7 @@ contract BenqiERC4626Reinvest is ERC4626 {
     }
 
     /*//////////////////////////////////////////////////////////////
-     Compound liquidity mining
+                        COMPOUND LIQUIDITY MINING
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Set swap routes for selling rewards
@@ -97,14 +103,14 @@ contract BenqiERC4626Reinvest is ERC4626 {
     /// @dev Setting wrong addresses here will revert harvest() calls
     function setRoute(
         uint8 rewardType_,
-        address rewardToken,
-        address token,
-        address pair1,
-        address pair2
+        address rewardToken_,
+        address token_,
+        address pair1_,
+        address pair2_
     ) external {
         require(msg.sender == manager, "onlyOwner");
-        swapInfoMap[rewardType_] = swapInfo(token, pair1, pair2);
-        rewardTokenMap[rewardType_] = rewardToken;
+        swapInfoMap[rewardType_] = swapInfo(token_, pair1_, pair2_);
+        rewardTokenMap[rewardType_] = rewardToken_;
     }
 
     /// @notice Claims liquidity mining rewards from Benqi and sends it to this Vault
@@ -178,21 +184,21 @@ contract BenqiERC4626Reinvest is ERC4626 {
     }
 
     function beforeWithdraw(
-        uint256 assets,
+        uint256 assets_,
         uint256 /*shares*/
     ) internal virtual override {
         /*//////////////////////////////////////////////////////////////
          Withdraw assets from Compound
         //////////////////////////////////////////////////////////////*/
 
-        uint256 errorCode = cToken.redeemUnderlying(assets);
+        uint256 errorCode = cToken.redeemUnderlying(assets_);
         if (errorCode != NO_ERROR) {
-            revert CompoundERC4626__CompoundError(errorCode);
+            revert COMPOUND_ERROR(errorCode);
         }
     }
 
     function afterDeposit(
-        uint256 assets,
+        uint256 assets_,
         uint256 /*shares*/
     ) internal virtual override {
         /*//////////////////////////////////////////////////////////////
@@ -200,12 +206,12 @@ contract BenqiERC4626Reinvest is ERC4626 {
         //////////////////////////////////////////////////////////////*/
 
         // approve to cToken
-        asset.safeApprove(address(cToken), assets);
+        asset.safeApprove(address(cToken), assets_);
 
         // deposit into cToken
-        uint256 errorCode = cToken.mint(assets);
+        uint256 errorCode = cToken.mint(assets_);
         if (errorCode != NO_ERROR) {
-            revert CompoundERC4626__CompoundError(errorCode);
+            revert COMPOUND_ERROR(errorCode);
         }
     }
 
@@ -219,21 +225,26 @@ contract BenqiERC4626Reinvest is ERC4626 {
         return type(uint256).max;
     }
 
-    function maxWithdraw(address owner) public view override returns (uint256) {
+    function maxWithdraw(address owner_)
+        public
+        view
+        override
+        returns (uint256)
+    {
         uint256 cash = cToken.getCash();
-        uint256 assetsBalance = convertToAssets(balanceOf[owner]);
+        uint256 assetsBalance = convertToAssets(balanceOf[owner_]);
         return cash < assetsBalance ? cash : assetsBalance;
     }
 
-    function maxRedeem(address owner) public view override returns (uint256) {
+    function maxRedeem(address owner_) public view override returns (uint256) {
         uint256 cash = cToken.getCash();
         uint256 cashInShares = convertToShares(cash);
-        uint256 shareBalance = balanceOf[owner];
+        uint256 shareBalance = balanceOf[owner_];
         return cashInShares < shareBalance ? cashInShares : shareBalance;
     }
 
     /*//////////////////////////////////////////////////////////////
-     ERC20 metadata generation
+                        ERC20 METADATA GENERATION
     //////////////////////////////////////////////////////////////*/
 
     function _vaultName(ERC20 asset_)

@@ -9,18 +9,30 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 import {IBToken} from "./interfaces/IBToken.sol";
 import {IFairLaunch} from "./interfaces/IFairLaunch.sol";
+import {IVaultConfig} from "./interfaces/IVaultConfig.sol";
 import {DexSwap} from "./utils/swapUtils.sol";
 
-interface IVaultConfig {
-    /// @dev Return the bps rate for reserve pool.
-    function getReservePoolBps() external view returns (uint256);
-}
-
-/// @title Alpaca ERC4626 Wrapper - extended AAVE-V2 logic using FairLaunch (and not AaveMining) for rewards distribution
+/// @title Alpaca ERC4626 Wrapper
+/// @notice Extended AAVE-V2 logic using FairLaunch (and not AaveMining) for rewards distribution
 /// @author ZeroPoint Labs
 contract AlpacaERC4626Reinvest is ERC4626 {
+    /*//////////////////////////////////////////////////////////////
+                      LIBRARIES USAGES
+    //////////////////////////////////////////////////////////////*/
+
     using FixedPointMathLib for uint256;
     using SafeTransferLib for ERC20;
+
+    /*//////////////////////////////////////////////////////////////
+                      ERRORS
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Thrown when reinvested amounts are not enough.
+    error MIN_AMOUNT_ERROR();
+
+    /*//////////////////////////////////////////////////////////////
+                      IMMUTABLES & VARIABLES
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice CToken token reference
     IBToken public immutable ibToken;
@@ -34,8 +46,6 @@ contract AlpacaERC4626Reinvest is ERC4626 {
     /// @notice Pointer to swapInfo
     swapInfo public SwapInfo;
 
-    error MIN_AMOUNT_ERROR();
-
     /// Compact struct to make two swaps (PancakeSwap on BSC)
     /// A => B (using pair1) then B => asset (of BaseWrapper) (using pair2)
     /// will work fine as long we only get 1 type of reward token
@@ -45,9 +55,11 @@ contract AlpacaERC4626Reinvest is ERC4626 {
         address pair2;
     }
 
-    event RewardsReinvested(address user, uint256 reinvestAmount);
+    /*//////////////////////////////////////////////////////////////
+                      CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
 
-    /// @notice CompoundERC4626 constructor
+    /// @notice AlpacaERC4626Reinvest constructor
     /// @param asset_ The address of the ibToken
     /// @param staking_ The address of the reward pool
     /// @param poolId_ The poolId of the ibToken
@@ -68,39 +80,49 @@ contract AlpacaERC4626Reinvest is ERC4626 {
         alpacaToken = staking.alpaca();
         rewardToken = ERC20(staking.alpaca());
         manager = msg.sender;
-
     }
 
-    function beforeWithdraw(uint256 underlyingAmount, uint256)
+    /*//////////////////////////////////////////////////////////////
+                          INTERNAL HOOKS LOGIC
+    //////////////////////////////////////////////////////////////*/
+
+    function beforeWithdraw(uint256 underlyingAmount_, uint256)
         internal
         override
     {
         // convert asset token amount to ibtokens for withdrawal
-        uint256 sharesToWithdraw = underlyingAmount.mulDivDown(
+        uint256 sharesToWithdraw = underlyingAmount_.mulDivDown(
             ERC20(address(ibToken)).totalSupply(),
             alpacaVaultTotalToken()
         );
 
         // Withdraw the underlying tokens from the cToken.
-        unstake(sharesToWithdraw);
+        _unstake(sharesToWithdraw);
         ibToken.withdraw(sharesToWithdraw);
     }
 
-    function afterDeposit(uint256 underlyingAmount, uint256) internal override {
+    function afterDeposit(uint256 underlyingAmount_, uint256)
+        internal
+        override
+    {
+        asset.safeApprove(address(ibToken), underlyingAmount_);
 
-        asset.safeApprove(address(ibToken), underlyingAmount); 
-
-        ibToken.deposit(underlyingAmount);
+        ibToken.deposit(underlyingAmount_);
 
         /// WARN: balanceOf(address(this))
         ibToken.approve(address(staking), ibToken.balanceOf(address(this)));
-        
+
         staking.deposit(
             address(this),
             poolId,
             ERC20(address(ibToken)).balanceOf(address(this))
         );
     }
+
+    /*//////////////////////////////////////////////////////////////
+                          REWARDS LOGIC
+    //////////////////////////////////////////////////////////////*/
+
     /// @notice Set swap routes for selling rewards
     function setRoute(
         address token_,
@@ -112,9 +134,9 @@ contract AlpacaERC4626Reinvest is ERC4626 {
     }
 
     /// @notice Harvest AlpacaToken rewards for all of the shares held by this vault
-    /// Amount gets reinvested into the vault after swap to the underlying
-    /// This implementation is sub-optimal for fair distribution of APY among shareholders
-    /// Ie. Shareholder may request to withdraw his share before harvest accrued value, forfeiting his rewards boosted APY
+    /// @notice Amount gets reinvested into the vault after swap to the underlying
+    /// @notice This implementation is sub-optimal for fair distribution of APY among shareholders
+    /// @notice Ie. Shareholder may request to withdraw his share before harvest accrued value, forfeiting his rewards boosted APY
     function harvest(uint256 minAmountOut_) external {
         staking.harvest(poolId);
 
@@ -125,9 +147,8 @@ contract AlpacaERC4626Reinvest is ERC4626 {
         /// https://pancakeswap.finance/info/pools
         /// Only one swap needed, in this case - set swapInfo.token0/token/pair2 to 0x
         if (SwapInfo.token == address(asset)) {
-            
             rewardToken.approve(SwapInfo.pair1, earned);
-            
+
             reinvestAmount = DexSwap.swap(
                 earned, /// ALPACA amount to swap
                 alpacaToken, // from ALPACA (because of liquidity)
@@ -135,10 +156,9 @@ contract AlpacaERC4626Reinvest is ERC4626 {
                 SwapInfo.pair1 /// pairToken (pool)
                 /// https://pancakeswap.finance/info/pool/0x2354ef4df11afacb85a5c7f98b624072eccddbb1
             );
-            
+
             /// Two swaps needed
         } else {
-            
             rewardToken.approve(SwapInfo.pair1, earned);
 
             uint256 swapTokenAmount = DexSwap.swap(
@@ -166,66 +186,70 @@ contract AlpacaERC4626Reinvest is ERC4626 {
         afterDeposit(asset.balanceOf(address(this)), 0);
     }
 
-    function withdraw(
-        uint256 assets,
-        address receiver,
-        address owner
-    ) public override returns (uint256 shares) {
-        shares = previewWithdraw(assets); // No need to check for rounding error, previewWithdraw rounds up.
+    /*//////////////////////////////////////////////////////////////
+                            ERC4626 OVERRIDES
+    //////////////////////////////////////////////////////////////*/
 
-        if (msg.sender != owner) {
-            uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
+    function withdraw(
+        uint256 assets_,
+        address receiver_,
+        address owner_
+    ) public override returns (uint256 shares) {
+        shares = previewWithdraw(assets_); // No need to check for rounding error, previewWithdraw rounds up.
+
+        if (msg.sender != owner_) {
+            uint256 allowed = allowance[owner_][msg.sender]; // Saves gas for limited approvals.
 
             if (allowed != type(uint256).max)
-                allowance[owner][msg.sender] = allowed - shares;
+                allowance[owner_][msg.sender] = allowed - shares;
         }
 
-        beforeWithdraw(assets, shares);
+        beforeWithdraw(assets_, shares);
 
-        _burn(owner, shares);
+        _burn(owner_, shares);
 
-        emit Withdraw(msg.sender, receiver, owner, assets, shares);
+        emit Withdraw(msg.sender, receiver_, owner_, assets_, shares);
 
         /// WARN: balanceOf(address(this))
-        asset.safeTransfer(receiver, asset.balanceOf(address(this)));
+        asset.safeTransfer(receiver_, asset.balanceOf(address(this)));
     }
 
     function redeem(
-        uint256 shares,
-        address receiver,
-        address owner
+        uint256 shares_,
+        address receiver_,
+        address owner_
     ) public override returns (uint256 assets) {
-        if (msg.sender != owner) {
-            uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
+        if (msg.sender != owner_) {
+            uint256 allowed = allowance[owner_][msg.sender]; // Saves gas for limited approvals.
 
             if (allowed != type(uint256).max)
-                allowance[owner][msg.sender] = allowed - shares;
+                allowance[owner_][msg.sender] = allowed - shares_;
         }
 
         // Check for rounding error since we round down in previewRedeem.
-        require((assets = previewRedeem(shares)) != 0, "ZERO_ASSETS");
+        require((assets = previewRedeem(shares_)) != 0, "ZERO_ASSETS");
 
-        beforeWithdraw(assets, shares);
+        beforeWithdraw(assets, shares_);
 
-        _burn(owner, shares);
+        _burn(owner_, shares_);
 
         emit Withdraw(
             msg.sender,
-            receiver,
-            owner,
+            receiver_,
+            owner_,
             asset.balanceOf(address(this)),
-            shares
+            shares_
         );
 
         /// WARN: balanceOf(address(this))
-        asset.safeTransfer(receiver, asset.balanceOf(address(this)));
+        asset.safeTransfer(receiver_, asset.balanceOf(address(this)));
     }
 
-    function unstake(uint256 _ibTokenAmount) internal {
-        staking.withdraw(address(this), poolId, _ibTokenAmount);
+    function _unstake(uint256 ibTokenAmount_) internal {
+        staking.withdraw(address(this), poolId, ibTokenAmount_);
     }
 
-    function viewUnderlyingBalanceOf() internal view returns (uint256) {
+    function _viewUnderlyingBalanceOf() internal view returns (uint256) {
         IFairLaunch._userInfo memory depositDetails = staking.userInfo(
             poolId,
             address(this)
@@ -256,8 +280,12 @@ contract AlpacaERC4626Reinvest is ERC4626 {
     /// @notice AUM of the Vault (ibToken balance)
     /// @dev This implementation doesn't always refelcts the actual AUM (pre-harvest())
     function totalAssets() public view override returns (uint256) {
-        return viewUnderlyingBalanceOf();
+        return _viewUnderlyingBalanceOf();
     }
+
+    /*//////////////////////////////////////////////////////////////
+                        ERC20 METADATA GENERATION
+    //////////////////////////////////////////////////////////////*/
 
     function _vaultName(ERC20 asset_)
         internal

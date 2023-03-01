@@ -9,32 +9,12 @@ import {IGUniPool} from "./utils/IGUniPool.sol";
 import {IUniswapV3Pool} from "v3-core/interfaces/IUniswapV3Pool.sol";
 import {TickMath} from "./utils/TickMath.sol";
 import {LiquidityAmounts, FullMath} from "./utils/LiquidityAmounts.sol";
+import {IArrakisRouter} from "./interfaces/IArrakisRouter.sol";
+import {IGauge} from "./interfaces/IGauge.sol";
 
-interface IGauge {
-    function withdraw(uint256 amount) external;
-
-    function balanceOf(address account) external view returns (uint256);
-}
-
-interface IArrakisRouter {
-    function addLiquidityAndStake(
-        IGauge gauge,
-        uint256 amount0Max,
-        uint256 amount1Max,
-        uint256 amount0Min,
-        uint256 amount1Min,
-        address receiver
-    )
-        external
-        returns (
-            uint256 amount0,
-            uint256 amount1,
-            uint256 mintAmount
-        );
-}
-
-/// @title ArrakisUniV3ERC4626 - A vault for wrapping arrakis vault LP tokens and depositing them to the vault.
-/// @dev deposited asset get swapped partially to the non_asset and then deposited to the arrakis vault for an LP.
+/// @title ArrakisNonNativeVault
+/// @notice A vault for wrapping arrakis vault LP tokens and depositing them to the vault.
+/// @notice Deposited asset get swapped partially to the non_asset and then deposited to the arrakis vault for an LP.
 /// @author ZeroPoint Labs
 contract ArrakisNonNativeVault is ERC4626 {
     /*//////////////////////////////////////////////////////////////
@@ -75,7 +55,7 @@ contract ArrakisNonNativeVault is ERC4626 {
                       CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice ArrakisUniV3ERC4626 constructor
+    /// @notice ArrakisNonNativeVault constructor
     /// @param gUniPool_ Compound cToken to wrap
     /// @param name_ ERC20 name of the vault shares token
     /// @param symbol_ ERC20 symbol of the vault shares token
@@ -114,6 +94,10 @@ contract ArrakisNonNativeVault is ERC4626 {
         _approveTokenIfNeeded(address(non_asset), address(arrakisVault.pool()));
     }
 
+    /*//////////////////////////////////////////////////////////////
+                          INTERNAL HOOKS LOGIC
+    //////////////////////////////////////////////////////////////*/
+
     function beforeWithdraw(uint256 underlyingLiquidity_, uint256)
         internal
         override
@@ -148,7 +132,7 @@ contract ArrakisNonNativeVault is ERC4626 {
     }
 
     /// Underlying balance of the assets (notional value in terms of asset) this contract holds.
-    function viewUnderlyingBalanceOf() internal view returns (uint256) {
+    function _viewUnderlyingBalanceOf() internal view returns (uint256) {
         (uint256 gross0, uint256 gross1) = _getUnderlyingOrLiquidity(
             arrakisVault
         );
@@ -229,6 +213,10 @@ contract ArrakisNonNativeVault is ERC4626 {
             address(this)
         );
     }
+
+    /*//////////////////////////////////////////////////////////////
+                            ERC4626 OVERRIDES
+    //////////////////////////////////////////////////////////////*/
 
     function redeem(
         uint256 shares_,
@@ -319,7 +307,7 @@ contract ArrakisNonNativeVault is ERC4626 {
     /// @notice Total amount of the underlying asset that
     /// is "managed" by Vault.
     function totalAssets() public view override returns (uint256) {
-        return viewUnderlyingBalanceOf();
+        return _viewUnderlyingBalanceOf();
     }
 
     /*//////////////////////////////////////////////////////////////

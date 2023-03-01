@@ -12,11 +12,13 @@ import {ICometRewards} from "./compound/ICometRewards.sol";
 import {ISwapRouter} from "../aave-v2/utils/ISwapRouter.sol";
 import {DexSwap} from "./utils/swapUtils.sol";
 
-/// @title CompoundV3StrategyWrapper - Custom implementation with flexible reinvesting logic
-/// @dev Rationale: Forked protocols often implement custom functions and modules on top of forked code.
+/// @title CompoundV3ERC4626Wrapper
+/// @notice Custom implementation with flexible reinvesting logic
+/// @notice Rationale: Forked protocols often implement custom functions and modules on top of forked code.
+/// @author ZeroPoint Labs
 contract CompoundV3ERC4626Wrapper is ERC4626 {
     /*//////////////////////////////////////////////////////////////
-                      LIBRARIES USAGE
+                        LIBRARIES USAGE
     //////////////////////////////////////////////////////////////*/
 
     using LibCompound for CometMainInterface;
@@ -24,7 +26,7 @@ contract CompoundV3ERC4626Wrapper is ERC4626 {
     using FixedPointMathLib for uint256;
 
     /*//////////////////////////////////////////////////////////////
-                      ERRORS
+                            ERRORS
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Thrown when reinvest amount is not enough.
@@ -35,7 +37,7 @@ contract CompoundV3ERC4626Wrapper is ERC4626 {
     error INVALID_FEE_ERROR();
 
     /*//////////////////////////////////////////////////////////////
-                      CONSTANTS
+                            CONSTANTS
     //////////////////////////////////////////////////////////////*/
 
     uint256 internal constant NO_ERROR = 0;
@@ -57,10 +59,11 @@ contract CompoundV3ERC4626Wrapper is ERC4626 {
     /// @notice The Compound rewards manager contract
     ICometRewards public immutable rewardsManager;
 
-    ISwapRouter public immutable swapRouter = ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
+    ISwapRouter public immutable swapRouter =
+        ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
 
     /*//////////////////////////////////////////////////////////////
-                      CONSTRUCTOR
+                            CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
     /// @notice constructor for the CompoundV3StrategyWrapper
@@ -77,7 +80,7 @@ contract CompoundV3ERC4626Wrapper is ERC4626 {
         cToken = cToken_;
         rewardsManager = rewardsManager_;
         manager = manager_;
-        (address reward_, ,) = rewardsManager.rewardConfig(address(cToken));
+        (address reward_, , ) = rewardsManager.rewardConfig(address(cToken));
         reward = ERC20(reward_);
     }
 
@@ -93,14 +96,18 @@ contract CompoundV3ERC4626Wrapper is ERC4626 {
         address tokenMid_,
         uint24 poolFee2_
     ) external {
-        if(msg.sender != manager)
-            revert INVALID_ACCESS_ERROR();
-        if(poolFee1_ == 0)
-            revert INVALID_FEE_ERROR();
-        if(poolFee2_ == 0 || tokenMid_ == address(0))
-            swapPath  = abi.encodePacked(reward, poolFee1_, address(asset));
-        else 
-            swapPath  = abi.encodePacked(reward, poolFee1_, tokenMid_, poolFee2_, address(asset));
+        if (msg.sender != manager) revert INVALID_ACCESS_ERROR();
+        if (poolFee1_ == 0) revert INVALID_FEE_ERROR();
+        if (poolFee2_ == 0 || tokenMid_ == address(0))
+            swapPath = abi.encodePacked(reward, poolFee1_, address(asset));
+        else
+            swapPath = abi.encodePacked(
+                reward,
+                poolFee1_,
+                tokenMid_,
+                poolFee2_,
+                address(asset)
+            );
         ERC20(reward).approve(address(swapRouter), type(uint256).max); /// max approve
     }
 
@@ -111,24 +118,23 @@ contract CompoundV3ERC4626Wrapper is ERC4626 {
     function totalAssets() public view virtual override returns (uint256) {
         return cToken.balanceOf(address(this));
     }
-    
+
     function beforeWithdraw(
-        uint256 assets,
+        uint256 assets_,
         uint256 /*shares*/
     ) internal virtual override {
-
-        cToken.withdraw(address(asset), assets);
+        cToken.withdraw(address(asset), assets_);
     }
 
     function afterDeposit(
-        uint256 assets,
+        uint256 assets_,
         uint256 /*shares*/
     ) internal virtual override {
         // approve to cToken
-        asset.safeApprove(address(cToken), assets);
+        asset.safeApprove(address(cToken), assets_);
 
         // deposit into cToken
-        cToken.supply(address(asset), assets);
+        cToken.supply(address(asset), assets_);
     }
 
     function harvest(uint256 minAmountOut_) external {
@@ -137,8 +143,8 @@ contract CompoundV3ERC4626Wrapper is ERC4626 {
         uint256 earned = ERC20(reward).balanceOf(address(this));
         uint256 reinvestAmount;
         /// @dev Swap rewards to asset
-        ISwapRouter.ExactInputParams memory params =
-            ISwapRouter.ExactInputParams({
+        ISwapRouter.ExactInputParams memory params = ISwapRouter
+            .ExactInputParams({
                 path: swapPath,
                 recipient: msg.sender,
                 deadline: block.timestamp,
@@ -148,11 +154,10 @@ contract CompoundV3ERC4626Wrapper is ERC4626 {
 
         // Executes the swap.
         reinvestAmount = swapRouter.exactInput(params);
-        if(reinvestAmount < minAmountOut_) {
+        if (reinvestAmount < minAmountOut_) {
             revert MIN_AMOUNT_ERROR();
         }
         afterDeposit(asset.balanceOf(address(this)), 0);
-        
     }
 
     function maxDeposit(address) public view override returns (uint256) {
@@ -165,18 +170,23 @@ contract CompoundV3ERC4626Wrapper is ERC4626 {
         return type(uint256).max;
     }
 
-    function maxWithdraw(address owner) public view override returns (uint256) {
+    function maxWithdraw(address owner_)
+        public
+        view
+        override
+        returns (uint256)
+    {
         // uint256 cash = cToken.getCash();
         if (cToken.isWithdrawPaused()) return 0;
-        uint256 assetsBalance = convertToAssets(balanceOf[owner]);
+        uint256 assetsBalance = convertToAssets(balanceOf[owner_]);
         return assetsBalance;
     }
 
-    function maxRedeem(address owner) public view override returns (uint256) {
+    function maxRedeem(address owner_) public view override returns (uint256) {
         // uint256 cash = cToken.getCash();
         // uint256 cashInShares = convertToShares(cash);
         if (cToken.isWithdrawPaused()) return 0;
-        uint256 shareBalance = balanceOf[owner];
+        uint256 shareBalance = balanceOf[owner_];
         return shareBalance;
     }
 

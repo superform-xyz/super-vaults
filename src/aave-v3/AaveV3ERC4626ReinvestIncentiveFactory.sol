@@ -9,8 +9,10 @@ import {AaveV3ERC4626ReinvestIncentive} from "./AaveV3ERC4626ReinvestIncentive.s
 import {IRewardsController} from "./external/IRewardsController.sol";
 import {Bytes32AddressLib} from "solmate/utils/Bytes32AddressLib.sol";
 
-/// @title AaveV3ERC4626Factory forked from @author zefram.eth
+/// @title AaveV3ERC4626ReinvestIncentiveFactory
 /// @notice Factory for creating AaveV3ERC4626 contracts
+/// @notice Forked from zefram.eth
+/// @author ZeroPoint Labs
 contract AaveV3ERC4626ReinvestIncentiveFactory {
     /*//////////////////////////////////////////////////////////////
                         LIBRARIES USAGE
@@ -49,10 +51,16 @@ contract AaveV3ERC4626ReinvestIncentiveFactory {
     event HarvestERC4626Reinvest(AaveV3ERC4626ReinvestIncentive vault);
 
     /// @notice Emitted when minTokensToReinvest has been updated for a given aToken vault
-    event UpdateMinTokensToReinvest(AaveV3ERC4626ReinvestIncentive vault, uint256 minTokensToHarvest);
+    event UpdateMinTokensToReinvest(
+        AaveV3ERC4626ReinvestIncentive vault,
+        uint256 minTokensToHarvest
+    );
 
     /// @notice Emitted when reinvestRewardBps has been updated for a given aToken vault
-    event UpdateReinvestRewardBps(AaveV3ERC4626ReinvestIncentive vault, uint256 reinvestRewardBps);
+    event UpdateReinvestRewardBps(
+        AaveV3ERC4626ReinvestIncentive vault,
+        uint256 reinvestRewardBps
+    );
 
     /*//////////////////////////////////////////////////////////////
                       ERRORS
@@ -168,9 +176,12 @@ contract AaveV3ERC4626ReinvestIncentiveFactory {
     /// @notice Update minTokensToReinvest
     /// @param vault_ The vault to update
     /// @param newValue_ The new bps value to set
-    function updateReinvestRewardBps(AaveV3ERC4626ReinvestIncentive vault_, uint256 newValue_) external {
+    function updateReinvestRewardBps(
+        AaveV3ERC4626ReinvestIncentive vault_,
+        uint256 newValue_
+    ) external {
         if (msg.sender != manager) revert INVALID_ACCESS();
-        if(newValue_ > 150) revert REINVEST_BPS_TOO_HIGH();
+        if (newValue_ > 150) revert REINVEST_BPS_TOO_HIGH();
         emit UpdateReinvestRewardBps(vault_, newValue_);
         vault_.updateReinvestRewardBps(newValue_);
     }
@@ -178,7 +189,10 @@ contract AaveV3ERC4626ReinvestIncentiveFactory {
     /// @notice Harvest rewards from specified vault
     /// @param vault_ The vault to harvest rewards from
     /// @param minAmountOut_ The minimum amount of asset to receive
-    function harvestFrom(AaveV3ERC4626ReinvestIncentive vault_, uint256 minAmountOut_) external {
+    function harvestFrom(
+        AaveV3ERC4626ReinvestIncentive vault_,
+        uint256 minAmountOut_
+    ) external {
         vault_.harvest(minAmountOut_);
         emit HarvestERC4626Reinvest(vault_);
     }
