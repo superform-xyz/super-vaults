@@ -14,6 +14,7 @@ import {DexSwap} from "./utils/swapUtils.sol";
 
 /// @title VenusERC4626Reinvest - extended implementation of yield-daddy CompoundV2 wrapper
 /// @dev Reinvests rewards accrued for higher APY
+/// @author ZeroPoint Labs
 contract VenusERC4626Reinvest is ERC4626 {
     /*//////////////////////////////////////////////////////////////
      Libraries usage
@@ -90,12 +91,12 @@ contract VenusERC4626Reinvest is ERC4626 {
 
     /// @notice Set swap route for XVS rewards
     function setRoute(
-        address token,
-        address pair1,
-        address pair2
+        address token_,
+        address pair1_,
+        address pair2_
     ) external {
         require(msg.sender == manager, "onlyOwner");
-        SwapInfo = swapInfo(token, pair1, pair2);
+        SwapInfo = swapInfo(token_, pair1_, pair2_);
     }
 
     /// @notice Claims liquidity mining rewards from Compound and performs low-lvl swap with instant reinvesting

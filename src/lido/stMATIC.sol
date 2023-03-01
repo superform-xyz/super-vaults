@@ -9,8 +9,8 @@ import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {IStMATIC} from "./interfaces/IStMATIC.sol";
 import {IMATIC} from "./interfaces/IMatic.sol";
 
-/// @notice Lido's stMATIC ERC4626 Wrapper - stMatic as Vault's underlying token (and token received after withdraw)
-/// Accepts MATIC, deposits into Liod's stMatic pool and mints 1:1 ERC4626-stMatic shares
+/// @title Lido's stMATIC ERC4626 Wrapper - stMatic as Vault's underlying token (and token received after withdraw)
+/// @notice Accepts MATIC, deposits into Liod's stMatic pool and mints 1:1 ERC4626-stMatic shares
 /// Minimal implementation providing ERC4626 interface for stMatic
 /// totalAsset() can be extended to return virtual MATIC balance
 /// @author ZeroPoint Labs

@@ -16,6 +16,8 @@ interface IVaultConfig {
     function getReservePoolBps() external view returns (uint256);
 }
 
+/// @title Alpaca ERC4626 Wrapper - extended AAVE-V2 logic using FairLaunch (and not AaveMining) for rewards distribution
+/// @author ZeroPoint Labs
 contract AlpacaERC4626Reinvest is ERC4626 {
     using FixedPointMathLib for uint256;
     using SafeTransferLib for ERC20;
@@ -101,12 +103,12 @@ contract AlpacaERC4626Reinvest is ERC4626 {
     }
     /// @notice Set swap routes for selling rewards
     function setRoute(
-        address token,
-        address pair1,
-        address pair2
+        address token_,
+        address pair1_,
+        address pair2_
     ) external {
         require(msg.sender == manager, "onlyOwner");
-        SwapInfo = swapInfo(token, pair1, pair2);
+        SwapInfo = swapInfo(token_, pair1_, pair2_);
     }
 
     /// @notice Harvest AlpacaToken rewards for all of the shares held by this vault

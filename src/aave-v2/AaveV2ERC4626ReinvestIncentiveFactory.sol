@@ -8,8 +8,9 @@ import {AaveV2ERC4626ReinvestIncentive} from "./AaveV2ERC4626ReinvestIncentive.s
 import {IAaveMining} from "./aave/IAaveMining.sol";
 import {ILendingPool} from "./aave/ILendingPool.sol";
 
-/// @title AaveV2ERC4626ReinvestFactory forked from @author zefram.eth
+/// @title AaveV2ERC4626ReinvestFactory forked from yield daddy Aave-V2-ERC4626-Factory wrapper
 /// @notice Factory for creating AaveV2ERC4626Reinvest contracts
+/// @author ZeroPoint Labs
 contract AaveV2ERC4626ReinvestFactory {
     /// @notice Emitted when a new ERC4626 vault has been created
     /// @param asset The base asset used by the vault

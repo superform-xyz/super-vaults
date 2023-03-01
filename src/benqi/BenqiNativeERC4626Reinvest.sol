@@ -13,8 +13,9 @@ import {IComptroller} from "./compound/IComptroller.sol";
 import {DexSwap} from "./utils/swapUtils.sol";
 import {WrappedNative} from "./utils/wrappedNative.sol";
 
-/// @title BenqiERC4626Reinvest - Custom implementation of yield-daddy wrappers with flexible reinvesting logic
+/// @title BenqiERC4626Reinvest - Custom implementation of yield-daddy Compound wrapper with flexible reinvesting logic
 /// @notice Extended with payable function to accept native token transfer
+/// @author ZeroPoint Labs
 contract BenqiNativeERC4626Reinvest is ERC4626 {
     /*//////////////////////////////////////////////////////////////
      Libraries usage

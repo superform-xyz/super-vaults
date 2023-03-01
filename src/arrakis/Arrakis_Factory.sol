@@ -10,8 +10,8 @@ interface IStakePool {
 }
 
 /// @title ArrakisFactory
-/// @author diszsid.eth
 /// @notice Factory for creating ArrakisERC4626 contracts
+/// @author ZeroPoint Labs
 contract ArrakisFactory {
     /*//////////////////////////////////////////////////////////////
                       ERRORS

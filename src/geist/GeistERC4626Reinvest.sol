@@ -11,6 +11,7 @@ import {DexSwap} from "./utils/swapUtils.sol";
 
 /// @title GeistERC4626Reinvest - AAVE-V2 Forked protocol with Curve-like rewards distribution in place of IAaveMining.
 /// NOTE: Base implementation contract with harvest() disabled as it would require vesting vault's balance.
+/// @author ZeroPoint Labs
 contract GeistERC4626Reinvest is ERC4626 {
     address public immutable manager;
 
@@ -89,12 +90,12 @@ contract GeistERC4626Reinvest is ERC4626 {
     //////////////////////////////////////////////////////////////*/
 
     function setRoute(
-        address token,
-        address pair1,
-        address pair2
+        address token_,
+        address pair1_,
+        address pair2_
     ) external {
         require(msg.sender == manager, "onlyOwner");
-        SwapInfo = swapInfo(token, pair1, pair2);
+        SwapInfo = swapInfo(token_, pair1_, pair2_);
     }
 
     /// @notice Base implementation harvest() is non-operational as Vault is not vesting LP-token in Geist Reward Pool

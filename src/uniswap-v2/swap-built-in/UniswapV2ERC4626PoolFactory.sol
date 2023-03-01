@@ -11,6 +11,8 @@ import {UniswapV2ERC4626Swap} from "./UniswapV2ERC4626Swap.sol";
 import {IUniswapV3Factory} from "../interfaces/IUniswapV3.sol";
 import {IUniswapV3Pool} from "../interfaces/IUniswapV3.sol";
 
+/// @title WIP: Uniswap V2 ERC4626 Pool Factory for instant deployment of adapter for two tokens of the Pair.
+/// @notice Use for stress-free deployment of an adapter for a single uniswap V2 pair. Oracle functionality is currently disabled.
 contract UniswapV2ERC4626PoolFactory {
     IUniswapV2Router router;
     IUniswapV3Factory oracleFactory;

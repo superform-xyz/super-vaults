@@ -11,8 +11,8 @@ import {IWETH} from "./interfaces/IWETH.sol";
 
 import "forge-std/console.sol";
 
-/// @notice (WIP) Lido's stETH ERC4626 Wrapper - stEth as Vault's underlying token (and token received after withdraw).
-/// Accepts WETH through ERC4626 interface, but can also accept ETH directly through different deposit() function signature.
+/// @title WIP: Lido's stETH ERC4626 Wrapper - stEth as Vault's underlying token (and token received after withdraw).
+/// @notice Accepts WETH through ERC4626 interface, but can also accept ETH directly through different deposit() function signature.
 /// Vault balance holds stEth. Value is updated for each accounting call.
 /// Assets Under Managment (totalAssets()) operates on rebasing balance.
 /// @dev This Wrapper is a base implementation, providing ERC4626 interface over stEth without any additional strategy.

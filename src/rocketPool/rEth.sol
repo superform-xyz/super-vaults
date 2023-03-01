@@ -14,8 +14,8 @@ import {IRETHTOKEN} from "./interfaces/IRethToken.sol";
 
 import "forge-std/console.sol";
 
-/// @notice Experimental RocketPool's rETH ERC4626 Wrapper
-/// Preview functions allow to check current value of held rETH tokens denominated as ETH
+/// @title Experimental RocketPool's rETH ERC4626 Wrapper
+/// @notice Preview functions allow to check current value of held rETH tokens denominated as ETH
 /// Redemption is denominated in rETH as RocketPool doesn't allow to redeem ETH directly
 /// Adapter can be used as a good base for building rETH oriented strategy (requires changes to shares calculation)
 /// deposit & mint are "entry" functions to RocketPool - caller gives weth, caller receives wrEth, vault holds rEth

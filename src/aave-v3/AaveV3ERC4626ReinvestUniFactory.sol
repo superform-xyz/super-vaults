@@ -9,8 +9,9 @@ import {AaveV3ERC4626ReinvestUni} from "./AaveV3ERC4626ReinvestUni.sol";
 import {IRewardsController} from "./external/IRewardsController.sol";
 import {Bytes32AddressLib} from "solmate/utils/Bytes32AddressLib.sol";
 
-/// @title AaveV3ERC4626Factory forked from @author zefram.eth
+/// @title AaveV3ERC4626Factory forked from yield-daddy AaveV3ERC4626Factory
 /// @notice Factory for creating AaveV3ERC4626 contracts
+/// @author ZeroPoint Labs
 contract AaveV3ERC4626ReinvestUniFactory {
     /*//////////////////////////////////////////////////////////////
                       LIBRARIES USAGE

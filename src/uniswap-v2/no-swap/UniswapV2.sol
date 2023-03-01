@@ -10,17 +10,16 @@ import {IUniswapV2Pair} from "../interfaces/IUniswapV2Pair.sol";
 import {IUniswapV2Router} from "../interfaces/IUniswapV2Router.sol";
 import {UniswapV2Library} from "../utils/UniswapV2Library.sol";
 
-/// @notice Custom ERC4626 Wrapper for UniV2 Pools without swapping, accepting token0/token1 transfers
+/// @title Custom ERC4626 Wrapper for UniV2 Pools without swapping, accepting token0/token1 transfers
 /// @dev WARNING: Change your assumption about asset/share in context of deposit/mint/redeem/withdraw
-
-// Vault (ERC4626) - totalAssets() == lpToken of Uniswap Pool
-// deposit(assets) -> assets == lpToken amount to receive
-// - user needs to approve both A,B tokens in X,Y amounts (see getLiquidityAmounts / getAssetsAmounts functions)
-// - check is run if A,B covers requested Z amount of UniLP
-// - deposit() safeTransfersFrom A,B to min Z amount of UniLP
-// withdraw() -> withdraws both A,B in accrued X+n,Y+n amounts, burns Z amount of UniLP (or Vault's LP, those are 1:1)
-
-/// https://v2.info.uniswap.org/pair/0xae461ca67b15dc8dc81ce7615e0320da1a9ab8d5 (DAI-USDC LP/PAIR on ETH)
+/// @notice Basic flow descriptiion: 
+/// Vault (ERC4626) - totalAssets() == lpToken of Uniswap Pool
+/// deposit(assets) -> assets == lpToken amount to receive
+/// - user needs to approve both A,B tokens in X,Y amounts (see getLiquidityAmounts / getAssetsAmounts functions)
+/// - check is run if A,B covers requested Z amount of UniLP
+/// - deposit() safeTransfersFrom A,B to min Z amount of UniLP
+/// withdraw() -> withdraws both A,B in accrued X+n,Y+n amounts, burns Z amount of UniLP (or Vault's LP, those are 1:1)
+/// @dev https://v2.info.uniswap.org/pair/0xae461ca67b15dc8dc81ce7615e0320da1a9ab8d5 (DAI-USDC LP/PAIR on ETH)
 contract UniswapV2WrapperERC4626 is ERC4626 {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;

@@ -10,9 +10,10 @@ import {IRewardsController} from "./external/IRewardsController.sol";
 
 import {DexSwap} from "./utils/swapUtils.sol";
 
-/// @title AaveV3ERC4626ReinvestIncentive - extended implementation of yield-daddy @author diszsid.eth
+/// @title AaveV3ERC4626ReinvestIncentive - extended implementation of yield-daddy AaveV3 wrapper
 /// @dev Reinvests rewards accrued for higher APY
 /// @notice ERC4626 wrapper for Aave V3 with rewards reinvesting
+/// @author ZeroPoint Labs
 contract AaveV3ERC4626ReinvestIncentive is ERC4626 {
 
     /*//////////////////////////////////////////////////////////////

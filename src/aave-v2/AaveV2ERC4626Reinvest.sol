@@ -10,8 +10,9 @@ import {IAaveMining} from "./aave/IAaveMining.sol";
 
 import {DexSwap} from "./utils/swapUtils.sol";
 
-/// @title AaveV2ERC4626Reinvest - extended implementation of yield-daddy @author zefram.eth
+/// @title AaveV2ERC4626Reinvest - extended implementation of yield-daddy Aave-v2 wrapper
 /// @dev Reinvests rewards accrued for higher APY
+/// @author ZeroPoint Labs
 contract AaveV2ERC4626Reinvest is ERC4626 {
     /*//////////////////////////////////////////////////////////////
                       LIBRARIES USED

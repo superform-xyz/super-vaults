@@ -12,9 +12,10 @@ import {DexSwap} from "./utils/swapUtils.sol";
 import {ISwapRouter} from '../aave-v2/utils/ISwapRouter.sol';
 
 
-/// @title AaveV3ERC4626Reinvest - extended implementation of yield-daddy @author dizsid.eth
+/// @title AaveV3ERC4626Reinvest - extended implementation of yield-daddy
 /// @dev Reinvests rewards accrued for higher APY
 /// @notice ERC4626 wrapper for Aave V3 with rewards reinvesting
+/// @author ZeroPoint Labs
 contract AaveV3ERC4626ReinvestUni is ERC4626 {
 
     /*//////////////////////////////////////////////////////////////

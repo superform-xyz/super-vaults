@@ -12,8 +12,8 @@ import {IWETH} from "./interfaces/IWETH.sol";
 
 import "forge-std/console.sol";
 
-/// @notice Lido's stETH ERC4626 Wrapper
-/// Accepts WETH through ERC4626 interface, but can also accept ETH directly through other deposit() function.
+/// @title Lido's stETH ERC4626 Wrapper
+/// @notice Accepts WETH through ERC4626 interface, but can also accept ETH directly through other deposit() function.
 /// Returns assets as ETH for brevity (community-version should return stEth)
 /// Assets Under Managment (totalAssets()) operates on rebasing balance, re-calculated to the current value in ETH.
 /// Uses ETH/stETH CurvePool for a fast-exit with 1% slippage hardcoded.

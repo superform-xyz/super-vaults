@@ -16,12 +16,13 @@ import {DexSwap} from "../utils/swapUtils.sol";
 
 import "forge-std/console.sol";
 
-/// @notice WIP: ERC4626 UniswapV2 Adapter - Allows exit & join to UniswapV2 LP Pools from ERC4626 interface. Single sided liquidity adapter.
-/// Provides a set of helpful functions to calculate different aspects of liquidity providing to the UniswapV2-style pools.
+/// @title WIP: ERC4626 UniswapV2 Adapter - Allows exit & join to UniswapV2 LP Pools from ERC4626 interface. Single sided liquidity adapter.
+/// @notice Provides a set of helpful functions to calculate different aspects of liquidity providing to the UniswapV2-style pools.
 /// Accept tokenX || tokenY as ASSET. Uses UniswapV2Pair LP-TOKEN as AUM (totalAssets()).
 /// BASIC FLOW: Deposit tokenX > tokenX swap to tokenX && tokenY optimal amount > tokenX/Y deposited into UniswapV2
 /// > shares minted to the Vault from the Uniswap Pool > shares minted to the user from the Vault
-/// Example Pool: https://v2.info.uniswap.org/pair/0xae461ca67b15dc8dc81ce7615e0320da1a9ab8d5 (DAI-USDC LP/PAIR on ETH).
+/// @dev Example Pool: https://v2.info.uniswap.org/pair/0xae461ca67b15dc8dc81ce7615e0320da1a9ab8d5 (DAI-USDC LP/PAIR on ETH).
+/// @author ZeroPoint Labs
 contract UniswapV2ERC4626Swap is ERC4626 {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;

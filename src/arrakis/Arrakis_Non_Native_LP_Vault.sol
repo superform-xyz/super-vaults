@@ -33,9 +33,9 @@ interface IArrakisRouter {
         );
 }
 
-/// @title ArrakisUniV3ERC4626 - A vault for wrapping arrakis vault LP tokens and depositing them to the vault - @author diszsid.eth
+/// @title ArrakisUniV3ERC4626 - A vault for wrapping arrakis vault LP tokens and depositing them to the vault.
 /// @dev deposited asset get swapped partially to the non_asset and then deposited to the arrakis vault for an LP.
-
+/// @author ZeroPoint Labs
 contract ArrakisNonNativeVault is ERC4626 {
     /*//////////////////////////////////////////////////////////////
                       LIBRARIES USAGE

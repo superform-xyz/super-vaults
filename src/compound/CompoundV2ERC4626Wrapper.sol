@@ -13,8 +13,7 @@ import {ISwapRouter} from "../aave-v2/utils/ISwapRouter.sol";
 import {DexSwap} from "./utils/swapUtils.sol";
 
 /// @title CompoundV2StrategyWrapper - Custom implementation of yield-daddy wrappers with flexible reinvesting logic
-/// Rationale: Forked protocols often implement custom functions and modules on top of forked code.
-/// Example: Staking systems. Very common in DeFi. Re-investing/Re-Staking rewards on the Vault level can be included in permissionless way.
+/// @dev Rationale: Forked protocols often implement custom functions and modules on top of forked code.
 contract CompoundV2ERC4626Wrapper is ERC4626 {
     /*//////////////////////////////////////////////////////////////
                       LIBRARIES USAGE

@@ -12,7 +12,8 @@ import {IComptroller} from "./compound/IComptroller.sol";
 
 import {DexSwap} from "./utils/swapUtils.sol";
 
-/// @title BenqiERC4626Reinvest - Custom implementation of yield-daddy wrappers with flexible reinvesting logic
+/// @title BenqiERC4626Reinvest - Custom implementation of yield-daddy Compound wrapper with flexible reinvesting logic
+/// @author ZeroPoint Labs
 contract BenqiERC4626Reinvest is ERC4626 {
     /*//////////////////////////////////////////////////////////////
       Libraries usage
