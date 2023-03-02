@@ -135,9 +135,9 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
                         ERC4626 OVERRIDES
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice User wants to get 100 UniLP (underlying)
+    /// @notice Deposit pre-calculated amount of token0/1 to get amount of UniLP (assets/getUniLpFromAssets_)
     /// @notice REQUIREMENT: Calculate amount of assets and have enough of assets0/1 to cover this amount for LP requested (slippage!)
-    /// @param getUniLpFromAssets_ == Assume caller called getAssetsAmounts() first for calc on amount of assets to give approve to
+    /// @param getUniLpFromAssets_ Assume caller called getAssetsAmounts() first to know amount of assets to approve to this contract
     /// @param receiver_ - Who will receive shares (Standard ERC4626)
     /// @return shares - Of this Vault (Standard ERC4626)
     function deposit(uint256 getUniLpFromAssets_, address receiver_)
@@ -169,9 +169,8 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         afterDeposit(getUniLpFromAssets_, shares);
     }
 
-    /// @notice User want to get 100 VaultLP (vault's token) worth N UniLP (Standard ERC4626 behavior, 'get me N amount of shares of this Vault')
-    /// @param sharesOfThisVault_ shares value == amount of Vault token (shares) to mint from requested lpToken, but...
-    ///        because this is 1:1 with LPTOKEN amount on this balance, function behaves like deposit() anyways
+    /// @notice Mint amount of shares of this Vault (1:1 with UniLP). Requires precalculating amount of assets to approve to this contract.
+    /// @param sharesOfThisVault_ shares value == amount of Vault token (shares) to mint from requested lpToken. (1:1 with lpToken).
     /// @param receiver_ == receiver of shares (Vault token)
     /// @return assets == amount of LPTOKEN minted (1:1 with sharesOfThisVault_ input)
     function mint(uint256 sharesOfThisVault_, address receiver_)
@@ -195,7 +194,10 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         afterDeposit(assets, sharesOfThisVault_);
     }
 
-    /// @notice User wants to burn 100 UniLP (underlying) for N worth of token0/1
+    /// @notice Withdraw amount of token0/1 from burning Vault shares (1:1 with UniLP). Ie. User wants to burn 100 UniLP (underlying) for N worth of token0/1
+    /// @param assets_ - amount of UniLP to burn (calculate amount of expected token0/1 from helper functions)
+    /// @param receiver_ - Who will receive shares (Standard ERC4626)
+    /// @param owner_ - Who owns shares (Standard ERC4626)
     function withdraw(
         uint256 assets_, // amount of underlying asset (pool Lp) to withdraw
         address receiver_,
@@ -224,7 +226,10 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         token1.safeTransfer(receiver_, assets1);
     }
 
-    /// @notice User wants to burn 100 VaultLp (vault's token) for N worth of token0/1
+    /// @notice Redeem amount of Vault shares (1:1 with UniLP) for arbitrary amount of token0/1. Calculate amount of expected token0/1 from helper functions.
+    /// @param shares_ - amount of UniLP to burn
+    /// @param receiver_ - Who will receive shares (Standard ERC4626)
+    /// @param owner_ - Who owns shares (Standard ERC4626)
     function redeem(
         uint256 shares_,
         address receiver_,
@@ -290,7 +295,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         );
     }
 
-    /// Pool's LP token on contract balance
+    /// @notice Pool's LP token on contract balance
     function totalAssets() public view override returns (uint256) {
         return asset.balanceOf(address(this));
     }
