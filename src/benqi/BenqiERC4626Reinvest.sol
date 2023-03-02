@@ -31,8 +31,12 @@ contract BenqiERC4626Reinvest is ERC4626 {
     /// @notice Thrown when a call to Compound returned an error.
     /// @param errorCode The error code returned by Compound
     error COMPOUND_ERROR(uint256 errorCode);
+
     /// @notice Thrown when reinvested amounts are not enough.
     error MIN_AMOUNT_ERROR();
+
+    /// @notice Thrown when trying to call a function with an invalid access
+    error INVALID_ACCESS();
 
     /*//////////////////////////////////////////////////////////////
                             CONSTANTS
@@ -108,7 +112,7 @@ contract BenqiERC4626Reinvest is ERC4626 {
         address pair1_,
         address pair2_
     ) external {
-        require(msg.sender == manager, "onlyOwner");
+        if (msg.sender != manager) revert INVALID_ACCESS();
         swapInfoMap[rewardType_] = swapInfo(token_, pair1_, pair2_);
         rewardTokenMap[rewardType_] = rewardToken_;
     }

@@ -50,6 +50,9 @@ contract AaveV2ERC4626ReinvestFactory {
     /// @notice Thrown when trying to call a function that is restricted
     error INVALID_ACCESS();
 
+    /// @notice Thrown when amount for reinvest reward bps is too high
+    error REWARD_TOO_HIGH();
+
     /*//////////////////////////////////////////////////////////////
                       IMMUTABLES & VARIABLES
     //////////////////////////////////////////////////////////////*/
@@ -146,7 +149,7 @@ contract AaveV2ERC4626ReinvestFactory {
         AaveV2ERC4626ReinvestIncentive vault_,
         uint256 newValue_
     ) external {
-        require(msg.sender == manager, "onlyOwner");
+        if (msg.sender != manager) revert INVALID_ACCESS();
         emit UpdateMinTokensToReinvest(vault_, newValue_);
         vault_.updateMinTokensToHarvest(newValue_);
     }
@@ -159,8 +162,8 @@ contract AaveV2ERC4626ReinvestFactory {
         AaveV2ERC4626ReinvestIncentive vault_,
         uint256 newValue_
     ) external {
-        require(msg.sender == manager, "onlyOwner");
-        require(newValue_ <= 150, "reward too high");
+        if (msg.sender != manager) revert INVALID_ACCESS();
+        if (newValue_ > 150) revert REWARD_TOO_HIGH();
         emit UpdateReinvestRewardBps(vault_, newValue_);
         vault_.updateReinvestRewardBps(newValue_);
     }

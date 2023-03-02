@@ -19,19 +19,29 @@ import {IWETH} from "./interfaces/IWETH.sol";
 /// @author ZeroPoint Labs
 contract StETHERC4626 is ERC4626 {
     /*//////////////////////////////////////////////////////////////
+                            LIBRARIES USAGE
+    //////////////////////////////////////////////////////////////*/
+
+    using FixedPointMathLib for uint256;
+    using SafeTransferLib for ERC20;
+
+    /*//////////////////////////////////////////////////////////////
+                                ERRORS
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Thrown when trying to deposit 0 assets
+    error ZERO_ASSETS();
+
+    /// @notice Thrown when trying to redeem with 0 tokens invested
+    error ZERO_SHARES();
+
+    /*//////////////////////////////////////////////////////////////
                       IMMUATABLES & VARIABLES
     //////////////////////////////////////////////////////////////*/
 
     IStETH public stEth;
     ERC20 public stEthAsset;
     IWETH public weth;
-
-    /*//////////////////////////////////////////////////////////////
-                            LIBRARIES
-    //////////////////////////////////////////////////////////////*/
-
-    using FixedPointMathLib for uint256;
-    using SafeTransferLib for ERC20;
 
     /*//////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -71,7 +81,7 @@ contract StETHERC4626 is ERC4626 {
         override
         returns (uint256 shares)
     {
-        require((shares = previewDeposit(assets_)) != 0, "ZERO_SHARES");
+        if ((shares = previewDeposit(assets_)) == 0) revert ZERO_SHARES();
 
         asset.safeTransferFrom(msg.sender, address(this), assets_);
 
@@ -90,7 +100,7 @@ contract StETHERC4626 is ERC4626 {
         payable
         returns (uint256 shares)
     {
-        require((shares = previewDeposit(msg.value)) != 0, "ZERO_SHARES");
+        if ((shares = previewDeposit(msg.value)) == 0) revert ZERO_SHARES();
 
         shares = _addLiquidity(msg.value, shares);
 
@@ -153,7 +163,7 @@ contract StETHERC4626 is ERC4626 {
                 allowance[owner_][msg.sender] = allowed - shares_;
         }
 
-        require((assets = previewRedeem(shares_)) != 0, "ZERO_ASSETS");
+        if ((assets = previewRedeem(shares_)) == 0) revert ZERO_ASSETS();
 
         _burn(owner_, shares_);
 

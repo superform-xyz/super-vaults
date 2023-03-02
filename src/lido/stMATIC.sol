@@ -17,14 +17,21 @@ import {IMATIC} from "./interfaces/IMatic.sol";
 /// @author ZeroPoint Labs
 contract StMATIC4626 is ERC4626 {
     /*//////////////////////////////////////////////////////////////
-                        LIBRARIES USAGES
+                            LIBRARIES USAGES
     //////////////////////////////////////////////////////////////*/
 
     using FixedPointMathLib for uint256;
     using SafeTransferLib for ERC20;
 
     /*//////////////////////////////////////////////////////////////
-                      IMMUTABLES & VARIABLES
+                                ERRORS
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Thrown when trying to deposit 0 assets
+    error ZERO_ASSETS();
+
+    /*//////////////////////////////////////////////////////////////
+                        IMMUTABLES & VARIABLES
     //////////////////////////////////////////////////////////////*/
 
     IStMATIC public stMatic;
@@ -131,7 +138,7 @@ contract StMATIC4626 is ERC4626 {
                 allowance[owner_][msg.sender] = allowed - shares_;
         }
 
-        require((assets = previewRedeem(shares_)) != 0, "ZERO_ASSETS");
+        if ((assets = previewRedeem(shares_)) == 0) revert ZERO_ASSETS();
 
         _burn(owner_, shares_);
 

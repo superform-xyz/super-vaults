@@ -25,6 +25,14 @@ contract ArrakisNonNativeVault is ERC4626 {
     using SafeTransferLib for ERC20;
     using TickMath for int24;
 
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Thrown when trying to redeem with 0 tokens invested
+    error ZERO_ASSETS();
+
+    /// @notice Thrown when univ3 callback is not being made by the pool
+    error NOT_UNIV3_POOL_CALLBACK();
+
     /*//////////////////////////////////////////////////////////////
                       IMMUTABLES & VARIABLES
     //////////////////////////////////////////////////////////////*/
@@ -231,7 +239,8 @@ contract ArrakisNonNativeVault is ERC4626 {
         }
         uint256 liquidity;
         /// @dev Check for rounding error since we round down in previewRedeem.
-        require((liquidity = previewRedeem(shares_)) != 0, "ZERO_ASSETS");
+        if ((liquidity = previewRedeem(shares_)) == 0) revert ZERO_ASSETS();
+
         beforeWithdraw(liquidity, shares_);
 
         _burn(owner_, shares_);
@@ -351,7 +360,8 @@ contract ArrakisNonNativeVault is ERC4626 {
         int256 amount1Delta_,
         bytes calldata /*data*/
     ) external {
-        require(msg.sender == address(arrakisVault.pool()), "callback caller");
+        if (msg.sender != address(arrakisVault.pool()))
+            revert NOT_UNIV3_POOL_CALLBACK();
 
         if (amount0Delta_ > 0)
             ERC20(address(arrakisVault.token0())).safeTransfer(

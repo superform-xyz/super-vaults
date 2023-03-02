@@ -24,11 +24,24 @@ import {DexSwap} from "../utils/swapUtils.sol";
 /// @author ZeroPoint Labs
 contract UniswapV2ERC4626Swap is ERC4626 {
     /*//////////////////////////////////////////////////////////////
-                        LIBRARIES USAGE
+                            LIBRARIES USAGE
     //////////////////////////////////////////////////////////////*/
 
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
+
+    /*//////////////////////////////////////////////////////////////
+                                ERRORS
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Shares are lower than the minimum required.
+    error NOT_MIN_SHARES_OUT();
+
+    /// @notice Amount is lower than the minimum required.
+    error NOT_MIN_AMOUNT_OUT();
+
+    /// @notice Thrown when trying to deposit 0 assets
+    error ZERO_ASSETS();
 
     /*//////////////////////////////////////////////////////////////
                       IMMUATABLES & VARIABLES
@@ -144,7 +157,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         shares = _liquidityAdd(a0, a1);
 
         /// @dev caller calculates minSharesOut off-chain, this contracts functions can be used to retrive reserves over the past blocks
-        require(shares >= minSharesOut_, "UniswapV2ERC4626Swap: minSharesOut");
+        if (shares < minSharesOut_) revert NOT_MIN_SHARES_OUT();
 
         /// @dev we just pass uniswap lp-token amount to user
         _mint(receiver_, shares);
@@ -182,7 +195,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         /// NOTE: UniLP is non-rebasing, yield accrues on Uniswap pool (you can redeem more t0/t1 for same amount of LP)
         /// NOTE: If we want it as Strategy, e.g do something with this LP, then we need to calculate shares, 1:1 won't work
         /// NOTE: Caller needs to trust previewDeposit return value which can be manipulated for 1 block
-        require((uniShares >= shares), "SHARES_AMOUNT_OUT");
+        if (uniShares < shares) revert NOT_MIN_SHARES_OUT();
 
         /// @dev we want to have 1:1 relation to UniV2Pair lp token
         shares = uniShares;
@@ -211,7 +224,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         uint256 uniShares = _liquidityAdd(a0, a1);
 
         /// @dev Protected mint, caller can calculate minSharesOut off-chain
-        require((uniShares >= minSharesOut_), "SHARES_AMOUNT_OUT");
+        if (uniShares < minSharesOut_) revert NOT_MIN_SHARES_OUT();
 
         _mint(receiver_, uniShares);
 
@@ -235,7 +248,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         uint256 uniShares = _liquidityAdd(a0, a1);
 
         /// NOTE: PreviewMint needs to output reasonable amount of shares
-        require((uniShares >= shares_), "SHARES_AMOUNT_OUT");
+        if (uniShares < shares_) revert NOT_MIN_SHARES_OUT();
 
         _mint(receiver_, uniShares);
 
@@ -268,7 +281,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
             : _swapExit(assets0) + assets1;
 
         /// @dev Protected amountOut check
-        require(amount >= minAmountOut_, "ASSETS_AMOUNT_OUT");
+        if (amount < minAmountOut_) revert NOT_MIN_AMOUNT_OUT();
 
         asset.safeTransfer(receiver_, amount);
 
@@ -324,7 +337,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
                 allowance[owner_][msg.sender] = allowed - shares_;
         }
 
-        require((assets = previewRedeem(shares_)) != 0, "ZERO_ASSETS");
+        if ((assets = previewRedeem(shares_)) == 0) revert ZERO_ASSETS();
 
         (uint256 assets0, uint256 assets1) = _liquidityRemove(assets, shares_);
 
@@ -334,8 +347,8 @@ contract UniswapV2ERC4626Swap is ERC4626 {
             ? _swapExit(assets1) + assets0
             : _swapExit(assets0) + assets1;
 
-        /// @dev Protected amount check
-        require(amount >= minAmountOut_, "ASSETS_AMOUNT_OUT");
+        /// @dev Protected amountOut check
+        if (amount < minAmountOut_) revert NOT_MIN_AMOUNT_OUT();
 
         asset.safeTransfer(receiver_, amount);
 
@@ -356,7 +369,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         }
 
         // Check for rounding error since we round down in previewRedeem.
-        require((assets = previewRedeem(shares_)) != 0, "ZERO_ASSETS");
+        if ((assets = previewRedeem(shares_)) == 0) revert ZERO_ASSETS();
 
         (uint256 assets0, uint256 assets1) = _liquidityRemove(assets, shares_);
 
@@ -497,7 +510,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         returns (uint256 amount0, uint256 amount1)
     {
         (amount0, amount1) = _swapJoin(assets_);
-        require(amount1 >= minAmountOut_, "amount1 < minAmountOut");
+        if (amount1 < minAmountOut_) revert NOT_MIN_AMOUNT_OUT();
     }
 
     /// @dev TODO: Unused now, useful for on-chain oracle implemented inside of withdraw/redeem standard ERC4626 functions
@@ -506,7 +519,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         returns (uint256 amounts)
     {
         (amounts) = _swapExit(assets_);
-        require(amounts >= minAmountOut_, "amounts < minAmountOut");
+        if (amounts < minAmountOut_) revert NOT_MIN_AMOUNT_OUT();
     }
 
     /// @notice directional swap from asset to opposite token (asset != tokenX) TODO: consolidate Join/Exit

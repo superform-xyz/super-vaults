@@ -36,6 +36,9 @@ contract VenusERC4626Reinvest is ERC4626 {
     /// @notice Thrown when reinvest amount is not enough.
     error MIN_AMOUNT_ERROR();
 
+    /// @notice Thrown when trying to call a function with an invalid access
+    error INVALID_ACCESS();
+
     /*//////////////////////////////////////////////////////////////
                             CONSTANTS
     //////////////////////////////////////////////////////////////*/
@@ -102,7 +105,7 @@ contract VenusERC4626Reinvest is ERC4626 {
         address pair1_,
         address pair2_
     ) external {
-        require(msg.sender == manager, "onlyOwner");
+        if (msg.sender != manager) revert INVALID_ACCESS();
         SwapInfo = swapInfo(token_, pair1_, pair2_);
     }
 

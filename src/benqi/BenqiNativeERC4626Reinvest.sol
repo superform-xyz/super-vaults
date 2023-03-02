@@ -34,14 +34,17 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
     /// @param errorCode The error code returned by Compound
     error COMPOUND_ERROR(uint256 errorCode);
 
-    /// @notice Thrown when the deposited assets doesnot return any shares.
-    error COMPOUND_ERROR_ZEROSHARES();
+    /// @notice Thrown when trying to redeem with 0 tokens invested
+    error ZERO_SHARES();
 
     /// @notice Thrown when the redeems shares doesnot return any assets.
-    error COMPOUND_ZEROASSETS_ERROR();
+    error ZERO_ASSETS();
 
     // @notice Thrown when reinvested amounts are not enough.
     error MIN_AMOUNT_ERROR();
+
+    /// @notice Thrown when trying to call a function with an invalid access
+    error INVALID_ACCESS();
 
     /*//////////////////////////////////////////////////////////////
                             CONSTANTS
@@ -123,7 +126,7 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
         address pair1_,
         address pair2_
     ) external {
-        require(msg.sender == manager, "onlyOwner");
+        if (msg.sender != manager) revert INVALID_ACCESS();
         swapInfoMap[rewardType_] = swapInfo(token_, pair1_, pair2_);
         rewardTokenMap[rewardType_] = rewardToken_;
     }
@@ -219,9 +222,7 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
         returns (uint256 shares)
     {
         // Check for rounding error since we round down in previewDeposit.
-        if ((shares = previewDeposit(msg.value)) == 0)
-            revert COMPOUND_ERROR_ZEROSHARES();
-        require((shares = previewDeposit(msg.value)) != 0, "ZERO_SHARES");
+        if ((shares = previewDeposit(msg.value)) == 0) revert ZERO_SHARES();
 
         _mint(receiver_, shares);
 
@@ -236,7 +237,7 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
         override
         returns (uint256 shares)
     {
-        require((shares = previewDeposit(assets_)) != 0, "ZERO_SHARES");
+        if ((shares = previewDeposit(assets_)) == 0) revert ZERO_SHARES();
 
         asset.safeTransferFrom(msg.sender, address(this), assets_);
 
@@ -335,8 +336,7 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
         }
 
         // Check for rounding error since we round down in previewRedeem.
-        if ((assets = previewRedeem(shares_)) == 0)
-            revert COMPOUND_ZEROASSETS_ERROR();
+        if ((assets = previewRedeem(shares_)) == 0) revert ZERO_ASSETS();
 
         beforeWithdraw(assets, shares_);
 

@@ -18,11 +18,30 @@ import {IWETH} from "./interfaces/IWETH.sol";
 /// @author ZeroPoint Labs
 contract StETHERC4626Swap is ERC4626 {
     /*//////////////////////////////////////////////////////////////
-                            LIBRARIES
+                            LIBRARIES USAGE
     //////////////////////////////////////////////////////////////*/
 
     using FixedPointMathLib for uint256;
     using SafeTransferLib for ERC20;
+
+    /*//////////////////////////////////////////////////////////////
+                                ERRORS
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Thrown when trying to deposit 0 assets
+    error ZERO_ASSETS();
+
+    /// @notice Thrown when trying to redeem with 0 tokens invested
+    error ZERO_SHARES();
+
+    /// @notice Thrown when trying to call a function with an invalid access
+    error INVALID_ACCESS();
+
+    /// @notice Thrown when slippage set is invalid
+    error INVALID_SLIPPAGE();
+
+    /// @notice Thrown when a 0 msg.value deposit has been tried
+    error ZERO_DEPOSIT();
 
     /*//////////////////////////////////////////////////////////////
                       IMMUATABLES & VARIABLES
@@ -92,7 +111,7 @@ contract StETHERC4626Swap is ERC4626 {
         override
         returns (uint256 shares)
     {
-        require((shares = previewDeposit(assets_)) != 0, "ZERO_SHARES");
+        if ((shares = previewDeposit(assets_)) == 0) revert ZERO_SHARES();
 
         asset.safeTransferFrom(msg.sender, address(this), assets_);
 
@@ -111,9 +130,9 @@ contract StETHERC4626Swap is ERC4626 {
         payable
         returns (uint256 shares)
     {
-        require(msg.value != 0, "0");
+        if (msg.value == 0) revert ZERO_DEPOSIT();
 
-        require((shares = previewDeposit(msg.value)) != 0, "ZERO_SHARES");
+        if ((shares = previewDeposit(msg.value)) == 0) revert ZERO_SHARES();
 
         _mint(receiver_, shares);
 
@@ -177,7 +196,7 @@ contract StETHERC4626Swap is ERC4626 {
                 allowance[owner_][msg.sender] = allowed - shares_;
         }
 
-        require((assets = previewRedeem(shares_)) != 0, "ZERO_ASSETS");
+        if ((assets = previewRedeem(shares_)) == 0) revert ZERO_ASSETS();
 
         beforeWithdraw(assets, shares_);
 
@@ -243,8 +262,8 @@ contract StETHERC4626Swap is ERC4626 {
     }
 
     function setSlippage(uint256 amount_) external {
-        require(msg.sender == manager, "owner");
-        require(amount_ < 10000 && amount_ > 9000); /// 10% max slippage
+        if (msg.sender != manager) revert INVALID_ACCESS();
+        if (amount_ > 10000 || amount_ < 9000) revert INVALID_SLIPPAGE();
         slippage = amount_;
     }
 
