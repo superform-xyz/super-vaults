@@ -139,7 +139,7 @@ contract rEthERC4626 is ERC4626 {
         uint256 rEthReceived = depositBalance - startBalance;
 
         /// @dev Should receive at least amount equal to the shares calculated
-        if (rEthReceived < shares) revert NOT_ENOUGH_RETH();
+        if (rEthReceived != shares) revert NOT_ENOUGH_RETH();
 
         _mint(receiver_, rEthReceived);
 
