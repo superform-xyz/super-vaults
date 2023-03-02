@@ -14,7 +14,7 @@ import {IWETH} from "../lido/interfaces/IWETH.sol";
 /// @notice Accepts WAVAX to deposit into Benqi's staking contract - sAVAX, provides ERC4626 interface over token
 /// @notice Withdraw/Redeem to AVAX is not a part of this base contract. Withdraw/Redeem is only possible to sAVAX token.
 /// @notice Two possible ways of extending this contract: https://docs.benqi.fi/benqi-liquid-staking/staking-and-unstaking
-/// @notice In contrast to Lido's stETH, sAVAX can be Unstaked with 15d cooldown period. TODO: Extend with Timelock
+/// @notice In contrast to Lido's stETH, sAVAX can be Unstaked with 15d cooldown period.
 /// @author ZeroPoint Labs
 contract BenqiERC4626Staking is ERC4626 {
     /*//////////////////////////////////////////////////////////////

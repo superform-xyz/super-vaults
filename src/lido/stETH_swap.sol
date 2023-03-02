@@ -174,7 +174,6 @@ contract StETHERC4626Swap is ERC4626 {
 
         emit Withdraw(msg.sender, receiver_, owner_, assets_, shares);
 
-        /// TODO: transfer fails because assets != beforeWithdraw eth on balance
         /// how safe is doing address(this).balance?
         SafeTransferLib.safeTransferETH(receiver_, address(this).balance);
     }

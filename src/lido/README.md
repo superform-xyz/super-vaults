@@ -4,6 +4,6 @@ Allows users to deposit into Lido stEth Pool using WETH and receive ERC4626-stEt
 
 This adapter is still work in progress and, as is, provides only base functionality of wrapping stEth token into ERC4626 interface. In near future, staking protocols are expected to open 'unstaking' directly from a staked token to the underlying. In such instance, proposed adapter will be easily extensible to such functionality.
 
-# TODO:
+# Future Work
 
 Allow for direct stEth deposits into the Vault and mint equal amounts of ERC4626-stEth tokens.

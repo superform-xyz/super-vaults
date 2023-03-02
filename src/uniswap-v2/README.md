@@ -12,6 +12,7 @@ Allows users to deposit into Uniswap V2 Pools by "yanking" both token0 and token
 
 It is important for users to exercise caution when integrating with this contract, as UniswapV2Pair reserves can be easily manipulated for a single block. This manipulation, however, can only lead to a smaller output amount of shares and will not result in any loss of funds across the vault or other accounting errors. This is because the UniswapV2ERC4626Swap adapter operates on a 1:1 basis with the LP-Token of Uniswap. Therefore, getting more or less of the LP-Token is only relevant to the caller and will not affect the shares <> assets calculation.
 
-# TODO
+# Future Work
 
-TODO: Price manipulation protection
+- Price manipulation protection (Both at swapJoin and addLiquidity level)
+- Deposit Uniswap LP-token directly (Give ERC4626 interface to existing ERC20 Uniswap LP-Token)
