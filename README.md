@@ -6,6 +6,10 @@ A goal of this repository is to build a useful reference codebase to follow when
 
 You can find individual `README.md` files in some of the protocol directories inside of `/src` expanding on adapter implementation. Some of the adapters are still considered experimental and/or not fully tested. 
 
+### Disclaimer
+
+Super-vaults is still work in progress. A lot of code has highly experimental nature and shouldn't be trusted in mainnet usage.
+
 # Build
 
 Repository uses MakeFile to streamline testing operations. 
@@ -49,7 +53,9 @@ General view:
       ├── alpaca
       ├── arrakis
       ├── benqi
-      ├── compound-v2
+      ├── compound
+      ├── geist
+      ├── kycdao-4626      
       ├── lido
       ├── rocketPool
       ├── uniswap-v2
