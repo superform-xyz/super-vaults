@@ -66,7 +66,7 @@ contract AaveV3ERC4626ReinvestUniTest is Test {
             manager
         );
 
-        (ERC4626 v, AaveV3ERC4626ReinvestUni v_) = setVault(
+        (, AaveV3ERC4626ReinvestUni v_) = setVault(
             ERC20(vm.envAddress("AAVEV3_OPTIMISM_USDC"))
         );
 

@@ -65,7 +65,7 @@ contract AaveV3ERC4626ReinvestIncentiveTest is Test {
             manager
         );
 
-        (ERC4626 v, AaveV3ERC4626ReinvestIncentive v_) = setVault(
+        (, AaveV3ERC4626ReinvestIncentive v_) = setVault(
             ERC20(vm.envAddress("AAVEV3_AVAX_USDC"))
         );
 
@@ -113,7 +113,9 @@ contract AaveV3ERC4626ReinvestIncentiveTest is Test {
             ERC20(vm.envAddress("AAVEV3_AVAX_DAI"))
         );
 
-        AaveV3ERC4626ReinvestIncentive vault_ = AaveV3ERC4626ReinvestIncentive(address(v_));
+        AaveV3ERC4626ReinvestIncentive vault_ = AaveV3ERC4626ReinvestIncentive(
+            address(v_)
+        );
 
         /// @dev We don't set global var to a new vault. vault exists only within function scope
         ERC20 vaultAsset = vault_.asset();
@@ -252,7 +254,6 @@ contract AaveV3ERC4626ReinvestIncentiveTest is Test {
         assertEq(asset.balanceOf(alice), alicePreDepositBal);
     }
 
-
     function testHarvester() public {
         uint256 aliceUnderlyingAmount = 100e6;
 
@@ -265,7 +266,7 @@ contract AaveV3ERC4626ReinvestIncentiveTest is Test {
 
         if (rewardTokens.length == 1) {
             factory.setRoutes(vault, rewardTokens[0], swapToken, pair1, pair2);
-            factory.updateReinvestRewardBps(vault,50);
+            factory.updateReinvestRewardBps(vault, 50);
         } else {
             console.log("more than 1 reward token");
         }
@@ -279,7 +280,9 @@ contract AaveV3ERC4626ReinvestIncentiveTest is Test {
         vault.deposit(aliceUnderlyingAmount, alice);
 
         uint256 beforeHarvest = vault.totalAssets();
-        uint256 beforeHarvestReward = ERC20(rewardTokens[0]).balanceOf(address(vault));
+        uint256 beforeHarvestReward = ERC20(rewardTokens[0]).balanceOf(
+            address(vault)
+        );
 
         console.log("totalAssets before harvest", beforeHarvest);
         console.log("rewardBalance before harvest", beforeHarvestReward);
@@ -288,13 +291,14 @@ contract AaveV3ERC4626ReinvestIncentiveTest is Test {
         vm.stopPrank();
         vm.startPrank(harvestCaller);
         vault.harvest(0);
-        
+
         uint256 afterHarvest = vault.totalAssets();
-        uint256 afterHarvestReward = ERC20(rewardTokens[0]).balanceOf(address(vault));
+        uint256 afterHarvestReward = ERC20(rewardTokens[0]).balanceOf(
+            address(vault)
+        );
         assertGt(afterHarvest, beforeHarvest);
-        assertGt(asset.balanceOf(address(harvestCaller)),0);
+        assertGt(asset.balanceOf(address(harvestCaller)), 0);
         console.log("totalAssets after harvest", afterHarvest);
         console.log("rewardBalance after harvest", afterHarvestReward);
-
     }
 }

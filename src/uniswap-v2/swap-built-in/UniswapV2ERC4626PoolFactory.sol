@@ -51,8 +51,10 @@ contract UniswapV2ERC4626PoolFactory {
         ERC20 token1 = ERC20(pair_.token1());
 
         /// @dev Each UniV3 Pool is a twap oracle
-        if (oracle = twap(address(token0), address(token1), fee_) == address(0))
-            revert TWAP_NON_EXISTENT();
+        if (
+            (oracle = twap(address(token0), address(token1), fee_)) ==
+            address(0)
+        ) revert TWAP_NON_EXISTENT();
 
         IUniswapV3Pool oracle_ = IUniswapV3Pool(oracle);
 

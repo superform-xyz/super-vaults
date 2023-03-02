@@ -34,11 +34,14 @@ contract UniswapV2TestSwap is Test {
         IUniswapV2Pair(0xAE461cA67B15dc8dc81CE7615e0320dA1A9aB8D5);
     IUniswapV2Router public router =
         IUniswapV2Router(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
-    
-    IUniswapV3Factory public oracleFactory = IUniswapV3Factory(0x1F98431c8aD98523631AE4a59f267346ea31F984);
-    IUniswapV3Pool public oracle = IUniswapV3Pool(0xa63b490aA077f541c9d64bFc1Cc0db2a752157b5);
 
-    ERC20 public alternativeAsset = ERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+    IUniswapV3Factory public oracleFactory =
+        IUniswapV3Factory(0x1F98431c8aD98523631AE4a59f267346ea31F984);
+    IUniswapV3Pool public oracle =
+        IUniswapV3Pool(0xa63b490aA077f541c9d64bFc1Cc0db2a752157b5);
+
+    ERC20 public alternativeAsset =
+        ERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
 
     address public alice;
     address public bob;
@@ -61,11 +64,8 @@ contract UniswapV2TestSwap is Test {
         );
 
         /// @dev Create new pair vaults from factory.create(pair);
-        factory = new UniswapV2ERC4626PoolFactory(
-            router,
-            oracleFactory
-        );
-        
+        factory = new UniswapV2ERC4626PoolFactory(router, oracleFactory);
+
         alice = address(0x1);
         bob = address(0x2);
         manager = msg.sender;
@@ -79,7 +79,10 @@ contract UniswapV2TestSwap is Test {
     function testFactoryDeploy() public {
         vm.startPrank(manager);
 
-        (UniswapV2ERC4626Swap v0, UniswapV2ERC4626Swap v1, address oracle_) = factory.create(pair, fee);
+        (UniswapV2ERC4626Swap v0, UniswapV2ERC4626Swap v1, ) = factory.create(
+            pair,
+            fee
+        );
 
         console.log("v0 name", v0.name(), "v0 symbol", v0.symbol());
         console.log("v1 name", v1.name(), "v1 symbol", v1.symbol());
@@ -98,9 +101,18 @@ contract UniswapV2TestSwap is Test {
 
         console.log("aliceShareAmount", aliceShareAmount);
         console.log("aliceShareBalance", aliceShareBalance);
-        console.log(previewWithdraw, "shares to burn for", aliceAssetsToWithdraw, "assets");
+        console.log(
+            previewWithdraw,
+            "shares to burn for",
+            aliceAssetsToWithdraw,
+            "assets"
+        );
 
-        uint256 sharesBurned = vault.withdraw(aliceAssetsToWithdraw, alice, alice);
+        uint256 sharesBurned = vault.withdraw(
+            aliceAssetsToWithdraw,
+            alice,
+            alice
+        );
 
         console.log("aliceSharesBurned", sharesBurned);
         console.log("aliceShareBalance", vault.balanceOf(alice));
@@ -125,21 +137,21 @@ contract UniswapV2TestSwap is Test {
         vm.startPrank(bob);
         asset.approve(address(vault), amount);
         uint256 bobShareAmount = vault.deposit(amount, bob);
-        console.log("bobShareAmount", bobShareAmount); 
+        console.log("bobShareAmount", bobShareAmount);
         vm.stopPrank();
-       
+
         /// Step 3: Alice withdraws 95 tokens
         vm.startPrank(alice);
         uint256 sharesBurned = vault.withdraw(amountAdjusted, alice, alice);
-        console.log("aliceSharesBurned", sharesBurned); 
+        console.log("aliceSharesBurned", sharesBurned);
         vm.stopPrank();
 
         /// Step 4: Bob withdraws max amount of asset from shares
         vm.startPrank(bob);
         uint256 assetsToWithdraw = vault.previewRedeem(bobShareAmount);
         console.log("assetsToWithdraw", assetsToWithdraw);
-        sharesBurned = vault.withdraw(assetsToWithdraw, bob, bob); 
-        console.log("bobSharesBurned", sharesBurned); 
+        sharesBurned = vault.withdraw(assetsToWithdraw, bob, bob);
+        console.log("bobSharesBurned", sharesBurned);
         vm.stopPrank();
 
         /// Step 5: Alice withdraws max amount of asset from remaining shares
@@ -186,5 +198,4 @@ contract UniswapV2TestSwap is Test {
         aliceBalanceOfShares = vault.balanceOf(alice);
         console.log("aliceBalanceOfShares2", aliceBalanceOfShares);
     }
-
 }

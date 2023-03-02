@@ -92,16 +92,11 @@ contract StETHERC4626Swap is ERC4626 {
         uint256 min_dy = _getSlippage(
             curvePool.get_dy(index_stEth, index_eth, assets_)
         );
-        uint256 amount = curvePool.exchange(
-            index_stEth,
-            index_eth,
-            assets_,
-            min_dy
-        );
+        curvePool.exchange(index_stEth, index_eth, assets_, min_dy);
     }
 
     function afterDeposit(uint256 ethAmount, uint256) internal override {
-        uint256 stEthAmount = stEth.submit{value: ethAmount}(address(this)); /// Lido's submit() accepts only native ETH
+        stEth.submit{value: ethAmount}(address(this)); /// Lido's submit() accepts only native ETH
     }
 
     /// @notice Standard ERC4626 deposit can only accept ERC20
