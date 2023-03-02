@@ -54,7 +54,10 @@ contract AaveV3ERC4626ReinvestUniFactory {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Thrown when trying to deploy an AaveV3ERC4626 vault using an asset without an aToken
-    error AaveV3ERC4626Factory__ATokenNonexistent();
+    error ATOKEN_NON_EXISTENT();
+
+    /// @notice Thrown when trying to call a function with an invalid access
+    error INVALID_ACCESS();
 
     /*//////////////////////////////////////////////////////////////
                       IMMUTABLES
@@ -97,13 +100,13 @@ contract AaveV3ERC4626ReinvestUniFactory {
         virtual
         returns (AaveV3ERC4626ReinvestUni vault)
     {
-        require(msg.sender == manager, "onlyOwner");
+        if (msg.sender != manager) revert INVALID_ACCESS();
         IPool.ReserveData memory reserveData = lendingPool.getReserveData(
             address(asset_)
         );
         address aTokenAddress = reserveData.aTokenAddress;
         if (aTokenAddress == address(0)) {
-            revert AaveV3ERC4626Factory__ATokenNonexistent();
+            revert ATOKEN_NON_EXISTENT();
         }
 
         vault = new AaveV3ERC4626ReinvestUni(
@@ -130,7 +133,7 @@ contract AaveV3ERC4626ReinvestUniFactory {
         external
         returns (address[] memory rewards)
     {
-        require(msg.sender == manager, "onlyOwner");
+        if (msg.sender != manager) revert INVALID_ACCESS();
         rewards = vault_.setRewards();
 
         emit RewardsSetERC4626Reinvest(vault_);
@@ -150,7 +153,7 @@ contract AaveV3ERC4626ReinvestUniFactory {
         address tokenMid_,
         uint24 poolFee2_
     ) external {
-        require(msg.sender == manager, "onlyOwner");
+        if (msg.sender != manager) revert INVALID_ACCESS();
         vault_.setRoutes(rewardToken_, poolFee1_, tokenMid_, poolFee2_);
 
         emit RoutesSetERC4626Reinvest(vault_);

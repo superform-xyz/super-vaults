@@ -178,13 +178,9 @@ contract Arrakis_LP_Test is Test {
     {
         IGUniPool gUniPool = vault.arrakisVault();
         (uint160 sqrtRatioX96, , , , , , ) = gUniPool.pool().slot0();
-        (
-            uint128 liquidity,
-            uint256 feeGrowthInside0Last,
-            uint256 feeGrowthInside1Last,
-            uint128 tokensOwed0,
-            uint128 tokensOwed1
-        ) = gUniPool.pool().positions(gUniPool.getPositionID());
+        (uint128 liquidity, , , , ) = gUniPool.pool().positions(
+            gUniPool.getPositionID()
+        );
 
         // compute current holdings from liquidity
         (amount0Current, amount1Current) = LiquidityAmounts

@@ -29,6 +29,12 @@ contract GeistERC4626Reinvest is ERC4626 {
     /// @notice Thrown when reinvested amounts are not enough.
     error MIN_AMOUNT_ERROR();
 
+    /// @notice Thrown when trying to call a function with an invalid access
+    error INVALID_ACCESS();
+
+    /// @notice Thrown when trying to redeem with 0 tokens invested
+    error ZERO_ASSETS();
+
     /*//////////////////////////////////////////////////////////////
                             CONSTANTS
     //////////////////////////////////////////////////////////////*/
@@ -103,7 +109,8 @@ contract GeistERC4626Reinvest is ERC4626 {
         address pair1_,
         address pair2_
     ) external {
-        require(msg.sender == manager, "onlyOwner");
+        if (msg.sender != manager) revert INVALID_ACCESS();
+
         SwapInfo = swapInfo(token_, pair1_, pair2_);
     }
 
@@ -200,7 +207,7 @@ contract GeistERC4626Reinvest is ERC4626 {
         }
 
         // Check for rounding error since we round down in previewRedeem.
-        require((assets = previewRedeem(shares_)) != 0, "ZERO_ASSETS");
+        if ((assets = previewRedeem(shares_)) == 0) revert ZERO_ASSETS();
 
         beforeWithdraw(assets, shares_);
 

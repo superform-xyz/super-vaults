@@ -41,8 +41,7 @@ contract BenqiNativeERC4626ReinvestTest is Test {
         setVault(
             ERC20(vm.envAddress("BENQI_WAVAX_ASSET")),
             ERC20(vm.envAddress("BENQI_REWARD_QI")),
-            ICEther(vm.envAddress("BENQI_WAVAX_CETHER")),
-            comptroller
+            ICEther(vm.envAddress("BENQI_WAVAX_CETHER"))
         );
 
         asset = ERC20(vm.envAddress("BENQI_WAVAX_ASSET"));
@@ -61,8 +60,7 @@ contract BenqiNativeERC4626ReinvestTest is Test {
     function setVault(
         ERC20 underylyingAsset,
         ERC20 reward_,
-        ICEther cToken_,
-        IComptroller comptroller_
+        ICEther cToken_
     ) public {
         vm.startPrank(manager);
 
@@ -94,14 +92,18 @@ contract BenqiNativeERC4626ReinvestTest is Test {
         assertEq(aliceUnderlyingAmount, aliceShareAmount);
         assertEq(vault.totalSupply(), aliceShareAmount);
         assertEq(vault.balanceOf(alice), aliceShareAmount);
-        
+
         uint256 preWithdrawBalance = asset.balanceOf(alice);
-        uint256 sharesBurned = vault.withdraw(aliceAssetsToWithdraw, alice, alice);
+        uint256 sharesBurned = vault.withdraw(
+            aliceAssetsToWithdraw,
+            alice,
+            alice
+        );
         uint256 totalBalance = aliceAssetsToWithdraw + preWithdrawBalance;
 
         assertEq(totalBalance, asset.balanceOf(alice));
         assertEq(aliceShareAmount, sharesBurned);
-        assertEq(vault.balanceOf(alice), 0);        
+        assertEq(vault.balanceOf(alice), 0);
     }
 
     function testDepositWithdrawAVAX() public {

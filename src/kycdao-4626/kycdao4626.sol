@@ -5,7 +5,6 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
-
 import {IKycValidity} from "./interfaces/IKycValidity.sol";
 
 /// @title kycDAO4626
@@ -23,6 +22,12 @@ contract kycDAO4626 is ERC4626 {
     //////////////////////////////////////////////////////////////*/
     /// @dev Error if msg.sender doesn't have a valid KYC Token
     error NO_VALID_KYC_TOKEN();
+
+    /// @notice Thrown when trying to deposit 0 assets
+    error ZERO_ASSETS();
+
+    /// @notice Thrown when trying to deposit 0 assets
+    error ZERO_SHARES();
 
     /*//////////////////////////////////////////////////////////////
                                 MODIFERS
@@ -64,7 +69,7 @@ contract kycDAO4626 is ERC4626 {
         returns (uint256 shares)
     {
         // Check for rounding error since we round down in previewDeposit.
-        require((shares = previewDeposit(assets_)) != 0, "ZERO_SHARES");
+        if ((shares = previewDeposit(assets_)) == 0) revert ZERO_SHARES();
 
         // Need to transfer before minting or ERC777s could reenter.
         asset.safeTransferFrom(msg.sender, address(this), assets_);
@@ -130,7 +135,7 @@ contract kycDAO4626 is ERC4626 {
         }
 
         // Check for rounding error since we round down in previewRedeem.
-        require((assets = previewRedeem(shares_)) != 0, "ZERO_ASSETS");
+        if ((assets = previewRedeem(shares_)) == 0) revert ZERO_ASSETS();
 
         beforeWithdraw(assets, shares_);
 

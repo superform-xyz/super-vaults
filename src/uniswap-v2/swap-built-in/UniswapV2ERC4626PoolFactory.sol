@@ -24,6 +24,13 @@ contract UniswapV2ERC4626PoolFactory {
     IUniswapV3Factory oracleFactory;
 
     /*//////////////////////////////////////////////////////////////
+                                ERRORS
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Thrown if the twap oracle doesn't exist
+    error TWAP_NON_EXISTENT();
+
+    /*//////////////////////////////////////////////////////////////
                             CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
     constructor(IUniswapV2Router router_, IUniswapV3Factory oracleFactory_) {
@@ -44,11 +51,10 @@ contract UniswapV2ERC4626PoolFactory {
         ERC20 token1 = ERC20(pair_.token1());
 
         /// @dev Each UniV3 Pool is a twap oracle
-        require(
-            (oracle = twap(address(token0), address(token1), fee_)) !=
-                address(0),
-            "twap doesn't exist"
-        );
+        if (
+            (oracle = twap(address(token0), address(token1), fee_)) ==
+            address(0)
+        ) revert TWAP_NON_EXISTENT();
 
         IUniswapV3Pool oracle_ = IUniswapV3Pool(oracle);
 

@@ -29,6 +29,28 @@ contract rEthERC4626 is ERC4626 {
     using SafeTransferLib for ERC20;
 
     /*//////////////////////////////////////////////////////////////
+                                ERRORS
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Call to check if there are free slots to stake in the pool
+    error NO_FREE_SLOTS();
+
+    /// @notice Thrown when trying to deposit 0 assets
+    error ZERO_ASSETS();
+
+    /// @notice Thrown when trying to redeem with 0 tokens invested
+    error ZERO_SHARES();
+
+    /// @notice Thrown when rEthReceived is lower than shares
+    error NOT_ENOUGH_RETH();
+
+    /// @notice Thrown if max withdraw is exceeded
+    error MAX_WITHDRAW_EXCEEDED();
+
+    /// @notice Thrown if max redeem is exceeded
+    error MAX_REDEEM_EXCEEDED();
+
+    /*//////////////////////////////////////////////////////////////
                       IMMUATABLES & VARIABLES
     //////////////////////////////////////////////////////////////*/
 
@@ -94,10 +116,10 @@ contract rEthERC4626 is ERC4626 {
         }
 
         /// @dev Call to check if there are free slots to stake in the pool
-        require(freeSlots() > assets_, "NO_FREE_SLOTS");
+        if (freeSlots() <= assets_) revert NO_FREE_SLOTS();
 
         /// @dev previewDeposit needs to return amount of rEth minted from assets
-        require((shares = previewDeposit(assets_)) != 0, "ZERO_SHARES");
+        if ((shares = previewDeposit(assets_)) == 0) revert ZERO_SHARES();
 
         /// @dev Transfer weth to this contract
         asset.safeTransferFrom(msg.sender, address(this), assets_);
@@ -117,7 +139,7 @@ contract rEthERC4626 is ERC4626 {
         uint256 rEthReceived = depositBalance - startBalance;
 
         /// @dev Should receive at least amount equal to the shares calculated
-        require(rEthReceived == shares, "NOT_ENOUGH_rETH");
+        if (rEthReceived != shares) revert NOT_ENOUGH_RETH();
 
         _mint(receiver_, rEthReceived);
 
@@ -141,7 +163,7 @@ contract rEthERC4626 is ERC4626 {
         assets = previewMint(shares_);
 
         /// @dev Call to check if there are free slots to stake in the pool
-        require(freeSlots() > assets, "NO_FREE_SLOTS");
+        if (freeSlots() <= assets) revert NO_FREE_SLOTS();
 
         /// transfer Y eth asset to this contract
         asset.safeTransferFrom(msg.sender, address(this), assets);
@@ -179,7 +201,7 @@ contract rEthERC4626 is ERC4626 {
         shares = previewWithdraw(assets_);
 
         /// @dev Revert early, will fail on safeTransfer otherwise anyways
-        require(maxWithdraw(owner_) >= shares, "MAX_WITHDRAW_EXCEEDED");
+        if (maxWithdraw(owner_) < shares) revert MAX_WITHDRAW_EXCEEDED();
 
         if (msg.sender != owner_) {
             uint256 allowed = allowance[owner_][msg.sender];
@@ -213,9 +235,9 @@ contract rEthERC4626 is ERC4626 {
         }
 
         /// @dev return virtual amount of ETH backing rEth shares
-        require((assets = previewRedeem(shares_)) != 0, "ZERO_ASSETS");
+        if ((assets = previewRedeem(shares_)) == 0) revert ZERO_ASSETS();
 
-        require(maxRedeem(owner_) >= shares_, "MAX_REDEEM_EXCEEDED");
+        if (maxRedeem(owner_) < shares_) revert MAX_REDEEM_EXCEEDED();
 
         _burn(owner_, shares_);
 
