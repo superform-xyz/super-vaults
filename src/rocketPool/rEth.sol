@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
@@ -134,7 +134,7 @@ contract rEthERC4626 is ERC4626 {
         rEth.deposit{value: assets_}();
 
         /// @dev How much rEth are we receiving after deposit to the rocket pool
-        /// TODO: Prone to inflation attack on balance of this contract!!!
+        /// NOTE: Prone to inflation attack on balance of this contract!!!
         uint256 depositBalance = rEthAsset.balanceOf(address(this));
         uint256 rEthReceived = depositBalance - startBalance;
 
@@ -178,7 +178,7 @@ contract rEthERC4626 is ERC4626 {
         rEth.deposit{value: assets}();
 
         /// @dev How much rEth are we receiving after deposit to the rocket pool
-        /// TODO: Prone to inflation attack on balance of this contract!!!
+        /// NOTE: Prone to inflation attack on balance of this contract!!!
         uint256 depositBalance = rEthAsset.balanceOf(address(this));
         uint256 rEthReceived = depositBalance - startBalance;
 
@@ -260,7 +260,7 @@ contract rEthERC4626 is ERC4626 {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice rEth token is used as AUM
-    /// @dev TODO: Mitigate inflation attack (transfering rETH to this contract)
+    /// @dev NOTE: Mitigate inflation attack (transfering rETH to this contract)
     function totalAssets() public view virtual override returns (uint256) {
         return rEthAsset.balanceOf(address(this));
     }

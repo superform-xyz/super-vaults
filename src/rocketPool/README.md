@@ -10,6 +10,7 @@ This adapter is still work in progress and, as is, provides only base functional
 
 `uint256 rEthReceived = depositBalance - startBalance;` - Rocket Pool does not return amount of rEth received and suggested solution is to find the difference in balances before and after deposit. Such method is prone to inflation attack.
 
-# TODO:
+# Future Work
 
 - Allow direct rEth deposit into the Vault (accept rEth > mint equal amount of ERC4626-rEth)
+- Address possible inflation attack when calculating amount of tokens received from balance difference

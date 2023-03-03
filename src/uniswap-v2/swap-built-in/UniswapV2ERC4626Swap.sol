@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
@@ -151,7 +151,6 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         asset.safeTransferFrom(msg.sender, address(this), assets_);
 
         /// @dev caller calculates minSwapOut from uniswapV2Library off-chain, reverts if swap is manipulated
-        /// TODO: Is minSwapOut needed if we already have minSharesOut?
         (uint256 a0, uint256 a1) = _swapJoin(assets_);
 
         shares = _liquidityAdd(a0, a1);
@@ -244,7 +243,6 @@ contract UniswapV2ERC4626Swap is ERC4626 {
 
         (uint256 a0, uint256 a1) = _swapJoin(assets);
 
-        /// TODO: Same checks as in deposit
         uint256 uniShares = _liquidityAdd(a0, a1);
 
         /// NOTE: PreviewMint needs to output reasonable amount of shares
@@ -504,7 +502,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
                     INTERNAL SWAP LOGIC FOR TOKEN X/Y
     //////////////////////////////////////////////////////////////*/
 
-    /// @dev TODO: Unused now, useful for on-chain oracle implemented inside of deposit/mint standard ERC4626 functions
+    /// @dev NOTE: Unused now, useful for on-chain oracle implemented inside of deposit/mint standard ERC4626 functions
     function _swapJoinProtected(uint256 assets_, uint256 minAmountOut_)
         internal
         returns (uint256 amount0, uint256 amount1)
@@ -513,7 +511,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         if (amount1 < minAmountOut_) revert NOT_MIN_AMOUNT_OUT();
     }
 
-    /// @dev TODO: Unused now, useful for on-chain oracle implemented inside of withdraw/redeem standard ERC4626 functions
+    /// @dev NOTE: Unused now, useful for on-chain oracle implemented inside of withdraw/redeem standard ERC4626 functions
     function _swapExitProtected(uint256 assets_, uint256 minAmountOut_)
         internal
         returns (uint256 amounts)
@@ -522,7 +520,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         if (amounts < minAmountOut_) revert NOT_MIN_AMOUNT_OUT();
     }
 
-    /// @notice directional swap from asset to opposite token (asset != tokenX) TODO: consolidate Join/Exit
+    /// @notice directional swap from asset to opposite token (asset != tokenX)
     /// @notice calculates optimal (for the current block) amount of token0/token1 to deposit into UniswapV2Pair and splits provided assets according to the formula
     function _swapJoin(uint256 assets_)
         internal
@@ -550,7 +548,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         amount0 = assets_ - amountToSwap;
     }
 
-    /// @notice directional swap from asset to opposite token (asset != tokenX) TODO: consolidate Join/Exit
+    /// @notice directional swap from asset to opposite token (asset != tokenX)
     /// @notice exit is in opposite direction to Join but we don't need to calculate splitting, just swap provided assets, check happens in withdraw/redeem
     function _swapExit(uint256 assets_) internal returns (uint256 amounts) {
         (address fromToken, address toToken) = _getExitToken();
