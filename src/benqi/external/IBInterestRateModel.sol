@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.19;
 
-interface IInterestRateModel {
+interface IBInterestRateModel {
     function getBorrowRate(
         uint256,
         uint256,

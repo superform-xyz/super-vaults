@@ -4,8 +4,8 @@ pragma solidity 0.8.19;
 import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {CompoundV3ERC4626Wrapper} from "../CompoundV3ERC4626Wrapper.sol";
-import {CometMainInterface} from "../compound/IComet.sol";
-import {ICometRewards} from "../compound/ICometRewards.sol";
+import {CometMainInterface} from "../external/IComet.sol";
+import {ICometRewards} from "../external/ICometRewards.sol";
 
 contract CompoundV3ERC4626Test is Test {
     uint256 public ethFork;

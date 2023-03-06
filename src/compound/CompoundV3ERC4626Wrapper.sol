@@ -6,9 +6,9 @@ import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-import {CometMainInterface} from "./compound/IComet.sol";
-import {LibCompound} from "./compound/LibCompound.sol";
-import {ICometRewards} from "./compound/ICometRewards.sol";
+import {CometMainInterface} from "./external/IComet.sol";
+import {LibCompound} from "./external/LibCompound.sol";
+import {ICometRewards} from "./external/ICometRewards.sol";
 import {ISwapRouter} from "../aave-v2/utils/ISwapRouter.sol";
 import {DexSwap} from "./utils/swapUtils.sol";
 

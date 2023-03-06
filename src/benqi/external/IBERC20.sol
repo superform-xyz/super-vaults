@@ -3,9 +3,9 @@ pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
-import {IInterestRateModel} from "./IInterestRateModel.sol";
+import {IBInterestRateModel} from "./IBInterestRateModel.sol";
 
-abstract contract ICERC20 is ERC20 {
+abstract contract IBERC20 is ERC20 {
     function mint(uint256 underlyingAmount) external virtual returns (uint256);
 
     function underlying() external view virtual returns (ERC20);
@@ -33,7 +33,7 @@ abstract contract ICERC20 is ERC20 {
         external
         view
         virtual
-        returns (IInterestRateModel);
+        returns (IBInterestRateModel);
 
     function initialExchangeRateMantissa()
         external

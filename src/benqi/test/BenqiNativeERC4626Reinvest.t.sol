@@ -6,8 +6,8 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
 
 import {BenqiNativeERC4626Reinvest} from "../BenqiNativeERC4626Reinvest.sol";
 
-import {ICEther} from "../compound/ICEther.sol";
-import {IComptroller} from "../compound/IComptroller.sol";
+import {IBEther} from "../external/IBEther.sol";
+import {IBComptroller} from "../external/IBComptroller.sol";
 
 contract BenqiNativeERC4626ReinvestTest is Test {
     address public manager;
@@ -27,26 +27,26 @@ contract BenqiNativeERC4626ReinvestTest is Test {
     BenqiNativeERC4626Reinvest public vault;
     ERC20 public asset;
     ERC20 public reward;
-    ICEther public cToken;
-    IComptroller public comptroller;
+    IBEther public cToken;
+    IBComptroller public comptroller;
 
     constructor() {
         avaxFork = vm.createFork(AVAX_RPC_URL);
         vm.selectFork(avaxFork);
         vm.roll(12649496);
         manager = msg.sender;
-        comptroller = IComptroller(vm.envAddress("BENQI_COMPTROLLER"));
+        comptroller = IBComptroller(vm.envAddress("BENQI_COMPTROLLER"));
 
         /// Set vault as fallback
         setVault(
             ERC20(vm.envAddress("BENQI_WAVAX_ASSET")),
             ERC20(vm.envAddress("BENQI_REWARD_QI")),
-            ICEther(vm.envAddress("BENQI_WAVAX_CETHER"))
+            IBEther(vm.envAddress("BENQI_WAVAX_CETHER"))
         );
 
         asset = ERC20(vm.envAddress("BENQI_WAVAX_ASSET"));
         reward = ERC20(vm.envAddress("BENQI_REWARD_QI"));
-        cToken = ICEther(vm.envAddress("BENQI_WAVAX_CETHER"));
+        cToken = IBEther(vm.envAddress("BENQI_WAVAX_CETHER"));
     }
 
     function setUp() public {
@@ -60,7 +60,7 @@ contract BenqiNativeERC4626ReinvestTest is Test {
     function setVault(
         ERC20 underylyingAsset,
         ERC20 reward_,
-        ICEther cToken_
+        IBEther cToken_
     ) public {
         vm.startPrank(manager);
 

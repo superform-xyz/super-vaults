@@ -3,7 +3,7 @@ pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
-abstract contract ICEther is ERC20 {
+abstract contract IBEther is ERC20 {
     function comptroller() external view virtual returns (address);
 
     function getCash() external view virtual returns (uint256);

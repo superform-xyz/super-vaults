@@ -6,9 +6,9 @@ import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-import {ICERC20} from "./compound/ICERC20.sol";
-import {LibCompound} from "./compound/LibCompound.sol";
-import {IComptroller} from "./compound/IComptroller.sol";
+import {IVERC20} from "./external/IVERC20.sol";
+import {LibVCompound} from "./external/LibVCompound.sol";
+import {IVComptroller} from "./external/IVComptroller.sol";
 
 import {DexSwap} from "./utils/swapUtils.sol";
 
@@ -21,7 +21,7 @@ contract VenusERC4626Reinvest is ERC4626 {
                         LIBRARIES USAGE
     //////////////////////////////////////////////////////////////*/
 
-    using LibCompound for ICERC20;
+    using LibVCompound for IVERC20;
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
@@ -56,10 +56,10 @@ contract VenusERC4626Reinvest is ERC4626 {
     ERC20 public immutable reward;
 
     /// @notice The Compound cToken contract
-    ICERC20 public immutable cToken;
+    IVERC20 public immutable cToken;
 
     /// @notice The Compound comptroller contract
-    IComptroller public immutable comptroller;
+    IVComptroller public immutable comptroller;
 
     /// @notice Pointer to swapInfo
     swapInfo public SwapInfo;
@@ -85,8 +85,8 @@ contract VenusERC4626Reinvest is ERC4626 {
     constructor(
         ERC20 asset_,
         ERC20 reward_,
-        ICERC20 cToken_,
-        IComptroller comptroller_,
+        IVERC20 cToken_,
+        IVComptroller comptroller_,
         address manager_
     ) ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_)) {
         reward = reward_;
@@ -111,7 +111,7 @@ contract VenusERC4626Reinvest is ERC4626 {
 
     /// @notice Claims liquidity mining rewards from Compound and performs low-lvl swap with instant reinvesting
     function harvest(uint256 minAmountOut_) external {
-        ICERC20[] memory cTokens = new ICERC20[](1);
+        IVERC20[] memory cTokens = new IVERC20[](1);
         cTokens[0] = cToken;
 
         comptroller.claimVenus(address(this));

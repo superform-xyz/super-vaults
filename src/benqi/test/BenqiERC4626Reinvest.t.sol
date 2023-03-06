@@ -6,8 +6,8 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
 
 import {BenqiERC4626Reinvest} from "../BenqiERC4626Reinvest.sol";
 
-import {ICERC20} from "../compound/ICERC20.sol";
-import {IComptroller} from "../compound/IComptroller.sol";
+import {IBERC20} from "../external/IBERC20.sol";
+import {IBComptroller} from "../external/IBComptroller.sol";
 
 contract BenqiERC4626ReinvestTest is Test {
     address public manager;
@@ -27,8 +27,8 @@ contract BenqiERC4626ReinvestTest is Test {
     BenqiERC4626Reinvest public vault;
     ERC20 public asset;
     ERC20 public reward;
-    ICERC20 public cToken;
-    IComptroller public comptroller;
+    IBERC20 public cToken;
+    IBComptroller public comptroller;
 
     uint8 rewardType_;
     address swapToken;
@@ -40,17 +40,17 @@ contract BenqiERC4626ReinvestTest is Test {
         vm.selectFork(avaxFork);
 
         manager = msg.sender;
-        comptroller = IComptroller(vm.envAddress("BENQI_COMPTROLLER"));
+        comptroller = IBComptroller(vm.envAddress("BENQI_COMPTROLLER"));
 
         setVault(
             ERC20(vm.envAddress("BENQI_DAI_ASSET")),
-            ICERC20(vm.envAddress("BENQI_DAI_CTOKEN")),
+            IBERC20(vm.envAddress("BENQI_DAI_CTOKEN")),
             comptroller
         );
 
         asset = ERC20(vm.envAddress("BENQI_DAI_ASSET"));
         reward = ERC20(vm.envAddress("BENQI_REWARD_QI"));
-        cToken = ICERC20(vm.envAddress("BENQI_DAI_CTOKEN"));
+        cToken = IBERC20(vm.envAddress("BENQI_DAI_CTOKEN"));
 
         rewardType_ = 0;
         swapToken = vm.envAddress("BENQI_SWAPTOKEN_DAI");
@@ -76,8 +76,8 @@ contract BenqiERC4626ReinvestTest is Test {
 
     function setVault(
         ERC20 underylyingAsset,
-        ICERC20 cToken_,
-        IComptroller comptroller_
+        IBERC20 cToken_,
+        IBComptroller comptroller_
     ) public {
         vm.startPrank(manager);
 
