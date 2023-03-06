@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.4;
+// SPDX-License-Identifier: Apache-2.0
+pragma solidity 0.8.19;
 
 /**
  * @title IPool
@@ -75,7 +75,12 @@ interface IPool {
      * 0 if the action is executed directly by the user, without any middle-man
      *
      */
-    function supply(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external;
+    function supply(
+        address asset,
+        uint256 amount,
+        address onBehalfOf,
+        uint16 referralCode
+    ) external;
 
     /**
      * @notice Withdraws an `amount` of underlying asset from the reserve, burning the equivalent aTokens owned
@@ -89,7 +94,11 @@ interface IPool {
      * @return The final amount withdrawn
      *
      */
-    function withdraw(address asset, uint256 amount, address to) external returns (uint256);
+    function withdraw(
+        address asset,
+        uint256 amount,
+        address to
+    ) external returns (uint256);
 
     /**
      * @notice Returns the state and configuration of the reserve
@@ -97,5 +106,8 @@ interface IPool {
      * @return The state and configuration data of the reserve
      *
      */
-    function getReserveData(address asset) external view returns (ReserveData memory);
+    function getReserveData(address asset)
+        external
+        view
+        returns (ReserveData memory);
 }

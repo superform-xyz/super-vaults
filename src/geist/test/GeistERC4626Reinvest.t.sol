@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.14;
+// SPDX-License-Identifier: Apache-2.0
+pragma solidity 0.8.19;
 
 import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
@@ -7,12 +7,11 @@ import {ERC4626} from "solmate/mixins/ERC4626.sol";
 
 import {GeistERC4626Reinvest} from "../GeistERC4626Reinvest.sol";
 
-import {ILendingPool} from "../external/ILendingPool.sol";
+import {IGLendingPool} from "../external/IGLendingPool.sol";
 import {IMultiFeeDistribution} from "../external/IMultiFeeDistribution.sol";
-import {DexSwap} from "../utils/swapUtils.sol";
+import {DexSwap} from "../../_global/swapUtils.sol";
 
 contract GeistERC4626ReinvestTest is Test {
-
     ////////////////////////////////////////
 
     address public manager;
@@ -24,26 +23,27 @@ contract GeistERC4626ReinvestTest is Test {
     uint256 public avaxFork;
     uint256 public polyFork;
 
-    string ETH_RPC_URL = vm.envString("ETH_MAINNET_RPC");
-    string FTM_RPC_URL = vm.envString("FTM_MAINNET_RPC");
-    string AVAX_RPC_URL = vm.envString("AVAX_MAINNET_RPC");
-    string POLYGON_MAINNET_RPC = vm.envString("POLYGON_MAINNET_RPC");
+    string ETH_RPC_URL = vm.envString("ETHEREUM_RPC_URL");
+    string FTM_RPC_URL = vm.envString("FANTOM_RPC_URL");
+    string AVAX_RPC_URL = vm.envString("AVALANCHE_RPC_URL");
+    string POLYGON_RPC_URL = vm.envString("POLYGON_RPC_URL");
 
     GeistERC4626Reinvest public vault;
 
     ERC20 public asset = ERC20(vm.envAddress("GEIST_DAI_ASSET"));
     ERC20 public aToken = ERC20(vm.envAddress("GEIST_DAI_ATOKEN"));
     ERC20 public rewardToken = ERC20(vm.envAddress("GEIST_REWARD_TOKEN"));
-    IMultiFeeDistribution public rewards = IMultiFeeDistribution(vm.envAddress("GEIST_REWARDS_DISTRIBUTION"));
-    ILendingPool public lendingPool = ILendingPool(vm.envAddress("GEIST_LENDINGPOOL"));
-
-
-
+    IMultiFeeDistribution public rewards =
+        IMultiFeeDistribution(vm.envAddress("GEIST_REWARDS_DISTRIBUTION"));
+    IGLendingPool public lendingPool =
+        IGLendingPool(vm.envAddress("GEIST_LENDINGPOOL"));
 
     ////////////////////////////////////////
-    constructor() {
 
-        ftmFork = vm.createFork(FTM_RPC_URL);
+    function setUp() public {
+
+        /// 	48129547
+        ftmFork = vm.createFork(FTM_RPC_URL, 48_129_547);
 
         manager = msg.sender;
 
@@ -57,15 +57,11 @@ contract GeistERC4626ReinvestTest is Test {
             rewardToken,
             manager
         );
-
-    }
-
-    function setUp() public {
+    
         alice = address(0x1);
         bob = address(0x2);
         deal(address(asset), alice, 10000 ether);
         deal(address(asset), bob, 10000 ether);
-
     }
 
     function testSingleDepositWithdraw() public {
@@ -149,7 +145,7 @@ contract GeistERC4626ReinvestTest is Test {
         assertEq(asset.balanceOf(alice), alicePreDepositBal);
     }
 
-
+    /// @notice Tests irrelevant for Base Implementation of Reinvest. Just mocking rewards accrued through transfer.
     function testHarvesterDAI() public {
         vm.startPrank(manager);
 
@@ -160,25 +156,34 @@ contract GeistERC4626ReinvestTest is Test {
         vault.setRoute(swapToken, pair1, pair2);
 
         vm.stopPrank();
-        
+
         vm.startPrank(alice);
 
         uint256 amount = 100 ether;
         asset.approve(address(vault), amount);
         uint256 aliceShareAmount = vault.deposit(amount, alice);
 
+        vm.roll(block.number + 1000000);
         /// @dev Deal 10000 GEIST reward tokens to the vault
         deal(address(rewardToken), address(vault), 10000 ether);
 
         assertEq(vault.totalSupply(), aliceShareAmount);
         assertEq(vault.totalAssets(), 100 ether);
         console.log("totalAssets before harvest", vault.totalAssets());
-
         assertEq(ERC20(rewardToken).balanceOf(address(vault)), 10000 ether);
-        vault.harvest();
+
+        vm.roll(block.number + 6492849);
+        IMultiFeeDistribution.RewardData[] memory rewardData = vault.getRewardsAccrued();
+
+        for (uint i = 0; i < rewardData.length; i++) {
+            address tok = rewardData[i].token;
+            uint256 amt = rewardData[i].amount;
+            console.log("tok", tok, "amt", amt);
+        }
+
+        vault.harvest(0);
 
         assertEq(ERC20(rewardToken).balanceOf(address(vault)), 0);
         console.log("totalAssets after harvest", vault.totalAssets());
     }
-
 }

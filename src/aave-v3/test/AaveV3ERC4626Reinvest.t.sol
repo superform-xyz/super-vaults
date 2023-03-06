@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.14;
+// SPDX-License-Identifier: Apache-2.0
+pragma solidity 0.8.19;
 
 import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
@@ -12,7 +12,6 @@ import {IRewardsController} from "../../aave-v3/external/IRewardsController.sol"
 import {IPool} from "../external/IPool.sol";
 
 contract AaveV3ERC4626ReinvestTest is Test {
-    
     ////////////////////////////////////////
 
     address public manager;
@@ -24,10 +23,10 @@ contract AaveV3ERC4626ReinvestTest is Test {
     uint256 public avaxFork;
     uint256 public polyFork;
 
-    string ETH_RPC_URL = vm.envString("ETH_MAINNET_RPC");
-    string FTM_RPC_URL = vm.envString("FTM_MAINNET_RPC");
-    string AVAX_RPC_URL = vm.envString("AVAX_MAINNET_RPC");
-    string POLYGON_MAINNET_RPC = vm.envString("POLYGON_MAINNET_RPC");
+    string ETH_RPC_URL = vm.envString("ETHEREUM_RPC_URL");
+    string FTM_RPC_URL = vm.envString("FANTOM_RPC_URL");
+    string AVAX_RPC_URL = vm.envString("AVALANCHE_RPC_URL");
+    string POLYGON_RPC_URL = vm.envString("POLYGON_RPC_URL");
 
     AaveV3ERC4626Reinvest public vault;
     AaveV3ERC4626ReinvestFactory public factory;
@@ -47,7 +46,7 @@ contract AaveV3ERC4626ReinvestTest is Test {
     constructor() {
         ethFork = vm.createFork(ETH_RPC_URL);
         ftmFork = vm.createFork(FTM_RPC_URL);
-        polyFork = vm.createFork(POLYGON_MAINNET_RPC);
+        polyFork = vm.createFork(POLYGON_RPC_URL);
 
         /// @dev WAVAX REWARDS on Avax
         avaxFork = vm.createFork(AVAX_RPC_URL);
@@ -55,6 +54,7 @@ contract AaveV3ERC4626ReinvestTest is Test {
         manager = msg.sender;
 
         vm.selectFork(avaxFork);
+        vm.rollFork(26800000);
 
         rewards = IRewardsController(vm.envAddress("AAVEV3_AVAX_REWARDS"));
         lendingPool = IPool(vm.envAddress("AAVEV3_AVAX_LENDINGPOOL"));
@@ -65,7 +65,7 @@ contract AaveV3ERC4626ReinvestTest is Test {
             manager
         );
 
-        (ERC4626 v, AaveV3ERC4626Reinvest v_) = setVault(
+        (, AaveV3ERC4626Reinvest v_) = setVault(
             ERC20(vm.envAddress("AAVEV3_AVAX_USDC"))
         );
 
@@ -87,7 +87,7 @@ contract AaveV3ERC4626ReinvestTest is Test {
         /// @dev If we need strict ERC4626 interface
         vault_ = factory.createERC4626(_asset);
 
-        /// @dev If we need to use the AaveV2ERC4626Reinvest interface with harvest
+        /// @dev If we need to use the AaveV3ERC4626Reinvest interface with harvest
         vaultERC4626_ = AaveV3ERC4626Reinvest(address(vault_));
 
         asset = vault_.asset();
@@ -152,7 +152,7 @@ contract AaveV3ERC4626ReinvestTest is Test {
 
         /// @dev Should fail because we can only set from Factory contract
         vault.setRewards();
-        
+
         vm.stopPrank();
 
         vm.startPrank(manager);
@@ -251,49 +251,49 @@ contract AaveV3ERC4626ReinvestTest is Test {
         assertEq(asset.balanceOf(alice), alicePreDepositBal);
     }
 
-    /// @dev This tests requires harvest() claimedAmounts[] to be set manually on forked state
-    /// @dev TODO: find a better test method
-    // claimedAmounts[0] = 1 ether;
-    // function testHarvester() public {
-    //     uint256 aliceUnderlyingAmount = 100e6;
+    function testHarvester() public {
+        uint256 aliceUnderlyingAmount = 100e6;
 
-    //     /// Spoof IncentiveV3 contract storage var
-    //     vm.startPrank(manager);
-    //     address[] memory rewardTokens = factory.setRewards(vault);
+        /// Spoof Manager to setRoutes
+        vm.startPrank(manager);
+        address[] memory rewardTokens = factory.setRewards(vault);
 
-    //     console.log("rewardTokens", rewardTokens[0]);
-    //     console.log("routes", swapToken, pair1, pair2);
+        console.log("rewardTokens", rewardTokens[0]);
+        console.log("routes", swapToken, pair1, pair2);
 
-    //     if (rewardTokens.length == 1) {
-    //         factory.setRoutes(vault, rewardTokens[0], swapToken, pair1, pair2);
-    //         deal(rewardTokens[0], address(vault), 1 ether);
-    //     } else {
-    //         console.log("more than 1 reward token");
-    //     }
+        if (rewardTokens.length == 1) {
+            factory.setRoutes(vault, rewardTokens[0], swapToken, pair1, pair2);
+        } else {
+            console.log("more than 1 reward token");
+        }
 
-    //     vm.stopPrank();
-    //     ///////////////////////////
+        vm.stopPrank();
+        ///////////////////////////
 
-    //     vm.startPrank(alice);
+        vm.startPrank(alice);
 
-    //     asset.approve(address(vault), aliceUnderlyingAmount);
-    //     uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
+        asset.approve(address(vault), aliceUnderlyingAmount);
+        vault.deposit(aliceUnderlyingAmount, alice);
 
-    //     uint256 beforeHarvest = vault.totalAssets();
-    //     uint256 beforeHarvestReward = ERC20(rewardTokens[0]).balanceOf(address(vault));
+        uint256 beforeHarvest = vault.totalAssets();
+        uint256 beforeHarvestReward = ERC20(rewardTokens[0]).balanceOf(
+            address(vault)
+        );
 
-    //     console.log("totalAssets before harvest", beforeHarvest);
-    //     console.log("rewardBalance before harvest", beforeHarvestReward);
+        console.log("totalAssets before harvest", beforeHarvest);
+        console.log("rewardBalance before harvest", beforeHarvestReward);
 
-    //     assertEq(ERC20(rewardTokens[0]).balanceOf(address(vault)), 1 ether);
+        uint256[] memory minAmount = new uint256[](1);
+        minAmount[0] = 0;
+        vm.warp(block.timestamp + 100 days);
+        vault.harvest(minAmount);
 
-    //     vault.harvest();
-
-    //     uint256 afterHarvest = vault.totalAssets();
-    //     uint256 afterHarvestReward = ERC20(rewardTokens[0]).balanceOf(address(vault));
-
-    //     console.log("totalAssets after harvest", afterHarvest);
-    //     console.log("rewardBalance after harvest", afterHarvestReward);
-
-    // }
+        uint256 afterHarvest = vault.totalAssets();
+        uint256 afterHarvestReward = ERC20(rewardTokens[0]).balanceOf(
+            address(vault)
+        );
+        assertGe(afterHarvest, beforeHarvest);
+        console.log("totalAssets after harvest", afterHarvest);
+        console.log("rewardBalance after harvest", afterHarvestReward);
+    }
 }

@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.14;
+// SPDX-License-Identifier: Apache-2.0
+pragma solidity 0.8.19;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
@@ -18,7 +18,7 @@ contract stEthSwapTest is Test {
 
     using FixedPointMathLib for uint256;
 
-    string ETH_RPC_URL = vm.envString("ETH_MAINNET_RPC");
+    string ETH_RPC_URL = vm.envString("ETHEREUM_RPC_URL");
 
     StETHERC4626Swap public vault;
 

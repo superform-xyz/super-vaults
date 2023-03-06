@@ -1,45 +1,53 @@
-// SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.14;
+// SPDX-License-Identifier: Apache-2.0
+pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-import {ICERC20} from "./compound/ICERC20.sol";
-import {LibCompound} from "./compound/LibCompound.sol";
-import {IComptroller} from "./compound/IComptroller.sol";
+import {IVERC20} from "./external/IVERC20.sol";
+import {LibVCompound} from "./external/LibVCompound.sol";
+import {IVComptroller} from "./external/IVComptroller.sol";
 
-import {DexSwap} from "./utils/swapUtils.sol";
+import {DexSwap} from "../_global/swapUtils.sol";
 
-/// @title VenusERC4626Reinvest - extended implementation of yield-daddy CompoundV2 wrapper
-/// @dev Reinvests rewards accrued for higher APY
+/// @title VenusERC4626Reinvest
+/// @notice Extended implementation of yield-daddy CompoundV2 wrapper
+/// @notice Reinvests rewards accrued for higher APY
+/// @author ZeroPoint Labs
 contract VenusERC4626Reinvest is ERC4626 {
-    /// -----------------------------------------------------------------------
-    /// Libraries usage
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                        LIBRARIES USAGE
+    //////////////////////////////////////////////////////////////*/
 
-    using LibCompound for ICERC20;
+    using LibVCompound for IVERC20;
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
-    /// -----------------------------------------------------------------------
-    /// Errors
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                            ERRORS
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Thrown when a call to Compound returned an error.
     /// @param errorCode The error code returned by Compound
-    error CompoundERC4626__CompoundError(uint256 errorCode);
+    error COMPOUND_ERROR(uint256 errorCode);
 
-    /// -----------------------------------------------------------------------
-    /// Constants
-    /// -----------------------------------------------------------------------
+    /// @notice Thrown when reinvest amount is not enough.
+    error MIN_AMOUNT_ERROR();
+
+    /// @notice Thrown when trying to call a function with an invalid access
+    error INVALID_ACCESS();
+
+    /*//////////////////////////////////////////////////////////////
+                            CONSTANTS
+    //////////////////////////////////////////////////////////////*/
 
     uint256 internal constant NO_ERROR = 0;
 
-    /// -----------------------------------------------------------------------
-    /// Immutable params
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      IMMUATABLES & VARIABLES
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Access Control for harvest() route
     address public immutable manager;
@@ -48,10 +56,10 @@ contract VenusERC4626Reinvest is ERC4626 {
     ERC20 public immutable reward;
 
     /// @notice The Compound cToken contract
-    ICERC20 public immutable cToken;
+    IVERC20 public immutable cToken;
 
     /// @notice The Compound comptroller contract
-    IComptroller public immutable comptroller;
+    IVComptroller public immutable comptroller;
 
     /// @notice Pointer to swapInfo
     swapInfo public SwapInfo;
@@ -64,15 +72,21 @@ contract VenusERC4626Reinvest is ERC4626 {
         address pair2;
     }
 
-    /// -----------------------------------------------------------------------
-    /// Constructor
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                            CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
 
+    /// @notice Constructs this contract.
+    /// @param asset_ The address of the asset to be wrapped
+    /// @param reward_ The address of the reward token
+    /// @param cToken_ The address of the cToken contract
+    /// @param comptroller_ The address of the comptroller contract
+    /// @param manager_ The address of the manager
     constructor(
         ERC20 asset_,
         ERC20 reward_,
-        ICERC20 cToken_,
-        IComptroller comptroller_,
+        IVERC20 cToken_,
+        IVComptroller comptroller_,
         address manager_
     ) ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_)) {
         reward = reward_;
@@ -81,37 +95,37 @@ contract VenusERC4626Reinvest is ERC4626 {
         manager = manager_;
     }
 
-    /// -----------------------------------------------------------------------
-    /// Compound liquidity mining
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                      VENUS LIQUIDITY MINING
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Set swap route for XVS rewards
     function setRoute(
-        address token,
-        address pair1,
-        address pair2
+        address token_,
+        address pair1_,
+        address pair2_
     ) external {
-        require(msg.sender == manager, "onlyOwner");
-        SwapInfo = swapInfo(token, pair1, pair2);
-
+        if (msg.sender != manager) revert INVALID_ACCESS();
+        SwapInfo = swapInfo(token_, pair1_, pair2_);
     }
 
     /// @notice Claims liquidity mining rewards from Compound and performs low-lvl swap with instant reinvesting
-    function harvest() external {
-        ICERC20[] memory cTokens = new ICERC20[](1);
+    function harvest(uint256 minAmountOut_) external {
+        IVERC20[] memory cTokens = new IVERC20[](1);
         cTokens[0] = cToken;
+
         comptroller.claimVenus(address(this));
 
-        uint256 earned = ERC20(reward).balanceOf(address(this));
+        uint256 earned = reward.balanceOf(address(this));
+
         address rewardToken = address(reward);
+        uint256 reinvestAmount;
 
-        /// If only one swap needed (high liquidity pair) - set swapInfo.token0/token/pair2 to 0x
-        /// XVS => WBNB => USDC
+        /// XVS => WBNB => ASSET
         if (SwapInfo.token == address(asset)) {
+            reward.approve(SwapInfo.pair1, earned);
 
-            reward.approve(SwapInfo.pair1, earned); 
-
-            DexSwap.swap(
+            reinvestAmount = DexSwap.swap(
                 earned, /// REWARDS amount to swap
                 rewardToken, // from REWARD (because of liquidity)
                 address(asset), /// to target underlying of this Vault ie USDC
@@ -119,7 +133,6 @@ contract VenusERC4626Reinvest is ERC4626 {
             );
             /// If two swaps needed
         } else {
-
             reward.approve(SwapInfo.pair1, earned);
 
             uint256 swapTokenAmount = DexSwap.swap(
@@ -129,16 +142,18 @@ contract VenusERC4626Reinvest is ERC4626 {
                 SwapInfo.pair1 /// pairToken (pool)
             );
 
-            ERC20(SwapInfo.token).approve(SwapInfo.pair2, swapTokenAmount); 
+            ERC20(SwapInfo.token).approve(SwapInfo.pair2, swapTokenAmount);
 
-            DexSwap.swap(
+            reinvestAmount = DexSwap.swap(
                 swapTokenAmount,
                 SwapInfo.token, // from received BUSD (because of liquidity)
                 address(asset), /// to target underlying of this Vault ie USDC
                 SwapInfo.pair2 /// pairToken (pool)
             );
         }
-
+        if (reinvestAmount < minAmountOut_) {
+            revert MIN_AMOUNT_ERROR();
+        }
         afterDeposit(asset.balanceOf(address(this)), 0);
     }
 
@@ -147,43 +162,39 @@ contract VenusERC4626Reinvest is ERC4626 {
         amount = comptroller.venusAccrued(address(this));
     }
 
-    /// -----------------------------------------------------------------------
-    /// ERC4626 overrides
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                        ERC4626 OVERRIDES
+    //////////////////////////////////////////////////////////////*/
 
     function totalAssets() public view virtual override returns (uint256) {
         return cToken.viewUnderlyingBalanceOf(address(this));
     }
 
     function beforeWithdraw(
-        uint256 assets,
+        uint256 assets_,
         uint256 /*shares*/
     ) internal virtual override {
-        /// -----------------------------------------------------------------------
-        /// Withdraw assets from Compound
-        /// -----------------------------------------------------------------------
+        /// @dev withdraw assets from venus
 
-        uint256 errorCode = cToken.redeemUnderlying(assets);
+        uint256 errorCode = cToken.redeemUnderlying(assets_);
         if (errorCode != NO_ERROR) {
-            revert CompoundERC4626__CompoundError(errorCode);
+            revert COMPOUND_ERROR(errorCode);
         }
     }
 
     function afterDeposit(
-        uint256 assets,
+        uint256 assets_,
         uint256 /*shares*/
     ) internal virtual override {
-        /// -----------------------------------------------------------------------
-        /// Deposit assets into Compound
-        /// -----------------------------------------------------------------------
+        /// @dev deposit assets into venus
 
         // approve to cToken
-        asset.safeApprove(address(cToken), assets);
+        asset.safeApprove(address(cToken), assets_);
 
         // deposit into cToken
-        uint256 errorCode = cToken.mint(assets);
+        uint256 errorCode = cToken.mint(assets_);
         if (errorCode != NO_ERROR) {
-            revert CompoundERC4626__CompoundError(errorCode);
+            revert COMPOUND_ERROR(errorCode);
         }
     }
 
@@ -197,22 +208,27 @@ contract VenusERC4626Reinvest is ERC4626 {
         return type(uint256).max;
     }
 
-    function maxWithdraw(address owner) public view override returns (uint256) {
+    function maxWithdraw(address owner_)
+        public
+        view
+        override
+        returns (uint256)
+    {
         uint256 cash = cToken.getCash();
-        uint256 assetsBalance = convertToAssets(balanceOf[owner]);
+        uint256 assetsBalance = convertToAssets(balanceOf[owner_]);
         return cash < assetsBalance ? cash : assetsBalance;
     }
 
-    function maxRedeem(address owner) public view override returns (uint256) {
+    function maxRedeem(address owner_) public view override returns (uint256) {
         uint256 cash = cToken.getCash();
         uint256 cashInShares = convertToShares(cash);
-        uint256 shareBalance = balanceOf[owner];
+        uint256 shareBalance = balanceOf[owner_];
         return cashInShares < shareBalance ? cashInShares : shareBalance;
     }
 
-    /// -----------------------------------------------------------------------
-    /// ERC20 metadata generation
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                            ERC20 METADATA
+    //////////////////////////////////////////////////////////////*/
 
     function _vaultName(ERC20 asset_)
         internal

@@ -1,57 +1,18 @@
-# Uniswap V2 Pool ERC4626 Adapter
+# Uniswap V2 Pool ERC4626 Adapters
 
 `./swap-built-in/UniswapV2ERC4626Swap.sol`
 
-Allows to deposit into Uniswap V2 Pool using token0 or token1 and receive Uniswap LP-token representation wrapped in ERC4626 functionality. Vault calculates optimal amount for splitting token to two required tokens for deposit operation. For withdraw, Vault simulates expected value of token0 or token1 (depending which Vault is used) within a block. Vault performs `swapJoin()` and `swapExit()` operations to swap to appropraite amounts of token0 and token1 required amounts. Can be instantly deployed for token0 and token1 of UniswapV2Pair with a use of `UniswapV2ERC4626PoolFactory.sol`
+Enables users to deposit into Uniswap V2 Pools using either token0 or token1 and receive an Uniswap LP-token representation wrapped in ERC4626 interface. The Vault calculates the optimal amount for splitting the input token into the two required tokens for the deposit operation. When withdrawing, the Vault simulates the expected value of either token0 or token1 (depending on the Vault being used) within a block. The Vault then performs swapJoin() and swapExit() operations to swap the appropriate amounts of token0 and token1 required for the withdrawal. This system can be easily deployed for token0 and token1 of the UniswapV2Pair, using the UniswapV2ERC4626PoolFactory.sol. Currently `UniswapV2ERC4626PoolFactory.sol` is unfinished and therefore on-chain oracle functionality is disabled. Enabling of Factory contract will be paired with neccessary security updates to the core UniswapV2 adapter.
 
 `./no-swap/UniswapV2.sol`
 
-Allows to deposit into Uniswap V2 Pool by 'yanking' both token0 and token1 from user address in exchange for Uniswap LP-token representation wrapped in ERC4626 functionality. Uniswap's Pair token (LP-Token) is used for internal accoutning and virtual amounts of token0 and token1 are expected to be transfered by user to a Vault address in exchange for specified earlier amount of Pair token to receive. 
+Allows users to deposit into Uniswap V2 Pools by "yanking" both token0 and token1 from their addresses in exchange for an Uniswap LP-token representation wrapped in ERC4626 interface. Uniswap Pair LP-Token is used for internal accounting, and users are expected to transfer token0 and token1 calculated before the call amounts to a Vault address in exchange for a predetermined amount of Pair token. In contrast to `UniswapV2ERC4626Swap.sol` this implementation can be understood as less automated.
 
-### Both contracts are WIP / Experimental phase
+# Risks (WIP)
 
-TODO: Uniswap Reserves Manipulation - critical fix!
-TODO: Slippage / invariant for deposit/withdraw flow
+It is important for users to exercise caution when integrating with this contract, as UniswapV2Pair reserves can be easily manipulated for a single block. This manipulation, however, can only lead to a smaller output amount of shares and will not result in any loss of funds across the vault or other accounting errors. This is because the UniswapV2ERC4626Swap adapter operates on a 1:1 basis with the LP-Token of Uniswap. Therefore, getting more or less of the LP-Token is only relevant to the caller and will not affect the shares <> assets calculation.
 
-# Design notes
+# Future Work
 
-We can look at the problem of creating a single asset ERC4626 adapter over Uniswap's V2 double asset Pool as 'blackbox' automaton build only out of simple input/outputs and transforming functions.
-
-> The FSM can change from one state to another in response to some inputs; the change from one state to another is called a transition. An FSM is defined by a list of its states, its initial state, and the inputs that trigger each transition.
-
-> A state is a description of the status of a system that is waiting to execute a transition. A transition is a set of actions to be executed when a condition is fulfilled or when an event is receive
-
-Input variable is token (or tokens) to the ERC4626 Vault
-Output variable is LP-token of ERC4626
-Uniswap Pool interface within ERC4626 is a transition function (addLiquidity, removeLiquidity)
-
-Acceptors
-
-    - Accept token0
-    - Accept token0 swap amount to generate token1
-        - ... all that is neccessary for it falls under 2nd order transforming functions inside of a 'blackbox'
-
-State (possible)
-
-    - token0 received
-    - token0 swapped to token0 & token1
-    - pairToken received
-    - token0 & token1 from pairToken on balance
-    - token0 (from t0+t1 after transforming functions like swap)
-    - token0 & token1 withdraw
-
-External Transducers
-
-    - addLiquidity
-        - previewDeposit
-    - removeLiquidity
-        - previewWithdraw
-
-Internal Transducers
-
-    - accounting `get()` functions for assets/shares/lp maniuplation
-
-Outputs
-
-    - token0 safeTransferred 
-    - OR token0 & token1 safeTransferred (optional)
+- Price manipulation protection (Both at swapJoin and addLiquidity level)
+- Deposit Uniswap LP-token directly (Give ERC4626 interface to existing ERC20 Uniswap LP-Token)

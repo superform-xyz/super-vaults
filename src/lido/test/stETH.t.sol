@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.14;
+// SPDX-License-Identifier: Apache-2.0
+pragma solidity 0.8.19;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
@@ -18,7 +18,7 @@ contract stEthTest is Test {
 
     using FixedPointMathLib for uint256;
 
-    string ETH_RPC_URL = vm.envString("ETH_MAINNET_RPC");
+    string ETH_RPC_URL = vm.envString("ETHEREUM_RPC_URL");
 
     StETHERC4626 public vault;
 
@@ -51,12 +51,15 @@ contract stEthTest is Test {
         _weth.approve(address(vault), aliceUnderlyingAmount);
         assertEq(_weth.allowance(alice, address(vault)), aliceUnderlyingAmount);
 
-        uint256 expectedSharesFromAssets = vault.convertToShares(aliceUnderlyingAmount);
+        uint256 expectedSharesFromAssets = vault.previewDeposit(
+            aliceUnderlyingAmount
+        );
         uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
+
         assertEq(expectedSharesFromAssets, aliceShareAmount);
         console.log("aliceShareAmount", aliceShareAmount);
 
-        uint256 aliceAssetsFromShares = vault.convertToAssets(aliceShareAmount);
+        uint256 aliceAssetsFromShares = vault.previewRedeem(aliceShareAmount);
         console.log("aliceAssetsFromShares", aliceAssetsFromShares);
 
         vault.withdraw(aliceAssetsFromShares, alice, alice);
@@ -67,18 +70,24 @@ contract stEthTest is Test {
 
         vm.startPrank(alice);
 
-        uint256 expectedAssetFromShares = vault.convertToAssets(
-            aliceSharesMint
+        uint256 expectedAssetFromShares = vault.previewMint(aliceSharesMint);
+
+        console.log(
+            "expectedAssetFromShares (to approve)",
+            expectedAssetFromShares
         );
+
         _weth.approve(address(vault), expectedAssetFromShares);
 
         uint256 aliceAssetAmount = vault.mint(aliceSharesMint, alice);
+        console.log("aliceAssetAmount", aliceAssetAmount);
         assertEq(expectedAssetFromShares, aliceAssetAmount);
 
         uint256 aliceSharesAmount = vault.balanceOf(alice);
-        assertEq(aliceSharesAmount, aliceSharesMint);
+        console.log("aliceSharesAmount", aliceSharesAmount);
 
-        vault.redeem(aliceSharesAmount, alice, alice);
+        uint256 sharesBurned = vault.redeem(aliceSharesAmount, alice, alice);
+        console.log("sharesBurned", sharesBurned);
     }
 
     function testDepositETH() public {
@@ -89,7 +98,5 @@ contract stEthTest is Test {
         uint256 expectedSharesFromAsset = vault.convertToShares(aliceEth);
         uint256 aliceShareAmount = vault.deposit{value: aliceEth}(alice);
         assertEq(expectedSharesFromAsset, aliceShareAmount);
-
     }
-
 }

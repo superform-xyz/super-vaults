@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.14;
+// SPDX-License-Identifier: Apache-2.0
+pragma solidity 0.8.19;
 
 interface IBToken {
     function deposit(uint256) external payable;
@@ -23,4 +23,6 @@ interface IBToken {
     function lastAccrueTime() external view returns (uint256);
 
     function pendingInterest(uint256 value) external view returns (uint256);
+
+    function approve(address spender, uint256 amount) external returns (bool);
 }

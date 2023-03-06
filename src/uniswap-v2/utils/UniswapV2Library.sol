@@ -1,7 +1,6 @@
-// SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.14;
+// SPDX-License-Identifier: Apache-2.0
+pragma solidity 0.8.19;
 import {IUniswapV2Pair} from "../interfaces/IUniswapV2Pair.sol";
-import "forge-std/console.sol";
 
 library SafeMath {
     function add(uint256 x, uint256 y) internal pure returns (uint256 z) {
@@ -21,6 +20,7 @@ library SafeMath {
 library UniswapV2Library {
     using SafeMath for uint256;
 
+    /// @dev implementation details: https://blog.alphaventuredao.io/onesideduniswap/
     function getSwapAmount(uint256 resA, uint256 amt) internal pure returns (uint256) {
         return
             (sqrt(resA.mul(resA.mul(3988009) + amt.mul(3988000))).sub(resA.mul(1997))) /
@@ -41,7 +41,7 @@ library UniswapV2Library {
     }
 
     // fetches and sorts the reserves for a pair
-    /// NOTE: Original lib implementation changed to accept pair address directly, TODO: revert change
+    /// NOTE: Original lib implementation changed to accept pair address directly
     function getReserves(
         address pair,
         address tokenA,

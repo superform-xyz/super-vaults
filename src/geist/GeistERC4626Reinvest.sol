@@ -1,27 +1,43 @@
-// SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.14;
+// SPDX-License-Identifier: Apache-2.0
+pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
 import {IMultiFeeDistribution} from "./external/IMultiFeeDistribution.sol";
-import {ILendingPool} from "./external/ILendingPool.sol";
-import {DexSwap} from "./utils/swapUtils.sol";
+import {IGLendingPool} from "./external/IGLendingPool.sol";
+import {DexSwap} from "../_global/swapUtils.sol";
 
 /// @title GeistERC4626Reinvest
+/// @notice AAVE-V2 Forked protocol with Curve-like rewards distribution in place of IAaveMining.
+/// @notice Base implementation contract with harvest() disabled as it would require vesting vault's balance.
+/// @author ZeroPoint Labs
 contract GeistERC4626Reinvest is ERC4626 {
     address public immutable manager;
 
-    /// -----------------------------------------------------------------------
-    /// Libraries usage
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                            LIBRARIES USAGE
+    //////////////////////////////////////////////////////////////*/
 
     using SafeTransferLib for ERC20;
 
-    /// -----------------------------------------------------------------------
-    /// Constants
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                                ERRORS
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Thrown when reinvested amounts are not enough.
+    error MIN_AMOUNT_ERROR();
+
+    /// @notice Thrown when trying to call a function with an invalid access
+    error INVALID_ACCESS();
+
+    /// @notice Thrown when trying to redeem with 0 tokens invested
+    error ZERO_ASSETS();
+
+    /*//////////////////////////////////////////////////////////////
+                            CONSTANTS
+    //////////////////////////////////////////////////////////////*/
 
     uint256 internal constant ACTIVE_MASK =
         0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFFFFFFFFFF;
@@ -31,9 +47,9 @@ contract GeistERC4626Reinvest is ERC4626 {
     address public immutable spookySwap =
         0xF491e7B69E4244ad4002BC14e878a34207E38c29;
 
-    /// -----------------------------------------------------------------------
-    /// Immutable params
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                        IMMUTABLES & VARIABLES
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice The Aave aToken contract
     ERC20 public immutable aToken;
@@ -45,7 +61,7 @@ contract GeistERC4626Reinvest is ERC4626 {
     ERC20 public immutable rewardToken;
 
     /// @notice The Aave LendingPool contract
-    ILendingPool public immutable lendingPool;
+    IGLendingPool public immutable lendingPool;
 
     /// @notice Pointer to swapInfo
     swapInfo public SwapInfo;
@@ -58,15 +74,22 @@ contract GeistERC4626Reinvest is ERC4626 {
         address pair2;
     }
 
-    /// -----------------------------------------------------------------------
-    /// Constructor
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                             CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
 
+    /// @notice Construct a new GeistERC4626Reinvest contract
+    /// @param asset_ The address of the asset to be wrapped
+    /// @param aToken_ The address of the aToken contract
+    /// @param rewards_ The address of the rewards contract
+    /// @param lendingPool_ The address of the lendingPool contract
+    /// @param rewardToken_ The address of the rewardToken contract
+    /// @param manager_ The address of the manager
     constructor(
         ERC20 asset_,
         ERC20 aToken_,
         IMultiFeeDistribution rewards_,
-        ILendingPool lendingPool_,
+        IGLendingPool lendingPool_,
         ERC20 rewardToken_,
         address manager_
     ) ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_)) {
@@ -77,38 +100,39 @@ contract GeistERC4626Reinvest is ERC4626 {
         manager = manager_;
     }
 
-    /// -----------------------------------------------------------------------
-    /// Geist Rewards Module
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                        R       EWARDS
+    //////////////////////////////////////////////////////////////*/
 
     function setRoute(
-        address token,
-        address pair1,
-        address pair2
+        address token_,
+        address pair1_,
+        address pair2_
     ) external {
-        require(msg.sender == manager, "onlyOwner");
-        SwapInfo = swapInfo(token, pair1, pair2);
+        if (msg.sender != manager) revert INVALID_ACCESS();
+
+        SwapInfo = swapInfo(token_, pair1_, pair2_);
     }
 
-    /// @notice Claims liquidity providing rewards from Geist for this contract
-    /// MultiFeeDistribution on Geist accrues GEIST token as reward for supplying liq
-    function harvest() external {
+    /// @notice Base implementation harvest() is non-operational as Vault is not vesting LP-token in Geist Reward Pool
+    function harvest(uint256 minAmountOut_) external {
+        /// Claim only without Penalty
         rewards.getReward();
         rewards.exit();
 
         uint256 earned = rewardToken.balanceOf(address(this));
+        uint256 reinvestAmount;
 
         if (SwapInfo.token == address(asset)) {
             rewardToken.approve(SwapInfo.pair1, earned);
 
-            DexSwap.swap(
+            reinvestAmount = DexSwap.swap(
                 earned,
                 address(rewardToken), // from GEIST
                 SwapInfo.token, /// to intermediary token FTM (no direct pools)
                 SwapInfo.pair1 /// pairToken (pool)
             );
         } else {
-
             rewardToken.approve(SwapInfo.pair1, earned);
 
             /// Swap on Spooky
@@ -121,68 +145,78 @@ contract GeistERC4626Reinvest is ERC4626 {
 
             ERC20(SwapInfo.token).approve(SwapInfo.pair2, swapTokenAmount);
 
-            swapTokenAmount = DexSwap.swap(
+            reinvestAmount = DexSwap.swap(
                 swapTokenAmount,
                 SwapInfo.token, // from received FTM
                 address(asset), /// to target underlying of BaseWrapper Vault
                 SwapInfo.pair2 /// pairToken (pool)
             );
         }
-
+        if (reinvestAmount < minAmountOut_) {
+            revert MIN_AMOUNT_ERROR();
+        }
         afterDeposit(asset.balanceOf(address(this)), 0);
     }
 
-    /// -----------------------------------------------------------------------
-    /// ERC4626 overrides
-    /// -----------------------------------------------------------------------
+    function getRewardsAccrued()
+        public
+        view
+        returns (IMultiFeeDistribution.RewardData[] memory r)
+    {
+        return rewards.claimableRewards(address(this));
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                        ERC4626 OVERRIDES
+    //////////////////////////////////////////////////////////////*/
 
     function withdraw(
-        uint256 assets,
-        address receiver,
-        address owner
+        uint256 assets_,
+        address receiver_,
+        address owner_
     ) public virtual override returns (uint256 shares) {
-        shares = previewWithdraw(assets); // No need to check for rounding error, previewWithdraw rounds up.
+        shares = previewWithdraw(assets_); // No need to check for rounding error, previewWithdraw rounds up.
 
-        if (msg.sender != owner) {
-            uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
+        if (msg.sender != owner_) {
+            uint256 allowed = allowance[owner_][msg.sender]; // Saves gas for limited approvals.
 
             if (allowed != type(uint256).max)
-                allowance[owner][msg.sender] = allowed - shares;
+                allowance[owner_][msg.sender] = allowed - shares;
         }
 
-        beforeWithdraw(assets, shares);
+        beforeWithdraw(assets_, shares);
 
-        _burn(owner, shares);
+        _burn(owner_, shares);
 
-        emit Withdraw(msg.sender, receiver, owner, assets, shares);
+        emit Withdraw(msg.sender, receiver_, owner_, assets_, shares);
 
         // withdraw assets directly from Aave
-        lendingPool.withdraw(address(asset), assets, receiver);
+        lendingPool.withdraw(address(asset), assets_, receiver_);
     }
 
     function redeem(
-        uint256 shares,
-        address receiver,
-        address owner
+        uint256 shares_,
+        address receiver_,
+        address owner_
     ) public virtual override returns (uint256 assets) {
-        if (msg.sender != owner) {
-            uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
+        if (msg.sender != owner_) {
+            uint256 allowed = allowance[owner_][msg.sender]; // Saves gas for limited approvals.
 
             if (allowed != type(uint256).max)
-                allowance[owner][msg.sender] = allowed - shares;
+                allowance[owner_][msg.sender] = allowed - shares_;
         }
 
         // Check for rounding error since we round down in previewRedeem.
-        require((assets = previewRedeem(shares)) != 0, "ZERO_ASSETS");
+        if ((assets = previewRedeem(shares_)) == 0) revert ZERO_ASSETS();
 
-        beforeWithdraw(assets, shares);
+        beforeWithdraw(assets, shares_);
 
-        _burn(owner, shares);
+        _burn(owner_, shares_);
 
-        emit Withdraw(msg.sender, receiver, owner, assets, shares);
+        emit Withdraw(msg.sender, receiver_, owner_, assets, shares_);
 
         // withdraw assets directly from Aave
-        lendingPool.withdraw(address(asset), assets, receiver);
+        lendingPool.withdraw(address(asset), assets, receiver_);
     }
 
     function totalAssets() public view virtual override returns (uint256) {
@@ -190,18 +224,18 @@ contract GeistERC4626Reinvest is ERC4626 {
     }
 
     function afterDeposit(
-        uint256 assets,
+        uint256 assets_,
         uint256 /*shares*/
     ) internal virtual override {
-        /// -----------------------------------------------------------------------
-        /// Deposit assets into Aave
-        /// -----------------------------------------------------------------------
+        /*//////////////////////////////////////////////////////////////
+         Deposit assets into Aave
+        //////////////////////////////////////////////////////////////*/
 
         // approve to lendingPool
-        asset.safeApprove(address(lendingPool), assets);
+        asset.safeApprove(address(lendingPool), assets_);
 
         // deposit into lendingPool
-        lendingPool.deposit(address(asset), assets, address(this), 0);
+        lendingPool.deposit(address(asset), assets_, address(this), 0);
     }
 
     function maxDeposit(address)
@@ -246,7 +280,7 @@ contract GeistERC4626Reinvest is ERC4626 {
         return type(uint256).max;
     }
 
-    function maxWithdraw(address owner)
+    function maxWithdraw(address owner_)
         public
         view
         virtual
@@ -268,11 +302,11 @@ contract GeistERC4626Reinvest is ERC4626 {
         }
 
         uint256 cash = asset.balanceOf(address(aToken));
-        uint256 assetsBalance = convertToAssets(balanceOf[owner]);
+        uint256 assetsBalance = convertToAssets(balanceOf[owner_]);
         return cash < assetsBalance ? cash : assetsBalance;
     }
 
-    function maxRedeem(address owner)
+    function maxRedeem(address owner_)
         public
         view
         virtual
@@ -295,13 +329,13 @@ contract GeistERC4626Reinvest is ERC4626 {
 
         uint256 cash = asset.balanceOf(address(aToken));
         uint256 cashInShares = convertToShares(cash);
-        uint256 shareBalance = balanceOf[owner];
+        uint256 shareBalance = balanceOf[owner_];
         return cashInShares < shareBalance ? cashInShares : shareBalance;
     }
 
-    /// -----------------------------------------------------------------------
-    /// ERC20 metadata generation
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                    ERC20 METADATA GENERATION
+    //////////////////////////////////////////////////////////////*/
 
     function _vaultName(ERC20 asset_)
         internal
@@ -321,9 +355,9 @@ contract GeistERC4626Reinvest is ERC4626 {
         vaultSymbol = string.concat("gs4626-", asset_.symbol());
     }
 
-    /// -----------------------------------------------------------------------
-    /// Internal functions
-    /// -----------------------------------------------------------------------
+    /*//////////////////////////////////////////////////////////////
+                    OTHER INTERNAL FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
 
     function _getActive(uint256 configData) internal pure returns (bool) {
         return configData & ~ACTIVE_MASK != 0;

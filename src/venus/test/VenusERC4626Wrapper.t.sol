@@ -1,18 +1,18 @@
-// SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.14;
+// SPDX-License-Identifier: Apache-2.0
+pragma solidity 0.8.19;
 
 import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {VenusERC4626Reinvest} from "../VenusERC4626Reinvest.sol";
 
-import {ICERC20} from "../compound/ICERC20.sol";
-import {LibCompound} from "../compound/LibCompound.sol";
-import {IComptroller} from "../compound/IComptroller.sol";
+import {IVERC20} from "../external/IVERC20.sol";
+import {LibVCompound} from "../external/LibVCompound.sol";
+import {IVComptroller} from "../external/IVComptroller.sol";
 
 contract VenusERC4626WrapperTest is Test {
     uint256 public fork;
 
-    string BSC_RPC_URL = vm.envString("BSC_MAINNET_RPC");
+    string BSC_RPC_URL = vm.envString("BSC_RPC_URL");
 
     address public manager;
     address public alice;
@@ -32,32 +32,36 @@ contract VenusERC4626WrapperTest is Test {
     VenusERC4626Reinvest public vault;
     ERC20 public asset;
     ERC20 public reward;
-    ICERC20 public cToken;
-    IComptroller public comptroller;
+    IVERC20 public cToken;
+    IVComptroller public comptroller;
 
     constructor() {
         fork = vm.createFork(BSC_RPC_URL);
+        
+        /// 21_375_198
+        vm.rollFork(fork, 21_375_198);
         vm.selectFork(fork);
+
         manager = msg.sender;
-        comptroller = IComptroller(VENUS_COMPTROLLER);
+        comptroller = IVComptroller(VENUS_COMPTROLLER);
 
         setVault(
             ERC20(vm.envAddress("VENUS_USDC_ASSET")),
             ERC20(vm.envAddress("VENUS_REWARD_XVS")),
-            ICERC20(vm.envAddress("VENUS_VUSDC_CTOKEN")),
+            IVERC20(vm.envAddress("VENUS_VUSDC_CTOKEN")),
             comptroller
         );
 
         asset = ERC20(VENUS_USDC_ASSET);
         reward = ERC20(VENUS_REWARD_XVS);
-        cToken = ICERC20(VENUS_VUSDC_CTOKEN);
+        cToken = IVERC20(VENUS_VUSDC_CTOKEN);
     }
 
     function setVault(
         ERC20 underylyingAsset,
         ERC20 reward_,
-        ICERC20 cToken_,
-        IComptroller comptroller_
+        IVERC20 cToken_,
+        IVComptroller comptroller_
     ) public {
         vm.startPrank(manager);
 
@@ -79,8 +83,8 @@ contract VenusERC4626WrapperTest is Test {
     function setUp() public {
         alice = address(0x1);
         bob = address(0x2);
-        deal(address(asset), alice, 1000 ether);
-        deal(address(asset), bob, 1000 ether);
+        deal(address(asset), alice, 100000 ether);
+        deal(address(asset), bob, 100000 ether);
     }
 
     function testDepositWithdrawUSDC() public {
@@ -107,10 +111,15 @@ contract VenusERC4626WrapperTest is Test {
         assertEq(vault.balanceOf(alice), aliceShareAmount);
 
         uint256 aliceBalanceBeforeWithdraw = asset.balanceOf(alice);
-        uint256 expectedAssetsAfterWithdraw = aliceBalanceBeforeWithdraw + aliceAssetsToWithdraw;
+        uint256 expectedAssetsAfterWithdraw = aliceBalanceBeforeWithdraw +
+            aliceAssetsToWithdraw;
         console.log("aliceBalanceBeforeWithdraw", aliceBalanceBeforeWithdraw);
 
-        uint256 aliceSharesBurned = vault.withdraw(aliceAssetsToWithdraw, alice, alice);
+        uint256 aliceSharesBurned = vault.withdraw(
+            aliceAssetsToWithdraw,
+            alice,
+            alice
+        );
         uint256 aliceBalanceAfterWithdraw = asset.balanceOf(alice);
 
         console.log("aliceBalanceBeforeDeposit", aliceBalanceBeforeDeposit);
@@ -124,7 +133,7 @@ contract VenusERC4626WrapperTest is Test {
         setVault(
             ERC20(vm.envAddress("VENUS_BUSD_ASSET")),
             ERC20(vm.envAddress("VENUS_REWARD_XVS")),
-            ICERC20(vm.envAddress("VENUS_BUSD_CTOKEN")),
+            IVERC20(vm.envAddress("VENUS_BUSD_CTOKEN")),
             comptroller
         );
 
@@ -147,12 +156,14 @@ contract VenusERC4626WrapperTest is Test {
     }
 
     function testHarvest() public {
-        uint256 amount = 100 ether;
+        uint256 amount = 10000 ether;
 
+        fork = vm.createFork(BSC_RPC_URL);
+        
         setVault(
             ERC20(vm.envAddress("VENUS_USDC_ASSET")),
             ERC20(vm.envAddress("VENUS_REWARD_XVS")),
-            ICERC20(vm.envAddress("VENUS_VUSDC_CTOKEN")),
+            IVERC20(vm.envAddress("VENUS_VUSDC_CTOKEN")),
             comptroller
         );
 
@@ -174,9 +185,10 @@ contract VenusERC4626WrapperTest is Test {
         console.log("totalAssets before harvest", vault.totalAssets());
 
         deal(address(reward), address(vault), 1 ether);
+
         assertEq(reward.balanceOf(address(vault)), 1 ether);
-        
-        vault.harvest();
+
+        vault.harvest(0);
         assertEq(reward.balanceOf(address(vault)), 0);
 
         console.log("totalAssets after harvest", vault.totalAssets());
