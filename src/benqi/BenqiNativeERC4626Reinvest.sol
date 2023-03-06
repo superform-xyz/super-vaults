@@ -6,11 +6,11 @@ import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-import {ICEther} from "./compound/ICEther.sol";
-import {LibCompound} from "./compound/LibCompound.sol";
-import {IComptroller} from "./compound/IComptroller.sol";
+import {IBEther} from "./external/IBEther.sol";
+import {LibBCompound} from "./external/LibBCompound.sol";
+import {IBComptroller} from "./external/IBComptroller.sol";
 
-import {DexSwap} from "./utils/swapUtils.sol";
+import {DexSwap} from "../_global/swapUtils.sol";
 import {WrappedNative} from "./utils/wrappedNative.sol";
 
 /// @title BenqiNativeERC4626Reinvest
@@ -22,7 +22,7 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
                             LIBRARIES
     //////////////////////////////////////////////////////////////*/
 
-    using LibCompound for ICEther;
+    using LibBCompound for IBEther;
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
@@ -57,10 +57,10 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice cEther token reference
-    ICEther public immutable cEther;
+    IBEther public immutable cEther;
 
     /// @notice The Compound comptroller contract
-    IComptroller public immutable comptroller;
+    IBComptroller public immutable comptroller;
 
     /// @notice Access Control for harvest() route
     address public immutable manager;
@@ -101,12 +101,12 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
     constructor(
         ERC20 asset_,
         ERC20 reward_,
-        ICEther cEther_,
+        IBEther cEther_,
         address manager_
     ) ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_)) {
         reward = reward_;
         cEther = cEther_;
-        comptroller = IComptroller(cEther.comptroller());
+        comptroller = IBComptroller(cEther.comptroller());
         wavax = WrappedNative(address(asset_));
         manager = manager_;
     }

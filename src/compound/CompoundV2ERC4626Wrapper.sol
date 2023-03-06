@@ -6,11 +6,11 @@ import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-import {ICERC20} from "./compound/ICERC20.sol";
-import {LibCompound} from "./compound/LibCompound.sol";
-import {IComptroller} from "./compound/IComptroller.sol";
+import {ICERC20} from "./external/ICERC20.sol";
+import {LibCompound} from "./external/LibCompound.sol";
+import {IComptroller} from "./external/IComptroller.sol";
 import {ISwapRouter} from "../aave-v2/utils/ISwapRouter.sol";
-import {DexSwap} from "./utils/swapUtils.sol";
+import {DexSwap} from "../_global/swapUtils.sol";
 
 /// @title CompoundV2ERC4626Wrapper
 /// @notice Custom implementation of yield-daddy wrappers with flexible reinvesting logic

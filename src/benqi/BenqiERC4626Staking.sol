@@ -6,7 +6,7 @@ import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
-import {IPair, DexSwap} from "./utils/swapUtils.sol";
+import {IPair, DexSwap} from "../_global/swapUtils.sol";
 import {IStakedAvax} from "./interfaces/IStakedAvax.sol";
 import {IWETH} from "../lido/interfaces/IWETH.sol";
 

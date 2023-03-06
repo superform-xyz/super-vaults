@@ -7,9 +7,9 @@ import {ERC4626} from "solmate/mixins/ERC4626.sol";
 
 import {GeistERC4626Reinvest} from "../GeistERC4626Reinvest.sol";
 
-import {ILendingPool} from "../external/ILendingPool.sol";
+import {IGLendingPool} from "../external/IGLendingPool.sol";
 import {IMultiFeeDistribution} from "../external/IMultiFeeDistribution.sol";
-import {DexSwap} from "../utils/swapUtils.sol";
+import {DexSwap} from "../../_global/swapUtils.sol";
 
 contract GeistERC4626ReinvestTest is Test {
     ////////////////////////////////////////
@@ -35,8 +35,8 @@ contract GeistERC4626ReinvestTest is Test {
     ERC20 public rewardToken = ERC20(vm.envAddress("GEIST_REWARD_TOKEN"));
     IMultiFeeDistribution public rewards =
         IMultiFeeDistribution(vm.envAddress("GEIST_REWARDS_DISTRIBUTION"));
-    ILendingPool public lendingPool =
-        ILendingPool(vm.envAddress("GEIST_LENDINGPOOL"));
+    IGLendingPool public lendingPool =
+        IGLendingPool(vm.envAddress("GEIST_LENDINGPOOL"));
 
     ////////////////////////////////////////
 

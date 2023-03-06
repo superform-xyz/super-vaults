@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.13;
+pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
@@ -12,7 +12,7 @@ import {ILendingPool} from "./aave/ILendingPool.sol";
 /// @notice Factory for creating AaveV2ERC4626Reinvest contracts
 /// @notice Forked from yield daddy Aave-V2-ERC4626-Factory wrapper
 /// @author ZeroPoint Labs
-contract AaveV2ERC4626ReinvestFactory {
+contract AaveV2ERC4626ReinvestIncentiveFactory {
     /*//////////////////////////////////////////////////////////////
                                 EVENTS
     //////////////////////////////////////////////////////////////*/

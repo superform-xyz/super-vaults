@@ -6,11 +6,11 @@ import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-import {ICERC20} from "./compound/ICERC20.sol";
-import {LibCompound} from "./compound/LibCompound.sol";
-import {IComptroller} from "./compound/IComptroller.sol";
+import {IBERC20} from "./external/IBERC20.sol";
+import {LibBCompound} from "./external/LibBCompound.sol";
+import {IBComptroller} from "./external/IBComptroller.sol";
 
-import {DexSwap} from "./utils/swapUtils.sol";
+import {DexSwap} from "../_global/swapUtils.sol";
 
 /// @title BenqiERC4626Reinvest
 /// @notice Custom implementation of yield-daddy Compound wrapper with flexible reinvesting logic
@@ -20,7 +20,7 @@ contract BenqiERC4626Reinvest is ERC4626 {
                         LIBRARIES USAGE
     //////////////////////////////////////////////////////////////*/
 
-    using LibCompound for ICERC20;
+    using LibBCompound for IBERC20;
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
@@ -61,10 +61,10 @@ contract BenqiERC4626Reinvest is ERC4626 {
     mapping(uint8 => swapInfo) public swapInfoMap;
 
     /// @notice The Compound cToken contract
-    ICERC20 public immutable cToken;
+    IBERC20 public immutable cToken;
 
     /// @notice The Compound comptroller contract
-    IComptroller public immutable comptroller;
+    IBComptroller public immutable comptroller;
 
     /// @notice Pointer to swapInfo
     swapInfo public SwapInfo;
@@ -88,8 +88,8 @@ contract BenqiERC4626Reinvest is ERC4626 {
     /// @dev manager_ is the address that can set swap routes
     constructor(
         ERC20 asset_,
-        ICERC20 cToken_,
-        IComptroller comptroller_,
+        IBERC20 cToken_,
+        IBComptroller comptroller_,
         address manager_
     ) ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_)) {
         cToken = cToken_;

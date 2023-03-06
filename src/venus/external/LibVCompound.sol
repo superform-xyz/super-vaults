@@ -3,16 +3,16 @@ pragma solidity 0.8.19;
 
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-import {ICERC20} from "./ICERC20.sol";
+import {IVERC20} from "./IVERC20.sol";
 
 /// @notice Get up to date cToken data without mutating state.
 /// @notice Forked from Transmissions11 (https://github.com/transmissions11/libcompound) to upgrade version
 /// @author ZeroPoint Labs
-library LibCompound {
+library LibVCompound {
     using FixedPointMathLib for uint256;
     error RATE_TOO_HIGH();
 
-    function viewUnderlyingBalanceOf(ICERC20 cToken, address user)
+    function viewUnderlyingBalanceOf(IVERC20 cToken, address user)
         internal
         view
         returns (uint256)
@@ -20,7 +20,7 @@ library LibCompound {
         return cToken.balanceOf(user).mulWadDown(viewExchangeRate(cToken));
     }
 
-    function viewExchangeRate(ICERC20 cToken) internal view returns (uint256) {
+    function viewExchangeRate(IVERC20 cToken) internal view returns (uint256) {
         uint256 accrualBlockNumberPrior = cToken.accrualBlockNumber();
 
         if (accrualBlockNumberPrior == block.number) {

@@ -8,7 +8,7 @@ import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {ILendingPool} from "./aave/ILendingPool.sol";
 import {IAaveMining} from "./aave/IAaveMining.sol";
 
-import {DexSwap} from "./utils/swapUtils.sol";
+import {DexSwap} from "../_global/swapUtils.sol";
 
 /// @title AaveV2ERC4626Reinvest
 /// @notice Extended implementation of yield-daddy's ERC4626

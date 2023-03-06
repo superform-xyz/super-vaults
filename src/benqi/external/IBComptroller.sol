@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.19;
 
-interface IComptroller {
+interface IBComptroller {
     function qiAddress() external view returns (address);
 
     function getAllMarkets() external view returns (address[] memory);
@@ -14,7 +14,6 @@ interface IComptroller {
 
     function rewardAccrued(uint8, address) external view returns (uint256);
 
-    /// mapping(uint8 => mapping(address => RewardMarketState)) public rewardSupplyState;
     struct RewardMarketState {
         /// @notice The market's last updated rewardBorrowIndex or rewardSupplyIndex
         uint224 index;

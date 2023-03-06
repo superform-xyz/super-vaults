@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.19;
 
-import {ICERC20} from "./ICERC20.sol";
+import {IVERC20} from "./IVERC20.sol";
 
-interface IComptroller {
+interface IVComptroller {
     struct VenusMarketState {
         /// @notice The market's last updated venusBorrowIndex or venusSupplyIndex
         uint224 index;
@@ -13,9 +13,9 @@ interface IComptroller {
 
     function getXVSAddress() external view returns (address);
 
-    function getAllMarkets() external view returns (ICERC20[] memory);
+    function getAllMarkets() external view returns (IVERC20[] memory);
 
-    function allMarkets(uint256 index) external view returns (ICERC20);
+    function allMarkets(uint256 index) external view returns (IVERC20);
 
     function claimVenus(address holder) external;
 
@@ -34,7 +34,7 @@ interface IComptroller {
         view
         returns (uint256 venusRewards);
 
-    function mintGuardianPaused(ICERC20 cToken) external view returns (bool);
+    function mintGuardianPaused(IVERC20 cToken) external view returns (bool);
 
     function getAccountLiquidity(address account)
         external

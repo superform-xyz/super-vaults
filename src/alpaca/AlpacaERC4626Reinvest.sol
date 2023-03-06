@@ -10,7 +10,7 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {IBToken} from "./interfaces/IBToken.sol";
 import {IFairLaunch} from "./interfaces/IFairLaunch.sol";
 import {IVaultConfig} from "./interfaces/IVaultConfig.sol";
-import {DexSwap} from "./utils/swapUtils.sol";
+import {DexSwap} from "../_global/swapUtils.sol";
 
 /// @title Alpaca ERC4626 Wrapper
 /// @notice Extended AAVE-V2 logic using FairLaunch (and not AaveMining) for rewards distribution

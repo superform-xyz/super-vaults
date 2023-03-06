@@ -5,9 +5,9 @@ import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {VenusERC4626Reinvest} from "../VenusERC4626Reinvest.sol";
 
-import {ICERC20} from "../compound/ICERC20.sol";
-import {LibCompound} from "../compound/LibCompound.sol";
-import {IComptroller} from "../compound/IComptroller.sol";
+import {IVERC20} from "../external/IVERC20.sol";
+import {LibVCompound} from "../external/LibVCompound.sol";
+import {IVComptroller} from "../external/IVComptroller.sol";
 
 contract VenusERC4626WrapperTest is Test {
     uint256 public fork;
@@ -32,8 +32,8 @@ contract VenusERC4626WrapperTest is Test {
     VenusERC4626Reinvest public vault;
     ERC20 public asset;
     ERC20 public reward;
-    ICERC20 public cToken;
-    IComptroller public comptroller;
+    IVERC20 public cToken;
+    IVComptroller public comptroller;
 
     constructor() {
         fork = vm.createFork(BSC_RPC_URL);
@@ -43,25 +43,25 @@ contract VenusERC4626WrapperTest is Test {
         vm.selectFork(fork);
 
         manager = msg.sender;
-        comptroller = IComptroller(VENUS_COMPTROLLER);
+        comptroller = IVComptroller(VENUS_COMPTROLLER);
 
         setVault(
             ERC20(vm.envAddress("VENUS_USDC_ASSET")),
             ERC20(vm.envAddress("VENUS_REWARD_XVS")),
-            ICERC20(vm.envAddress("VENUS_VUSDC_CTOKEN")),
+            IVERC20(vm.envAddress("VENUS_VUSDC_CTOKEN")),
             comptroller
         );
 
         asset = ERC20(VENUS_USDC_ASSET);
         reward = ERC20(VENUS_REWARD_XVS);
-        cToken = ICERC20(VENUS_VUSDC_CTOKEN);
+        cToken = IVERC20(VENUS_VUSDC_CTOKEN);
     }
 
     function setVault(
         ERC20 underylyingAsset,
         ERC20 reward_,
-        ICERC20 cToken_,
-        IComptroller comptroller_
+        IVERC20 cToken_,
+        IVComptroller comptroller_
     ) public {
         vm.startPrank(manager);
 
@@ -133,7 +133,7 @@ contract VenusERC4626WrapperTest is Test {
         setVault(
             ERC20(vm.envAddress("VENUS_BUSD_ASSET")),
             ERC20(vm.envAddress("VENUS_REWARD_XVS")),
-            ICERC20(vm.envAddress("VENUS_BUSD_CTOKEN")),
+            IVERC20(vm.envAddress("VENUS_BUSD_CTOKEN")),
             comptroller
         );
 
@@ -163,7 +163,7 @@ contract VenusERC4626WrapperTest is Test {
         setVault(
             ERC20(vm.envAddress("VENUS_USDC_ASSET")),
             ERC20(vm.envAddress("VENUS_REWARD_XVS")),
-            ICERC20(vm.envAddress("VENUS_VUSDC_CTOKEN")),
+            IVERC20(vm.envAddress("VENUS_VUSDC_CTOKEN")),
             comptroller
         );
 

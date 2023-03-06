@@ -75,7 +75,7 @@ jobs:
           uses: crytic/slither-action@v0.3.0
           id: slither
           with: 
-            slither-args: '--exclude-low --exclude-medium --no-fail-pedantic --exclude-optimization --exclude-informational --filter-paths mock,interfaces --json-types console,detectors'
+            slither-args: '--exclude-low --exclude-medium --no-fail-pedantic --exclude-optimization --exclude-informational --filter-paths mock,interfaces,lib,test --json-types console,detectors'
             sarif: results.sarif
             fail-on: none
 
