@@ -10,7 +10,7 @@ import {IBEther} from "./external/IBEther.sol";
 import {LibBCompound} from "./external/LibBCompound.sol";
 import {IBComptroller} from "./external/IBComptroller.sol";
 
-import {DexSwap} from "./utils/swapUtils.sol";
+import {DexSwap} from "../_global/swapUtils.sol";
 import {WrappedNative} from "./utils/wrappedNative.sol";
 
 /// @title BenqiNativeERC4626Reinvest

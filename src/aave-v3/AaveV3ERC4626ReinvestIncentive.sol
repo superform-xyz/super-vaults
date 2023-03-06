@@ -8,7 +8,7 @@ import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {IPool} from "./external/IPool.sol";
 import {IRewardsController} from "./external/IRewardsController.sol";
 
-import {DexSwap} from "./utils/swapUtils.sol";
+import {DexSwap} from "../_global/swapUtils.sol";
 
 /// @title AaveV3ERC4626ReinvestIncentive
 /// @notice Extended implementation of yield-daddy AaveV3 wrapper for Aave V3 with rewards reinvesting

@@ -12,7 +12,7 @@ import {UniswapV2Library} from "../utils/UniswapV2Library.sol";
 
 import {IUniswapV3Pool} from "../interfaces/IUniswapV3.sol";
 
-import {DexSwap} from "../utils/swapUtils.sol";
+import {DexSwap} from "../../_global/swapUtils.sol";
 
 /// @title UniswapV2ERC4626Swap
 /// @notice ERC4626 UniswapV2 Adapter - Allows exit & join to UniswapV2 LP Pools from ERC4626 interface. Single sided liquidity adapter.

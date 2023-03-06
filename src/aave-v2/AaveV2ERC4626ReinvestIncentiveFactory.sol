@@ -12,7 +12,7 @@ import {ILendingPool} from "./aave/ILendingPool.sol";
 /// @notice Factory for creating AaveV2ERC4626Reinvest contracts
 /// @notice Forked from yield daddy Aave-V2-ERC4626-Factory wrapper
 /// @author ZeroPoint Labs
-contract AaveV2ERC4626ReinvestFactory {
+contract AaveV2ERC4626ReinvestIncentiveFactory {
     /*//////////////////////////////////////////////////////////////
                                 EVENTS
     //////////////////////////////////////////////////////////////*/

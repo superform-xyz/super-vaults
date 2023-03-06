@@ -10,7 +10,7 @@ import {CometMainInterface} from "./external/IComet.sol";
 import {LibCompound} from "./external/LibCompound.sol";
 import {ICometRewards} from "./external/ICometRewards.sol";
 import {ISwapRouter} from "../aave-v2/utils/ISwapRouter.sol";
-import {DexSwap} from "./utils/swapUtils.sol";
+import {DexSwap} from "../_global/swapUtils.sol";
 
 /// @title CompoundV3ERC4626Wrapper
 /// @notice Custom implementation with flexible reinvesting logic

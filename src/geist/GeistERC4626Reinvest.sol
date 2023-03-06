@@ -6,8 +6,8 @@ import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
 import {IMultiFeeDistribution} from "./external/IMultiFeeDistribution.sol";
-import {ILendingPool} from "./external/ILendingPool.sol";
-import {DexSwap} from "./utils/swapUtils.sol";
+import {IGLendingPool} from "./external/IGLendingPool.sol";
+import {DexSwap} from "../_global/swapUtils.sol";
 
 /// @title GeistERC4626Reinvest
 /// @notice AAVE-V2 Forked protocol with Curve-like rewards distribution in place of IAaveMining.
@@ -61,7 +61,7 @@ contract GeistERC4626Reinvest is ERC4626 {
     ERC20 public immutable rewardToken;
 
     /// @notice The Aave LendingPool contract
-    ILendingPool public immutable lendingPool;
+    IGLendingPool public immutable lendingPool;
 
     /// @notice Pointer to swapInfo
     swapInfo public SwapInfo;
@@ -89,7 +89,7 @@ contract GeistERC4626Reinvest is ERC4626 {
         ERC20 asset_,
         ERC20 aToken_,
         IMultiFeeDistribution rewards_,
-        ILendingPool lendingPool_,
+        IGLendingPool lendingPool_,
         ERC20 rewardToken_,
         address manager_
     ) ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_)) {

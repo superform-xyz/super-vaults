@@ -4,7 +4,7 @@ pragma solidity 0.8.19;
 // Aave lending pool interface
 // Documentation: https://docs.aave.com/developers/the-core-protocol/lendingpool/ilendingpool
 // refer to the whitepaper, section 1.1 basic concepts for a formal description of these properties.
-interface ILendingPool {
+interface IGLendingPool {
     struct ReserveConfigurationMap {
         //bit 0-15: LTV
         //bit 16-31: Liq. threshold

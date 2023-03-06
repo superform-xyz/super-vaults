@@ -8,7 +8,7 @@ import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {IPool} from "./external/IPool.sol";
 import {IRewardsController} from "./external/IRewardsController.sol";
 
-import {DexSwap} from "./utils/swapUtils.sol";
+import {DexSwap} from "../_global/swapUtils.sol";
 import {ISwapRouter} from "../aave-v2/utils/ISwapRouter.sol";
 
 /// @title AaveV3ERC4626ReinvestUni -

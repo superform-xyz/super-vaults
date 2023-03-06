@@ -10,7 +10,7 @@ import {IVERC20} from "./external/IVERC20.sol";
 import {LibVCompound} from "./external/LibVCompound.sol";
 import {IVComptroller} from "./external/IVComptroller.sol";
 
-import {DexSwap} from "./utils/swapUtils.sol";
+import {DexSwap} from "../_global/swapUtils.sol";
 
 /// @title VenusERC4626Reinvest
 /// @notice Extended implementation of yield-daddy CompoundV2 wrapper

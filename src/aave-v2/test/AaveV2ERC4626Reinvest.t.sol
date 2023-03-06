@@ -10,7 +10,7 @@ import {AaveV2ERC4626ReinvestFactory} from "../AaveV2ERC4626ReinvestFactory.sol"
 
 import {ILendingPool} from "../aave/ILendingPool.sol";
 import {IAaveMining} from "../aave/IAaveMining.sol";
-import {DexSwap} from "../utils/swapUtils.sol";
+import {DexSwap} from "../../_global/swapUtils.sol";
 
 contract AaveV2ERC4626ReinvestTest is Test {
     ////////////////////////////////////////

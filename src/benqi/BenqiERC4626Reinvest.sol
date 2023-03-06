@@ -10,7 +10,7 @@ import {IBERC20} from "./external/IBERC20.sol";
 import {LibBCompound} from "./external/LibBCompound.sol";
 import {IBComptroller} from "./external/IBComptroller.sol";
 
-import {DexSwap} from "./utils/swapUtils.sol";
+import {DexSwap} from "../_global/swapUtils.sol";
 
 /// @title BenqiERC4626Reinvest
 /// @notice Custom implementation of yield-daddy Compound wrapper with flexible reinvesting logic

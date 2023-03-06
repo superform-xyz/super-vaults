@@ -6,7 +6,7 @@ import "forge-std/console.sol";
 import {BenqiERC4626Staking} from "../BenqiERC4626Staking.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-import {IPair, DexSwap} from "../utils/swapUtils.sol";
+import {IPair, DexSwap} from "../../_global/swapUtils.sol";
 import {IStETH} from "../../lido/interfaces/IStETH.sol";
 import {IWETH} from "../../lido/interfaces/IWETH.sol";
 
