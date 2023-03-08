@@ -24,10 +24,7 @@ contract AaveV3ERC4626ReinvestIncentiveTest is Test {
     uint256 public avaxFork;
     uint256 public polyFork;
 
-    string ETH_RPC_URL = vm.envString("ETHEREUM_RPC_URL");
-    string FTM_RPC_URL = vm.envString("FANTOM_RPC_URL");
     string AVAX_RPC_URL = vm.envString("AVALANCHE_RPC_URL");
-    string POLYGON_RPC_URL = vm.envString("POLYGON_RPC_URL");
 
     AaveV3ERC4626ReinvestIncentive public vault;
     AaveV3ERC4626ReinvestIncentiveFactory public factory;
@@ -45,10 +42,6 @@ contract AaveV3ERC4626ReinvestIncentiveTest is Test {
     ////////////////////////////////////////
 
     constructor() {
-        ethFork = vm.createFork(ETH_RPC_URL);
-        ftmFork = vm.createFork(FTM_RPC_URL);
-        polyFork = vm.createFork(POLYGON_RPC_URL);
-
         /// @dev WAVAX REWARDS on Avax
         avaxFork = vm.createFork(AVAX_RPC_URL);
 
@@ -78,7 +71,9 @@ contract AaveV3ERC4626ReinvestIncentiveTest is Test {
         console.log("Vault deployed at", address(vault));
     }
 
-    function setVault(ERC20 _asset)
+    function setVault(
+        ERC20 _asset
+    )
         public
         returns (ERC4626 vault_, AaveV3ERC4626ReinvestIncentive vaultERC4626_)
     {
