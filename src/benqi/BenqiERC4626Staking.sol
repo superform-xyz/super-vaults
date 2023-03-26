@@ -35,11 +35,33 @@ contract BenqiERC4626Staking is ERC4626 {
     error ZERO_SHARES();
 
     /*//////////////////////////////////////////////////////////////
+                                MODIFIERS
+    //////////////////////////////////////////////////////////////*/
+
+    /// @dev Revert (fast) on withdraw if user has no unlocked shares to withdraw/redeem
+    modifier assetsUnlocked(uint256 amount, address owner) {
+        cooldownCheck(previewWithdraw(amount), owner);
+        _;
+    }
+
+
+    /// @dev Revert (fast) on withdraw if user has no unlocked shares to withdraw/redeem
+    modifier sharesUnlocked(uint256 amount, address owner) {
+        for (uint256 i = 0; i < requests[owner].length; i++) {
+            cooldownCheck(amount, owner);
+        }
+        _;
+    }
+
+    /*//////////////////////////////////////////////////////////////
                       IMMUATABLES & VARIABLES
     //////////////////////////////////////////////////////////////*/
     IStakedAvax public sAVAX;
     IWETH public wavax;
     ERC20 public sAvaxAsset;
+
+    /// @dev Mapping used by this contract, not sAvax. User on Avax can wish to request multiple unlocks
+    mapping(address => UnlockRequest[]) public requests;
 
     /*//////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -57,6 +79,33 @@ contract BenqiERC4626Staking is ERC4626 {
     }
 
     receive() external payable {}
+
+    /*///////////////////////////////////////////////////////////////
+                            TIMELOCK SECTION
+    //////////////////////////////////////////////////////////////*/
+
+    struct UnlockRequest {
+        // The timestamp at which the `shareAmount` was requested to be unlocked
+        uint startedAt;
+        // The amount of shares to burn
+        uint shareAmount;
+    }
+
+    /// NOTE: Using Benqi sAVAX as example of a Vault with 15d cooldown period
+    /// NOTE: Useful for API to keep track of when user can withdraw
+    function cooldownPeriod() external view returns (uint256) {
+        /// @dev block amount of needed to pass for successfull withdraw
+        return sAVAX.cooldownPeriod();
+    }
+
+    function cooldownCheck(uint256 amount, address owner) internal view {
+        uint len = sAVAX.getUnlockRequestCount(owner);
+        for (uint256 i = 0; i < len; i++) {
+            UnlockRequest memory request = requests[owner][i];
+            require(request.startedAt + sAVAX.cooldownPeriod() <= block.timestamp, "NOT_UNLOCKED");
+            require(amount >= request.shareAmount, "NOT_UNLOCKED");
+        }
+    }
 
     /*//////////////////////////////////////////////////////////////
                           INTERNAL HOOKS LOGIC
@@ -128,12 +177,27 @@ contract BenqiERC4626Staking is ERC4626 {
         emit Deposit(msg.sender, receiver_, assets, shares_);
     }
 
+    /// NOTE: Using Benqi sAVAX as example of a Vault with 15d cooldown period
+    /// NOTE: https://snowtrace.io/address/0x0ce7f620eb645a4fbf688a1c1937bc6cb0cbdd29#code (sAVAX)
+    /// NOTE: Notice, this requires additional logic on FORM level itself
+    /// NOTE: Owner first submits request for unlock and only after 15d can withdraw
+    function requestWithdraw(uint shareAmount) external {
+        address owner = msg.sender;
+        sAVAX.requestUnlock(shareAmount);        
+        requests[owner].push(
+            UnlockRequest({
+                startedAt: block.timestamp,
+                shareAmount: shareAmount
+            })
+        );
+    }
+
     /// @notice Withdraw amount of ETH represented by stEth / ERC4626-stEth. Output token is stEth.
     function withdraw(
         uint256 assets_,
         address receiver_,
         address owner_
-    ) public override returns (uint256 shares) {
+    ) public override assetsUnlocked(assets_, owner_) returns (uint256 shares) {
         /// @dev In base implementation, previeWithdraw allows to get sAvax amount to withdraw for virtual amount from convertToAssets
         shares = previewWithdraw(assets_);
 
@@ -156,7 +220,7 @@ contract BenqiERC4626Staking is ERC4626 {
         uint256 shares_,
         address receiver,
         address owner_
-    ) public override returns (uint256 assets) {
+    ) public override sharesUnlocked(shares_, owner_) returns (uint256 assets) {
         if (msg.sender != owner_) {
             uint256 allowed = allowance[owner_][msg.sender];
 
