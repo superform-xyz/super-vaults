@@ -26,6 +26,10 @@ interface IStakedAvax {
 
     function submit() external payable returns (uint256);
 
+    function redeem(uint unlockIndex) external;
+
+    function redeemOverdueShares(uint unlockIndex) external;
+
     /// NOTE: Using Benqi sAVAX as example of a Vault with 15d cooldown period
     /// NOTE: https://snowtrace.io/address/0x0ce7f620eb645a4fbf688a1c1937bc6cb0cbdd29#code (sAVAX)
     /// NOTE: Notice, this requires additional logic on FORM level itself
