@@ -16,7 +16,7 @@ import {IWETH} from "../lido/interfaces/IWETH.sol";
 /// @notice Two possible ways of extending this contract: https://docs.benqi.fi/benqi-liquid-staking/staking-and-unstaking
 /// @notice In contrast to Lido's stETH, sAVAX can be Unstaked with 15d cooldown period.
 /// @author ZeroPoint Labs
-contract BenqiERC4626Staking is ERC4626 {
+contract BenqiERC4626TimelockStaking is ERC4626 {
     /*//////////////////////////////////////////////////////////////
                             LIBRARIES USAGE
     //////////////////////////////////////////////////////////////*/
@@ -35,11 +35,41 @@ contract BenqiERC4626Staking is ERC4626 {
     error ZERO_SHARES();
 
     /*//////////////////////////////////////////////////////////////
+                                MODIFIERS
+    //////////////////////////////////////////////////////////////*/
+
+    /// @dev Revert (fast) on withdraw if user has no unlocked shares to withdraw/redeem
+    modifier assetsUnlocked(uint256 amount, address owner) {
+        cooldownCheck(previewWithdraw(amount), owner);
+        _;
+    }
+
+
+    /// @dev Revert (fast) on withdraw if user has no unlocked shares to withdraw/redeem
+    modifier sharesUnlocked(uint256 amount, address owner) {
+        for (uint256 i = 0; i < requests[owner].length; i++) {
+            cooldownCheck(amount, owner);
+        }
+        _;
+    }
+
+    /*//////////////////////////////////////////////////////////////
                       IMMUATABLES & VARIABLES
     //////////////////////////////////////////////////////////////*/
     IStakedAvax public sAVAX;
     IWETH public wavax;
     ERC20 public sAvaxAsset;
+    ERC20 public wsAVAX;
+
+    uint256 requestId;
+
+    /// @dev Mapping used by this contract, not sAvax. User on Avax can wish to request multiple unlocks
+    /// TODO: Significant gas savings & logic reduction if we only allow single UnlockRequest. Tradeoff.
+    mapping(address owner => UnlockRequest[]) public requests;
+
+    /// @dev Mapping used by this contract, not sAvax. User on Avax can wish to give allowance to unlock
+    /// TODO: This is mass-allowance, for all of the requests. To avoid looping. 
+    mapping(address owner => mapping(address spender => uint256 allowed)) public requestsAllowed;
 
     /*//////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -49,7 +79,7 @@ contract BenqiERC4626Staking is ERC4626 {
     /// @param sAvax_ sAVAX (Benqi staking contract) address
     constructor(address wavax_, address sAvax_)
         // address tradeJoePool_
-        ERC4626(ERC20(wavax_), "ERC4626-Wrapped sAVAX", "wLsAVAX")
+        ERC4626(ERC20(wavax_), "ERC4626-Wrapped sAVAX", "wsAVAX")
     {
         sAVAX = IStakedAvax(sAvax_);
         sAvaxAsset = ERC20(sAvax_);
@@ -57,6 +87,31 @@ contract BenqiERC4626Staking is ERC4626 {
     }
 
     receive() external payable {}
+
+    /*///////////////////////////////////////////////////////////////
+                            TIMELOCK SECTION
+    //////////////////////////////////////////////////////////////*/
+
+    struct UnlockRequest {
+        /// @dev Unique id of the request (Wrapper specific)
+        uint id;
+        // The timestamp at which the `shareAmount` was requested to be unlocked
+        uint startedAt;
+        // The amount of shares to burn
+        uint shareAmount;
+    }
+
+    /// @notice Inspect given user's unlock request by index
+    function userUnlockRequests(address owner, uint256 index) external view returns (UnlockRequest memory) {
+        return requests[owner][index];
+    }
+
+    /// NOTE: Using Benqi sAVAX as example of a Vault with 15d cooldown period
+    /// NOTE: Useful for API to keep track of when user can withdraw
+    function cooldownPeriod() external view returns (uint256) {
+        /// @dev block amount of needed to pass for successfull withdraw
+        return sAVAX.cooldownPeriod();
+    }
 
     /*//////////////////////////////////////////////////////////////
                           INTERNAL HOOKS LOGIC
@@ -128,6 +183,56 @@ contract BenqiERC4626Staking is ERC4626 {
         emit Deposit(msg.sender, receiver_, assets, shares_);
     }
 
+    /// @notice Caller needs to transfer shares of this vault to this contract for release of underlying shares to sAVAX
+    /// NOTE: https://snowtrace.io/address/0x0ce7f620eb645a4fbf688a1c1937bc6cb0cbdd29#code (sAVAX)
+    /// FIXME: For SuperForm-core. It will need to transfer THIS vault's token to this contract (for lock-up)
+    function requestWithdraw(uint256 assets_, address owner_) external returns (uint256 shares) {       
+        
+        shares = previewWithdraw(assets_);
+
+        /// @dev Only owner or allowed by owner can request withdraw. Allowance is for this Vault's token.
+        if (msg.sender != owner_) {
+            uint256 allowed = allowance[owner_][msg.sender];
+
+            if (allowed != type(uint256).max)
+                allowance[owner_][msg.sender] = allowed - shares;
+        }
+
+        /// @dev Requires user to "lock" his wsAVAX (token of address(this)) for the duration of the cooldown period
+        /// NOTE: Vault's balance will now have shares of this vault token
+        wsAVAX.safeTransferFrom(owner_, address(this), shares);
+
+        /// @dev Burns shares
+        /// cancel request to re-mint amount of shares? 
+        // _burn(owner_, shares);
+
+        /// @dev Approve sAVAX to actual sAVAX shares
+        sAvaxAsset.safeApprove(address(sAVAX), shares);
+
+        /// @dev Transfers shares to sAVAX, sAVAX will burn them after cooldown period
+        sAVAX.requestUnlock(shares);
+
+        /// @dev Internal tracking of withdraw/redeem requests routed through this vault to sAVAX
+        requestId++;
+        requests[owner_].push(
+            UnlockRequest({
+                id: requestId,
+                startedAt: block.timestamp,
+                shareAmount: shares
+            })
+        );
+    }
+
+    /// FIXME: This loop may not finish if user has more than 1 request and one of requests fails on require
+    function cooldownCheck(uint256 amount, address owner) internal view {
+        uint len = requests[owner].length;
+        for (uint256 i = 0; i < len; i++) {
+            UnlockRequest memory request = requests[owner][i];
+            require(request.startedAt + sAVAX.cooldownPeriod() <= block.timestamp, "NOT_UNLOCKED");
+            require(amount >= request.shareAmount, "NOT_UNLOCKED");
+        }
+    }
+
     /// @notice Withdraw amount of ETH represented by stEth / ERC4626-stEth. Output token is stEth.
     function withdraw(
         uint256 assets_,
@@ -138,13 +243,16 @@ contract BenqiERC4626Staking is ERC4626 {
         shares = previewWithdraw(assets_);
 
         if (msg.sender != owner_) {
-            uint256 allowed = allowance[owner_][msg.sender];
+            uint256 allowed = requestsAllowed[owner_][msg.sender];
 
             if (allowed != type(uint256).max)
-                allowance[owner_][msg.sender] = allowed - shares;
+                requestsAllowed[owner_][msg.sender] = allowed - shares;
         }
 
-        _burn(owner_, shares);
+        cooldownCheck(shares, owner_);
+
+        /// FIXME: AVAX operates on msg.sender. We need to track total of unlockIds for each user to redeem only that amount 
+        sAVAX.redeem(1);
 
         emit Withdraw(msg.sender, receiver_, owner_, assets_, shares);
 
@@ -156,7 +264,7 @@ contract BenqiERC4626Staking is ERC4626 {
         uint256 shares_,
         address receiver,
         address owner_
-    ) public override returns (uint256 assets) {
+    ) public override sharesUnlocked(shares_, owner_) returns (uint256 assets) {
         if (msg.sender != owner_) {
             uint256 allowed = allowance[owner_][msg.sender];
 
