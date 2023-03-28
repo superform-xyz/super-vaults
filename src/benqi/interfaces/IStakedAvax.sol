@@ -40,6 +40,8 @@ interface IStakedAvax {
     /// NOTE: Useful for API to keep track of when user can withdraw
     function cooldownPeriod() external view returns (uint256);
 
+    function redeemPeriod() external view returns (uint256);
+
     /// NOTE: Using Benqi sAVAX as example of a Vault with 15d cooldown period
     function userUnlockRequests(address owner, uint256 index) external view returns (UnlockRequest memory);
 

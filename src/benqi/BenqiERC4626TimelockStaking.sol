@@ -108,10 +108,29 @@ contract BenqiERC4626TimelockStaking is ERC4626 {
 
     /// NOTE: Using Benqi sAVAX as example of a Vault with 15d cooldown period
     /// NOTE: Useful for API to keep track of when user can withdraw
-    function cooldownPeriod() external view returns (uint256) {
+    function cooldownPeriod() public view returns (uint256) {
         /// @dev block amount of needed to pass for successfull withdraw
         return sAVAX.cooldownPeriod();
     }
+
+    /// @notice RedeemPeriod is used for cooldown to cancel unlock
+    function redeemPeriod() public view returns (uint256) {
+        return sAVAX.redeemPeriod();
+    }
+
+    // @notice Checks if the unlock request is within its cooldown period
+    // @param unlockRequest Unlock request
+    function isWithinCooldownPeriod(UnlockRequest memory unlockRequest) internal view returns (bool) {
+        return unlockRequest.startedAt + cooldownPeriod() >= block.timestamp;
+    }
+    
+    // @notice Checks if the unlock request is within its redemption period (for cancel)
+    // @param unlockRequest Unlock request
+    function isWithinRedemptionPeriod(UnlockRequest memory unlockRequest) internal view returns (bool) {
+        return !isWithinCooldownPeriod(unlockRequest)
+            && unlockRequest.startedAt +  cooldownPeriod() + redeemPeriod() >= block.timestamp;
+    }
+
 
     /*//////////////////////////////////////////////////////////////
                           INTERNAL HOOKS LOGIC
@@ -202,10 +221,6 @@ contract BenqiERC4626TimelockStaking is ERC4626 {
         /// NOTE: Vault's balance will now have shares of this vault token
         wsAVAX.safeTransferFrom(owner_, address(this), shares);
 
-        /// @dev Burns shares
-        /// cancel request to re-mint amount of shares? 
-        // _burn(owner_, shares);
-
         /// @dev Approve sAVAX to actual sAVAX shares
         sAvaxAsset.safeApprove(address(sAVAX), shares);
 
@@ -222,14 +237,23 @@ contract BenqiERC4626TimelockStaking is ERC4626 {
             })
         );
     }
-
+    
     /// FIXME: This loop may not finish if user has more than 1 request and one of requests fails on require
-    function cooldownCheck(uint256 amount, address owner) internal view {
+    function cooldownCheck(uint256 amount, address owner) internal view returns (uint256 requestId_) {
         uint len = requests[owner].length;
         for (uint256 i = 0; i < len; i++) {
+            
             UnlockRequest memory request = requests[owner][i];
-            require(request.startedAt + sAVAX.cooldownPeriod() <= block.timestamp, "NOT_UNLOCKED");
-            require(amount >= request.shareAmount, "NOT_UNLOCKED");
+            bool time = isWithinCooldownPeriod(request);
+            bool amount = (amount >= request.shareAmount);
+            
+            if (time && amount) {
+                return requestId_;
+            }
+
+            if (i == len) {
+                revert("NOT_UNLOCKED");
+            }
         }
     }
 
@@ -249,10 +273,10 @@ contract BenqiERC4626TimelockStaking is ERC4626 {
                 requestsAllowed[owner_][msg.sender] = allowed - shares;
         }
 
-        cooldownCheck(shares, owner_);
+        uint256 id = cooldownCheck(shares, owner_);
 
-        /// FIXME: AVAX operates on msg.sender. We need to track total of unlockIds for each user to redeem only that amount 
-        sAVAX.redeem(1);
+        /// FIXME: AVAX operates on msg.sender. We need to track total of unlockIds for each user to redeem only user requested amount and not cumulative requests 
+        sAVAX.redeem(id);
 
         emit Withdraw(msg.sender, receiver_, owner_, assets_, shares);
 
