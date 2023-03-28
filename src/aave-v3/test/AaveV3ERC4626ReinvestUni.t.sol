@@ -24,10 +24,6 @@ contract AaveV3ERC4626ReinvestUniTest is Test {
     uint256 public polyFork;
     uint256 public optiFork;
 
-    string ETH_RPC_URL = vm.envString("ETHEREUM_RPC_URL");
-    string FTM_RPC_URL = vm.envString("FANTOM_RPC_URL");
-    string AVAX_RPC_URL = vm.envString("AVALANCHE_RPC_URL");
-    string POLYGON_RPC_URL = vm.envString("POLYGON_RPC_URL");
     string OPTIMISM_RPC_URL = vm.envString("OPTIMISM_RPC_URL");
 
     AaveV3ERC4626ReinvestUni public vault;
@@ -46,10 +42,6 @@ contract AaveV3ERC4626ReinvestUniTest is Test {
     ////////////////////////////////////////
 
     constructor() {
-        ethFork = vm.createFork(ETH_RPC_URL);
-        ftmFork = vm.createFork(FTM_RPC_URL);
-        polyFork = vm.createFork(POLYGON_RPC_URL);
-
         /// @dev OP REWARDS on Optimism
         optiFork = vm.createFork(OPTIMISM_RPC_URL);
 
@@ -77,10 +69,9 @@ contract AaveV3ERC4626ReinvestUniTest is Test {
         console.log("Vault deployed at", address(vault));
     }
 
-    function setVault(ERC20 _asset)
-        public
-        returns (ERC4626 vault_, AaveV3ERC4626ReinvestUni vaultERC4626_)
-    {
+    function setVault(
+        ERC20 _asset
+    ) public returns (ERC4626 vault_, AaveV3ERC4626ReinvestUni vaultERC4626_) {
         vm.startPrank(manager);
 
         /// @dev If we need strict ERC4626 interface

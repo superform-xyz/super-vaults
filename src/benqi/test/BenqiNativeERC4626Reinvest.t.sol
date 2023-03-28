@@ -19,10 +19,7 @@ contract BenqiNativeERC4626ReinvestTest is Test {
     uint256 public avaxFork;
     uint256 public polyFork;
 
-    string ETH_RPC_URL = vm.envString("ETHEREUM_RPC_URL");
-    string FTM_RPC_URL = vm.envString("FANTOM_RPC_URL");
     string AVAX_RPC_URL = vm.envString("AVALANCHE_RPC_URL");
-    string POLYGON_RPC_URL = vm.envString("POLYGON_RPC_URL");
 
     BenqiNativeERC4626Reinvest public vault;
     ERC20 public asset;

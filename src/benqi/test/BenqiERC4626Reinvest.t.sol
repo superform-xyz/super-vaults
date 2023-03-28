@@ -19,10 +19,7 @@ contract BenqiERC4626ReinvestTest is Test {
     uint256 public avaxFork;
     uint256 public polyFork;
 
-    string ETH_RPC_URL = vm.envString("ETHEREUM_RPC_URL");
-    string FTM_RPC_URL = vm.envString("FANTOM_RPC_URL");
     string AVAX_RPC_URL = vm.envString("AVALANCHE_RPC_URL");
-    string POLYGON_RPC_URL = vm.envString("POLYGON_RPC_URL");
 
     BenqiERC4626Reinvest public vault;
     ERC20 public asset;
@@ -114,14 +111,18 @@ contract BenqiERC4626ReinvestTest is Test {
         assertEq(aliceUnderlyingAmount, aliceShareAmount);
         assertEq(vault.totalSupply(), aliceShareAmount);
         assertEq(vault.balanceOf(alice), aliceShareAmount);
-        
+
         uint256 preWithdrawBalance = asset.balanceOf(alice);
-        uint256 sharesBurned = vault.withdraw(aliceAssetsToWithdraw, alice, alice);
+        uint256 sharesBurned = vault.withdraw(
+            aliceAssetsToWithdraw,
+            alice,
+            alice
+        );
         uint256 totalBalance = aliceAssetsToWithdraw + preWithdrawBalance;
 
         assertEq(totalBalance, asset.balanceOf(alice));
         assertEq(aliceShareAmount, sharesBurned);
-        assertEq(vault.balanceOf(alice), 0);        
+        assertEq(vault.balanceOf(alice), 0);
     }
 
     /// @dev Contracts require a careful selection of blocks to roll
@@ -153,7 +154,7 @@ contract BenqiERC4626ReinvestTest is Test {
         vm.stopPrank();
 
         //////////////////////////////////////////////////////////////
-        
+
         /// @dev Next deposit
         vm.startPrank(bob);
         uint256 bobUnderlyingAmount = amount;
