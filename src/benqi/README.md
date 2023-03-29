@@ -12,6 +12,7 @@
 
  Timelock TODO:
 
- - requestWithdraw() / cancelWithdraw() logic
- - Internal tracking of requested withdrawals
- - Redemption mechanism
+ - requestWithdraw() (done) / cancelWithdraw() (todo) logic
+ - Internal tracking of requested withdrawals (done)
+ - Redemption mechanism (done)
+ - Testing

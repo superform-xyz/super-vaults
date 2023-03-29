@@ -10,11 +10,10 @@ import {IPair, DexSwap} from "../_global/swapUtils.sol";
 import {IStakedAvax} from "./interfaces/IStakedAvax.sol";
 import {IWETH} from "../lido/interfaces/IWETH.sol";
 
-/// @title BenqiERC4626Staking
+/// @title BenqiERC4626TimelockStaking
 /// @notice Accepts WAVAX to deposit into Benqi's staking contract - sAVAX, provides ERC4626 interface over token
-/// @notice Withdraw/Redeem to AVAX is not a part of this base contract. Withdraw/Redeem is only possible to sAVAX token.
-/// @notice Two possible ways of extending this contract: https://docs.benqi.fi/benqi-liquid-staking/staking-and-unstaking
-/// @notice In contrast to Lido's stETH, sAVAX can be Unstaked with 15d cooldown period.
+/// @notice Extended with timelock/cooldown functionality. Allowing to withdraw from sAVAX after 15d period.
+/// @notice Cooldown logic is not a part of interface, but it is used inside of deposit<>withdraw flow of the Vault.
 /// @author ZeroPoint Labs
 contract BenqiERC4626TimelockStaking is ERC4626 {
     /*//////////////////////////////////////////////////////////////
@@ -35,25 +34,6 @@ contract BenqiERC4626TimelockStaking is ERC4626 {
     error ZERO_SHARES();
 
     /*//////////////////////////////////////////////////////////////
-                                MODIFIERS
-    //////////////////////////////////////////////////////////////*/
-
-    /// @dev Revert (fast) on withdraw if user has no unlocked shares to withdraw/redeem
-    modifier assetsUnlocked(uint256 amount, address owner) {
-        cooldownCheck(previewWithdraw(amount), owner);
-        _;
-    }
-
-
-    /// @dev Revert (fast) on withdraw if user has no unlocked shares to withdraw/redeem
-    modifier sharesUnlocked(uint256 amount, address owner) {
-        for (uint256 i = 0; i < requests[owner].length; i++) {
-            cooldownCheck(amount, owner);
-        }
-        _;
-    }
-
-    /*//////////////////////////////////////////////////////////////
                       IMMUATABLES & VARIABLES
     //////////////////////////////////////////////////////////////*/
     IStakedAvax public sAVAX;
@@ -61,6 +41,7 @@ contract BenqiERC4626TimelockStaking is ERC4626 {
     ERC20 public sAvaxAsset;
     ERC20 public wsAVAX;
 
+    /// @dev Tracking all of this vault's UnlockRequests in the name of all users
     uint256 requestId;
 
     /// @dev Mapping used by this contract, not sAvax. User on Avax can wish to request multiple unlocks
@@ -89,9 +70,10 @@ contract BenqiERC4626TimelockStaking is ERC4626 {
     receive() external payable {}
 
     /*///////////////////////////////////////////////////////////////
-                            TIMELOCK SECTION
+                        TIMELOCK DATA STRUCTURES
     //////////////////////////////////////////////////////////////*/
 
+    /// @notice Data structure for tracking unlock requests assigned to individual users
     struct UnlockRequest {
         /// @dev Unique id of the request (Wrapper specific)
         uint id;
@@ -102,35 +84,107 @@ contract BenqiERC4626TimelockStaking is ERC4626 {
     }
 
     /// @notice Inspect given user's unlock request by index
+    /// @dev Function returns request to this Vault, not request by this Vault to sAVAX
     function userUnlockRequests(address owner, uint256 index) external view returns (UnlockRequest memory) {
         return requests[owner][index];
     }
 
-    /// NOTE: Using Benqi sAVAX as example of a Vault with 15d cooldown period
-    /// NOTE: Useful for API to keep track of when user can withdraw
+    /// @notice Using Benqi sAVAX as example of a Vault with 15d cooldown period
+    /// @dev Useful for API to keep track of when user can withdraw
     function cooldownPeriod() public view returns (uint256) {
         /// @dev block amount of needed to pass for successfull withdraw
         return sAVAX.cooldownPeriod();
     }
 
-    /// @notice RedeemPeriod is used for cooldown to cancel unlock
+    /// @notice RedeemPeriod is used as cooldown to cancel unlock
     function redeemPeriod() public view returns (uint256) {
         return sAVAX.redeemPeriod();
     }
 
-    // @notice Checks if the unlock request is within its cooldown period
-    // @param unlockRequest Unlock request
+    /// @notice Checks if the unlock request is within its cooldown period
+    /// @param unlockRequest Unlock request
     function isWithinCooldownPeriod(UnlockRequest memory unlockRequest) internal view returns (bool) {
         return unlockRequest.startedAt + cooldownPeriod() >= block.timestamp;
     }
     
-    // @notice Checks if the unlock request is within its redemption period (for cancel)
-    // @param unlockRequest Unlock request
+    /// @notice Checks if the unlock request is within its redemption period (for cancel)
+    /// @param unlockRequest Unlock request
     function isWithinRedemptionPeriod(UnlockRequest memory unlockRequest) internal view returns (bool) {
         return !isWithinCooldownPeriod(unlockRequest)
             && unlockRequest.startedAt +  cooldownPeriod() + redeemPeriod() >= block.timestamp;
     }
 
+    /*//////////////////////////////////////////////////////////////
+                        TIMELOCK UNLOCK MODULE
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Request exact amount of shares to be unlocked omitting received asset amount as parameter
+    function requestRedeem(uint256 shares_, address owner_) public {
+        /// @dev Only owner or allowed by owner can request withdraw. Allowance is for this Vault's token.
+        if (msg.sender != owner_) {
+            uint256 allowed = allowance[owner_][msg.sender];
+
+            if (allowed != type(uint256).max)
+                allowance[owner_][msg.sender] = allowed - shares_;
+        }
+
+        /// @dev Requires user to "lock" his wsAVAX (token of address(this)) for the duration of the cooldown period
+        /// NOTE: Vault's balance will now have shares of this vault token
+        wsAVAX.safeTransferFrom(owner_, address(this), shares_);
+
+        /// @dev Approve sAVAX to actual sAVAX shares
+        sAvaxAsset.safeApprove(address(sAVAX), shares_);
+
+        /// @dev Transfers shares to sAVAX, sAVAX will burn them after cooldown period
+        sAVAX.requestUnlock(shares_);
+
+        /// @dev Internal tracking of withdraw/redeem requests routed through this vault to sAVAX
+        requestId++;
+        requests[owner_].push(
+            UnlockRequest({
+                id: requestId,
+                startedAt: block.timestamp,
+                shareAmount: shares_
+            })
+        );
+    }
+
+    /// @notice Caller needs to transfer shares of this vault to this contract for release of underlying shares to sAVAX
+    /// NOTE: https://snowtrace.io/address/0x0ce7f620eb645a4fbf688a1c1937bc6cb0cbdd29#code (sAVAX)
+    /// FIXME: For SuperForm-core. It will need to transfer THIS vault's token to this contract (for lock-up)
+    function requestWithdraw(uint256 assets_, address owner_) public {       
+
+        uint256 shares = previewWithdraw(assets_);
+
+        /// @dev Only owner or allowed by owner can request withdraw. Allowance is for this Vault's token.
+        if (msg.sender != owner_) {
+            uint256 allowed = allowance[owner_][msg.sender];
+
+            if (allowed != type(uint256).max)
+                allowance[owner_][msg.sender] = allowed - shares;
+        }
+
+        requestRedeem(shares, owner_);
+    }
+    
+    /// @notice Check what unlock request is available for withdraw/redeem. If none, revert
+    function cooldownCheck(uint256 amount_, address owner_) internal view returns (uint256 requestId_, uint256 index_) {
+        uint len = requests[owner_].length;
+        for (uint256 i = 0; i < len; i++) {
+            
+            UnlockRequest memory request = requests[owner_][i];
+            bool time = isWithinCooldownPeriod(request);
+            bool amount = (request.shareAmount >= amount_);
+            
+            if (time && amount) {
+                return (requestId_, i);
+            }
+
+            if (i == len) {
+                revert("NOT_UNLOCKED");
+            }
+        }
+    }
 
     /*//////////////////////////////////////////////////////////////
                           INTERNAL HOOKS LOGIC
@@ -202,62 +256,7 @@ contract BenqiERC4626TimelockStaking is ERC4626 {
         emit Deposit(msg.sender, receiver_, assets, shares_);
     }
 
-    /// @notice Caller needs to transfer shares of this vault to this contract for release of underlying shares to sAVAX
-    /// NOTE: https://snowtrace.io/address/0x0ce7f620eb645a4fbf688a1c1937bc6cb0cbdd29#code (sAVAX)
-    /// FIXME: For SuperForm-core. It will need to transfer THIS vault's token to this contract (for lock-up)
-    function requestWithdraw(uint256 assets_, address owner_) external returns (uint256 shares) {       
-        
-        shares = previewWithdraw(assets_);
-
-        /// @dev Only owner or allowed by owner can request withdraw. Allowance is for this Vault's token.
-        if (msg.sender != owner_) {
-            uint256 allowed = allowance[owner_][msg.sender];
-
-            if (allowed != type(uint256).max)
-                allowance[owner_][msg.sender] = allowed - shares;
-        }
-
-        /// @dev Requires user to "lock" his wsAVAX (token of address(this)) for the duration of the cooldown period
-        /// NOTE: Vault's balance will now have shares of this vault token
-        wsAVAX.safeTransferFrom(owner_, address(this), shares);
-
-        /// @dev Approve sAVAX to actual sAVAX shares
-        sAvaxAsset.safeApprove(address(sAVAX), shares);
-
-        /// @dev Transfers shares to sAVAX, sAVAX will burn them after cooldown period
-        sAVAX.requestUnlock(shares);
-
-        /// @dev Internal tracking of withdraw/redeem requests routed through this vault to sAVAX
-        requestId++;
-        requests[owner_].push(
-            UnlockRequest({
-                id: requestId,
-                startedAt: block.timestamp,
-                shareAmount: shares
-            })
-        );
-    }
-    
-    /// FIXME: This loop may not finish if user has more than 1 request and one of requests fails on require
-    function cooldownCheck(uint256 amount, address owner) internal view returns (uint256 requestId_) {
-        uint len = requests[owner].length;
-        for (uint256 i = 0; i < len; i++) {
-            
-            UnlockRequest memory request = requests[owner][i];
-            bool time = isWithinCooldownPeriod(request);
-            bool amount = (amount >= request.shareAmount);
-            
-            if (time && amount) {
-                return requestId_;
-            }
-
-            if (i == len) {
-                revert("NOT_UNLOCKED");
-            }
-        }
-    }
-
-    /// @notice Withdraw amount of ETH represented by stEth / ERC4626-stEth. Output token is stEth.
+    /// @notice Withdraw after cooldown is passed. 
     function withdraw(
         uint256 assets_,
         address receiver_,
@@ -273,22 +272,33 @@ contract BenqiERC4626TimelockStaking is ERC4626 {
                 requestsAllowed[owner_][msg.sender] = allowed - shares;
         }
 
-        uint256 id = cooldownCheck(shares, owner_);
+        (uint256 id, uint256 index) = cooldownCheck(shares, owner_);
 
-        /// FIXME: AVAX operates on msg.sender. We need to track total of unlockIds for each user to redeem only user requested amount and not cumulative requests 
+        /// @dev id used here is id assigned to user request by this Vault. in reality, this Vault is the actual msg.sender requesting unlock from sAVAX
+        /// @dev Vault will have a lot of requests under management of different index values 
         sAVAX.redeem(id);
+
+        /// @dev To validate: https://github.com/Certora/aave-erc20-listing/blob/a0e198bd85429eb913f888eeed465d90d0ba8122/contracts/sAVAX.sol#L1959
+        /// @dev Remove user unlock request after fullfilling it
+        requests[owner_][index] = requests[owner_][requests[owner_].length - 1];
+        requests[owner_].pop();
+        
+        /// FIXME: requestId--; but it's not consecutive! to solve.
 
         emit Withdraw(msg.sender, receiver_, owner_, assets_, shares);
 
-        sAvaxAsset.safeTransfer(receiver_, assets_);
+        /// @dev Vault is owner of user shares after requestUnlock
+        _burn(address(this), shares);
+
+        SafeTransferLib.safeTransferETH(receiver_, assets_);
     }
 
-    /// @notice Redeem exact amount of stEth / ERC4626-stEth from this Vault. Output token is stEth.
+    /// @notice Redeem after cooldown is passed.
     function redeem(
         uint256 shares_,
-        address receiver,
+        address receiver_,
         address owner_
-    ) public override sharesUnlocked(shares_, owner_) returns (uint256 assets) {
+    ) public override returns (uint256 assets) {
         if (msg.sender != owner_) {
             uint256 allowed = allowance[owner_][msg.sender];
 
@@ -298,11 +308,26 @@ contract BenqiERC4626TimelockStaking is ERC4626 {
 
         if ((assets = previewRedeem(shares_)) == 0) revert ZERO_ASSETS();
 
-        _burn(owner_, shares_);
 
-        emit Withdraw(msg.sender, receiver, owner_, assets, shares_);
+        (uint256 id, uint256 index) = cooldownCheck(shares_, owner_);
 
-        sAvaxAsset.safeTransfer(receiver, shares_);
+        /// @dev id used here is id assigned to user request by this Vault. in reality, this Vault is the actual msg.sender requesting unlock from sAVAX
+        /// @dev Vault will have a lot of requests under management of different index values 
+        sAVAX.redeem(id);
+
+        /// @dev To validate: https://github.com/Certora/aave-erc20-listing/blob/a0e198bd85429eb913f888eeed465d90d0ba8122/contracts/sAVAX.sol#L1959
+        /// @dev Remove user unlock request after fullfilling it
+        requests[owner_][index] = requests[owner_][requests[owner_].length - 1];
+        requests[owner_].pop();
+
+        /// FIXME: requestId--; but it's not consecutive! to solve.
+
+        emit Withdraw(msg.sender, receiver_, owner_, assets, shares_);
+
+        /// @dev Vault is owner of user shares after requestUnlock
+        _burn(address(this), shares_);
+
+        SafeTransferLib.safeTransferETH(receiver_, assets);
     }
 
     /// @notice stEth is used as AUM of this Vault
