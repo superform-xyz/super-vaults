@@ -134,7 +134,7 @@ contract BenqiERC4626TimelockStaking is ERC4626 {
 
         /// @dev Requires user to "lock" his wsAVAX (token of address(this)) for the duration of the cooldown period
         /// NOTE: Vault's balance will now have shares of this vault token
-        wsAVAX.safeTransferFrom(owner_, address(this), shares_);
+        wsAVAX.safeTransferFrom(msg.sender, address(this), shares_);
 
         /// @dev Approve sAVAX to actual sAVAX shares
         sAvaxAsset.safeApprove(address(sAVAX), shares_);
@@ -178,7 +178,7 @@ contract BenqiERC4626TimelockStaking is ERC4626 {
 
         /// @dev Requires user to "lock" his wsAVAX (token of address(this)) for the duration of the cooldown period
         /// NOTE: Vault's balance will now have shares of this vault token
-        wsAVAX.safeTransferFrom(owner_, address(this), shares);
+        wsAVAX.safeTransferFrom(msg.sender, address(this), shares);
 
         /// @dev Approve sAVAX to actual sAVAX shares
         sAvaxAsset.safeApprove(address(sAVAX), shares);

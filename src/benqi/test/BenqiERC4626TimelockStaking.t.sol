@@ -64,10 +64,10 @@ contract BenqiERC4626TimelockStakingTest is Test {
 
         /// @dev Approve the vault to spend it's shares
         vault.approve(address(vault), aliceShareAmount); 
-        vault.requestWithdraw(aliceShareAmount, alice);
+        vault.requestWithdraw(aliceAssetsFromShares, alice);
         vm.warp(block.timestamp + 16 days);
 
-        /// FIXME: Wrong asset/shares calculations for redemption
+        /// FIXME: Wrong asset/shares calculations for redemption, we seem to be off by few wei
         // vault.withdraw(aliceAssetsFromShares, alice, alice);
     }
 
