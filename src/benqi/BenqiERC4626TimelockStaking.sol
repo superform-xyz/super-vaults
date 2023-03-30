@@ -42,6 +42,7 @@ contract BenqiERC4626TimelockStaking is ERC4626 {
     ERC20 public wsAVAX;
 
     /// @dev Tracking all of this vault's UnlockRequests in the name of all users
+    mapping(uint256 requestsId => UnlockRequest) public queue;
     uint256 requestId;
 
     /// @dev Mapping used by this contract, not sAvax. User on Avax can wish to request multiple unlocks
@@ -75,7 +76,7 @@ contract BenqiERC4626TimelockStaking is ERC4626 {
 
     /// @notice Data structure for tracking unlock requests assigned to individual users
     struct UnlockRequest {
-        /// @dev Unique id of the request (Wrapper specific)
+        /// @dev map user's UnlockRequest to this Vault's UnlockRequest
         uint id;
         // The timestamp at which the `shareAmount` was requested to be unlocked
         uint startedAt;
@@ -140,13 +141,21 @@ contract BenqiERC4626TimelockStaking is ERC4626 {
 
         /// @dev Internal tracking of withdraw/redeem requests routed through this vault to sAVAX
         requestId++;
+
+        UnlockRequest memory unlockRequest = UnlockRequest({
+            id: requestId,
+            startedAt: block.timestamp,
+            shareAmount: shares_
+        });
+        
+        /// @dev Vault's internal requests tracking
+        queue[requestId] = unlockRequest;
+
+        /// @dev User's internal requests tracking (reqs delegated to this Vault
         requests[owner_].push(
-            UnlockRequest({
-                id: requestId,
-                startedAt: block.timestamp,
-                shareAmount: shares_
-            })
+            unlockRequest
         );
+
     }
 
     /// @notice Caller needs to transfer shares of this vault to this contract for release of underlying shares to sAVAX
@@ -164,7 +173,33 @@ contract BenqiERC4626TimelockStaking is ERC4626 {
                 allowance[owner_][msg.sender] = allowed - shares;
         }
 
-        requestRedeem(shares, owner_);
+        /// @dev Requires user to "lock" his wsAVAX (token of address(this)) for the duration of the cooldown period
+        /// NOTE: Vault's balance will now have shares of this vault token
+        wsAVAX.safeTransferFrom(owner_, address(this), shares);
+
+        /// @dev Approve sAVAX to actual sAVAX shares
+        sAvaxAsset.safeApprove(address(sAVAX), shares);
+
+        /// @dev Transfers shares to sAVAX, sAVAX will burn them after cooldown period
+        sAVAX.requestUnlock(shares);
+
+        /// @dev Internal tracking of withdraw/redeem requests routing through this vault to sAVAX
+        requestId++;
+
+        /// @dev User's unlockRequest details, mapped to Vault's requestId
+        UnlockRequest memory unlockRequest = UnlockRequest({
+            id: requestId,
+            startedAt: block.timestamp,
+            shareAmount: shares
+        });
+        
+        /// @dev Vault's internal requests tracking
+        queue[requestId] = unlockRequest;
+
+        /// @dev User's internal requests tracking (reqs delegated to this Vault
+        requests[owner_].push(
+            unlockRequest
+        );
     }
     
     /// @notice Check what unlock request is available for withdraw/redeem. If none, revert
@@ -176,12 +211,14 @@ contract BenqiERC4626TimelockStaking is ERC4626 {
             bool time = isWithinCooldownPeriod(request);
             bool amount = (request.shareAmount >= amount_);
             
+            /// @dev This breaks the loop at first success. It's ok.
             if (time && amount) {
-                return (requestId_, i);
+                return (request.id, i);
             }
 
+            /// @dev This works because above breaks on the only instance of success we need. Otherwise, revert after finishing iteration
             if (i == len) {
-                revert("NOT_UNLOCKED");
+                revert("LOCKED");
             }
         }
     }
@@ -283,11 +320,12 @@ contract BenqiERC4626TimelockStaking is ERC4626 {
         requests[owner_][index] = requests[owner_][requests[owner_].length - 1];
         requests[owner_].pop();
         
-        /// FIXME: requestId--; but it's not consecutive! to solve.
+        /// @dev Remove requests from this Vault's queue
+        delete queue[id];
 
         emit Withdraw(msg.sender, receiver_, owner_, assets_, shares);
 
-        /// @dev Vault is owner of user shares after requestUnlock
+        /// @dev Vault is still an owner of user shares after requestUnlock
         _burn(address(this), shares);
 
         SafeTransferLib.safeTransferETH(receiver_, assets_);
@@ -320,7 +358,8 @@ contract BenqiERC4626TimelockStaking is ERC4626 {
         requests[owner_][index] = requests[owner_][requests[owner_].length - 1];
         requests[owner_].pop();
 
-        /// FIXME: requestId--; but it's not consecutive! to solve.
+        /// @dev Remove requests from this Vault's queue
+        delete queue[id];
 
         emit Withdraw(msg.sender, receiver_, owner_, assets, shares_);
 
@@ -330,12 +369,12 @@ contract BenqiERC4626TimelockStaking is ERC4626 {
         SafeTransferLib.safeTransferETH(receiver_, assets);
     }
 
-    /// @notice stEth is used as AUM of this Vault
+    /// @notice sAVAX is used as AUM of this Vault (not used in any calculations)
     function totalAssets() public view virtual override returns (uint256) {
         return sAVAX.balanceOf(address(this));
     }
 
-    /// @notice Calculate amount of stEth you get in exchange for ETH (WETH)
+    /// @notice Calculate amount of sAVAX you get in exchange for AVAX 
     function convertToShares(uint256 assets_)
         public
         view
@@ -346,8 +385,7 @@ contract BenqiERC4626TimelockStaking is ERC4626 {
         return sAVAX.getSharesByPooledAvax(assets_);
     }
 
-    /// @notice Calculate amount of ETH you get in exchange for stEth (ERC4626-stEth)
-    /// @notice Used as "virtual" amount in base implementation. No ETH is ever withdrawn.
+    /// @notice Calculate amount of AVAX you get in exchange for sAVAX
     function convertToAssets(uint256 shares_)
         public
         view
@@ -398,8 +436,6 @@ contract BenqiERC4626TimelockStaking is ERC4626 {
         return convertToAssets(shares_);
     }
 
-    /// @notice maxWithdraw is equal to shares balance only in base implementation
-    /// @notice That is because output token is still stEth and not ETH+yield
     function maxWithdraw(address owner_)
         public
         view
@@ -409,8 +445,6 @@ contract BenqiERC4626TimelockStaking is ERC4626 {
         return balanceOf[owner_];
     }
 
-    /// @notice maxRedeem is equal to shares balance only in base implementation
-    /// @notice That is because output token is still stEth and not ETH+yield
     function maxRedeem(address owner_) public view override returns (uint256) {
         return balanceOf[owner_];
     }
