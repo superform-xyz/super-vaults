@@ -62,6 +62,8 @@ contract BenqiERC4626TimelockStakingTest is Test {
         uint256 aliceAssetsFromShares = vault.previewRedeem(aliceShareAmount);
         console.log("aliceAssetsFromShares", aliceAssetsFromShares);
 
+        /// @dev Approve the vault to spend it's shares
+        vault.approve(address(vault), aliceShareAmount); 
         vault.requestWithdraw(aliceShareAmount, alice);
         vm.warp(block.timestamp + 16 days);
 

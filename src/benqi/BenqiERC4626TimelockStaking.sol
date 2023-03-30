@@ -68,6 +68,7 @@ contract BenqiERC4626TimelockStaking is ERC4626 {
         sAVAX = IStakedAvax(sAvax_);
         sAvaxAsset = ERC20(sAvax_);
         wavax = IWETH(wavax_);
+        wsAVAX = ERC20(address(this));
     }
 
     receive() external payable {}
