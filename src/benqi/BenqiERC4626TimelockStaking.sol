@@ -41,9 +41,11 @@ contract BenqiERC4626TimelockStaking is ERC4626 {
     ERC20 public sAvaxAsset;
     ERC20 public wsAVAX;
 
+    /// @dev Identifier for the next unlock request
+    uint256 requestId;
+
     /// @dev Tracking all of this vault's UnlockRequests in the name of all users
     mapping(uint256 requestsId => UnlockRequest) public queue;
-    uint256 requestId;
 
     /// @dev Mapping used by this contract, not sAvax. User on Avax can wish to request multiple unlocks
     /// TODO: Significant gas savings & logic reduction if we only allow single UnlockRequest. Tradeoff.
