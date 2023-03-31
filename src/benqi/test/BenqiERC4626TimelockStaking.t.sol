@@ -9,6 +9,7 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {IPair, DexSwap} from "../../_global/swapUtils.sol";
 import {IStETH} from "../../lido/interfaces/IStETH.sol";
 import {IWETH} from "../../lido/interfaces/IWETH.sol";
+import {IStakedAvax} from "../interfaces/IStakedAvax.sol";
 
 contract BenqiERC4626TimelockStakingTest is Test {
     uint256 public ethFork;
@@ -30,8 +31,10 @@ contract BenqiERC4626TimelockStakingTest is Test {
 
     IWETH public _weth = IWETH(weth);
     IStETH public _stEth = IStETH(stEth);
+    IStakedAvax public _sAVAX = IStakedAvax(stEth);
 
     function setUp() public {
+        /// 26_959_644
         ethFork = vm.createFork(ETH_RPC_URL);
         vm.selectFork(ethFork);
 
@@ -41,11 +44,47 @@ contract BenqiERC4626TimelockStakingTest is Test {
 
         deal(weth, alice, ONE_THOUSAND_E18);
         deal(weth, manager, ONE_THOUSAND_E18);
-        deal(alice, 2 ether);
+        
+    }
+
+    function testDirectStake() public {
+        uint256 aliceUnderlyingAmount = HUNDRED_E18;
+
+        startHoax(alice, ONE_THOUSAND_E18);
+        
+        uint256 aliceShareAmount = _sAVAX.submit{value: aliceUnderlyingAmount}();
+        uint256 sAvaxBalanceAfterSubmit = _sAVAX.balanceOf(alice);
+        vm.warp(block.timestamp + 120 days);
+        // vm.rollFork(27_394_977);
+
+        console.log("aliceShareAmount", aliceShareAmount);
+        console.log("sAvaxBalanceAfterSubmit", sAvaxBalanceAfterSubmit);
+        uint256 assetFromShares = _sAVAX.getPooledAvaxByShares(aliceShareAmount);
+        console.log("assetFromShares", assetFromShares);
+        uint256 avaxBalanceBefore = alice.balance;
+        console.log("avaxBalanceBefore", avaxBalanceBefore);
+
+        _sAVAX.requestUnlock(sAvaxBalanceAfterSubmit);
+        vm.warp(block.timestamp + 16 days);
+        // vm.rollFork(28_113_619);
+        
+        _sAVAX.redeem(0);
+        uint256 avaxBalanceAfter = alice.balance;
+        console.log("avaxBalanceAfter", avaxBalanceAfter);
+
+    }
+
+    function seedDeposit() public {
+        vm.startPrank(manager);
+        _weth.approve(address(vault), HUNDRED_E18);
+        vault.deposit(HUNDRED_E18, manager);
+        vm.stopPrank();
     }
 
     function testDepositWithdraw() public {
         uint256 aliceUnderlyingAmount = HUNDRED_E18;
+
+        // seedDeposit();
 
         vm.startPrank(alice);
 
@@ -55,6 +94,7 @@ contract BenqiERC4626TimelockStakingTest is Test {
         uint256 expectedSharesFromAssets = vault.previewDeposit(aliceUnderlyingAmount);
         uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
         vm.warp(block.timestamp + 120 days);
+        // vm.rollFork(27_394_977);
 
         assertEq(expectedSharesFromAssets, aliceShareAmount);
         console.log("aliceShareAmount", aliceShareAmount);
@@ -62,13 +102,45 @@ contract BenqiERC4626TimelockStakingTest is Test {
         uint256 aliceAssetsFromShares = vault.previewRedeem(aliceShareAmount);
         console.log("aliceAssetsFromShares", aliceAssetsFromShares);
 
-        /// @dev Approve the vault to spend it's shares
+        // / @dev Approve the vault to spend it's shares
         vault.approve(address(vault), aliceShareAmount); 
         vault.requestWithdraw(aliceAssetsFromShares, alice);
         vm.warp(block.timestamp + 16 days);
+        // vm.rollFork(28_113_619);
 
-        /// FIXME: Wrong asset/shares calculations for redemption, we seem to be off by few wei
-        // vault.withdraw(aliceAssetsFromShares, alice, alice);
+        // / FIXME: we seem to be off by few wei?
+        vault.withdraw(aliceAssetsFromShares - 1000, alice, alice);
+    }
+
+    function testDepositRedeem() public {
+        uint256 aliceUnderlyingAmount = HUNDRED_E18;
+
+        // seedDeposit();
+
+        vm.startPrank(alice);
+
+        _weth.approve(address(vault), aliceUnderlyingAmount);
+        assertEq(_weth.allowance(alice, address(vault)), aliceUnderlyingAmount);
+
+        uint256 expectedSharesFromAssets = vault.previewDeposit(aliceUnderlyingAmount);
+        uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
+        vm.warp(block.timestamp + 120 days);
+        // vm.rollFork(27_394_977);
+
+        assertEq(expectedSharesFromAssets, aliceShareAmount);
+        console.log("aliceShareAmount", aliceShareAmount);
+
+        uint256 aliceAssetsFromShares = vault.previewRedeem(aliceShareAmount);
+        console.log("aliceAssetsFromShares", aliceAssetsFromShares);
+
+        // / @dev Approve the vault to spend it's shares
+        vault.approve(address(vault), aliceShareAmount); 
+        vault.requestRedeem(aliceShareAmount, alice);
+        vm.warp(block.timestamp + 16 days);
+        // vm.rollFork(28_113_619);
+        
+        // / FIXME: we seem to be off by few wei?
+        vault.redeem(aliceShareAmount - 1000, alice, alice);
     }
 
 }

@@ -376,7 +376,6 @@ contract BenqiERC4626TimelockStaking is ERC4626 {
     function totalAssets() public view virtual override returns (uint256) {
         return sAVAX.balanceOf(address(this));
     }
-
     /// @notice Calculate amount of sAVAX you get in exchange for AVAX 
     function convertToShares(uint256 assets_)
         public
@@ -437,18 +436,5 @@ contract BenqiERC4626TimelockStaking is ERC4626 {
         returns (uint256)
     {
         return convertToAssets(shares_);
-    }
-
-    function maxWithdraw(address owner_)
-        public
-        view
-        override
-        returns (uint256)
-    {
-        return balanceOf[owner_];
-    }
-
-    function maxRedeem(address owner_) public view override returns (uint256) {
-        return balanceOf[owner_];
     }
 }
