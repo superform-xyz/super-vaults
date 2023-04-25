@@ -366,6 +366,7 @@ contract AaveV3ERC4626ReinvestIncentive is ERC4626 {
 
         uint8 tokenDecimals = _getDecimals(configData);
         uint256 supplyCap = supplyCapInWholeTokens * 10**tokenDecimals;
+        if (aToken.totalSupply() >= supplyCap) { return 0; }
         return supplyCap - aToken.totalSupply();
     }
 
@@ -391,6 +392,7 @@ contract AaveV3ERC4626ReinvestIncentive is ERC4626 {
 
         uint8 tokenDecimals = _getDecimals(configData);
         uint256 supplyCap = supplyCapInWholeTokens * 10**tokenDecimals;
+        if (aToken.totalSupply() >= supplyCap) { return 0; }
         return convertToShares(supplyCap - aToken.totalSupply());
     }
 
