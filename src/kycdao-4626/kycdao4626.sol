@@ -33,8 +33,8 @@ contract kycDAO4626 is ERC4626 {
                                 MODIFERS
     //////////////////////////////////////////////////////////////*/
 
-    modifier hasKYC(address receiver_) {
-        if (!kycValidity.hasValidToken(receiver_)) revert NO_VALID_KYC_TOKEN();
+    modifier hasKYC(address kycOwner_) {
+        if (!kycValidity.hasValidToken(kycOwner_)) revert NO_VALID_KYC_TOKEN();
         _;
     }
 
@@ -63,44 +63,51 @@ contract kycDAO4626 is ERC4626 {
                             ERC4626 OVERRIDES
     //////////////////////////////////////////////////////////////*/
 
+    /// @dev NOTE: shares to be minted to msg.sender not receiver_. This is a breaking change from the original implementation
+    /// @dev this means that a different address cannot be specified to receive shares
+    /// @dev this change was made to make the wrapper work both for same chain and cross chain access use cases
     function deposit(
         uint256 assets_,
-        address receiver_
-    ) public override hasKYC(receiver_) returns (uint256 shares) {
+        address kycOwner_
+    ) public override hasKYC(kycOwner_) returns (uint256 shares) {
         // Check for rounding error since we round down in previewDeposit.
         if ((shares = previewDeposit(assets_)) == 0) revert ZERO_SHARES();
 
         // Need to transfer before minting or ERC777s could reenter.
         asset.safeTransferFrom(msg.sender, address(this), assets_);
 
-        _mint(receiver_, shares);
+        _mint(msg.sender, shares);
 
-        emit Deposit(msg.sender, receiver_, assets_, shares);
+        emit Deposit(msg.sender, kycOwner_, assets_, shares);
 
         afterDeposit(assets_, shares);
     }
 
+    /// @dev NOTE: shares to be minted to msg.sender not receiver_. This is a breaking change from the original implementation
+    /// @dev this means that a different address cannot be specified to receive shares
+    /// @dev this change was made to make the wrapper work both for same chain and cross chain access use cases
     function mint(
         uint256 shares_,
-        address receiver_
-    ) public override hasKYC(receiver_) returns (uint256 assets) {
+        address kycOwner_
+    ) public override hasKYC(kycOwner_) returns (uint256 assets) {
         assets = previewMint(shares_); // No need to check for rounding error, previewMint rounds up.
 
         // Need to transfer before minting or ERC777s could reenter.
         asset.safeTransferFrom(msg.sender, address(this), assets);
 
-        _mint(receiver_, shares_);
+        _mint(msg.sender, shares_);
 
-        emit Deposit(msg.sender, receiver_, assets, shares_);
+        emit Deposit(msg.sender, kycOwner_, assets, shares_);
 
         afterDeposit(assets, shares_);
     }
 
+    /// @dev Shares transfer are not forbidden but they can only be redeemed by a KYC NFT owner
     function withdraw(
         uint256 assets_,
         address receiver_,
         address owner_
-    ) public override returns (uint256 shares) {
+    ) public override hasKYC(owner_) returns (uint256 shares) {
         shares = previewWithdraw(assets_); // No need to check for rounding error, previewWithdraw rounds up.
 
         if (msg.sender != owner_) {
@@ -119,11 +126,12 @@ contract kycDAO4626 is ERC4626 {
         asset.safeTransfer(receiver_, assets_);
     }
 
+    /// @dev Shares transfer are not forbidden but they can only be redeemed by a KYC NFT owner
     function redeem(
         uint256 shares_,
         address receiver_,
         address owner_
-    ) public override returns (uint256 assets) {
+    ) public override hasKYC(owner_) returns (uint256 assets) {
         if (msg.sender != owner_) {
             uint256 allowed = allowance[owner_][msg.sender]; // Saves gas for limited approvals.
 
