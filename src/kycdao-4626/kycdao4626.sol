@@ -66,7 +66,7 @@ contract kycDAO4626 is ERC4626 {
     function deposit(
         uint256 assets_,
         address receiver_
-    ) public override hasKYC returns (uint256 shares) {
+    ) public virtual override hasKYC returns (uint256 shares) {
         // Check for rounding error since we round down in previewDeposit.
         if ((shares = previewDeposit(assets_)) == 0) revert ZERO_SHARES();
 
@@ -83,7 +83,7 @@ contract kycDAO4626 is ERC4626 {
     function mint(
         uint256 shares_,
         address receiver_
-    ) public override hasKYC returns (uint256 assets) {
+    ) public virtual override hasKYC returns (uint256 assets) {
         assets = previewMint(shares_); // No need to check for rounding error, previewMint rounds up.
 
         // Need to transfer before minting or ERC777s could reenter.
@@ -100,7 +100,7 @@ contract kycDAO4626 is ERC4626 {
         uint256 assets_,
         address receiver_,
         address owner_
-    ) public override hasKYC returns (uint256 shares) {
+    ) public virtual override hasKYC returns (uint256 shares) {
         shares = previewWithdraw(assets_); // No need to check for rounding error, previewWithdraw rounds up.
 
         if (msg.sender != owner_) {
@@ -123,7 +123,7 @@ contract kycDAO4626 is ERC4626 {
         uint256 shares_,
         address receiver_,
         address owner_
-    ) public override hasKYC returns (uint256 assets) {
+    ) public virtual override hasKYC returns (uint256 assets) {
         if (msg.sender != owner_) {
             uint256 allowed = allowance[owner_][msg.sender]; // Saves gas for limited approvals.
 
