@@ -1,7 +1,7 @@
 ///SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.19;
 
-import {IERC4626} from "openzeppelin-contracts/interfaces/IERC4626.sol";
+import {IERC4626} from "openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 
 /// @title IERC4626TimelockVault
 /// @author Zeropoint Labs
