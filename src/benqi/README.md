@@ -9,3 +9,10 @@
 # Future Works
 
  Extend `BenqiERC4626Staking.sol` with a combined Timelock and unstake capability, allowing to exit from the Vault to AVAX token with yield accrued directly.
+
+ Timelock TODO:
+
+ - requestWithdraw() (done) / cancelWithdraw() (todo) logic
+ - Internal tracking of requested withdrawals (done)
+ - Redemption mechanism (done)
+ - Testing
