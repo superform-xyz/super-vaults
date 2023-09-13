@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
+
 interface wstETH {
     function wrap(uint256) external returns (uint256);
 

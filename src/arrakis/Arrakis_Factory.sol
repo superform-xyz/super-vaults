@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
@@ -31,11 +31,7 @@ contract ArrakisFactory {
     /// @param gUniPool The base pool used to create the vaults
     /// @param vaultA The vault that was created with token0 as asset
     /// @param vaultB The vault that was created with token1 as asset
-    event ArrakisVaultsCreated(
-        address indexed gUniPool,
-        ArrakisNonNativeVault vaultA,
-        ArrakisNonNativeVault vaultB
-    );
+    event ArrakisVaultsCreated(address indexed gUniPool, ArrakisNonNativeVault vaultA, ArrakisNonNativeVault vaultB);
 
     /*//////////////////////////////////////////////////////////////
                       IMMUTABLES & VARIABLES
@@ -71,22 +67,16 @@ contract ArrakisFactory {
         string memory symbol_,
         address gauge_,
         uint160 slippage_
-    )
-        external
-        returns (ArrakisNonNativeVault vaultA, ArrakisNonNativeVault vaultB)
-    {
+    ) external returns (ArrakisNonNativeVault vaultA, ArrakisNonNativeVault vaultB) {
         IGUniPool pool = IGUniPool(gUniPool_);
         ERC20 token0 = pool.token0();
         ERC20 token1 = pool.token1();
-        if (
-            address(token0) == address(0) ||
-            address(token1) == address(0) ||
-            address(token0) == address(token1)
-        ) revert UNI_POOL_INVALID();
-        if (
-            address(gauge_) == address(0) ||
-            IStakePool(gauge_).staking_token() != address(gUniPool_)
-        ) revert GAUGE_INVALID();
+        if (address(token0) == address(0) || address(token1) == address(0) || address(token0) == address(token1)) {
+            revert UNI_POOL_INVALID();
+        }
+        if (address(gauge_) == address(0) || IStakePool(gauge_).staking_token() != address(gUniPool_)) {
+            revert GAUGE_INVALID();
+        }
         vaultA = new ArrakisNonNativeVault{salt: bytes32(0)}(
             gUniPool_,
             name_,

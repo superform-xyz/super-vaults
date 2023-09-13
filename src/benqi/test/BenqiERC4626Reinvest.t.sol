@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
@@ -39,11 +39,7 @@ contract BenqiERC4626ReinvestTest is Test {
         manager = msg.sender;
         comptroller = IBComptroller(vm.envAddress("BENQI_COMPTROLLER"));
 
-        setVault(
-            ERC20(vm.envAddress("BENQI_DAI_ASSET")),
-            IBERC20(vm.envAddress("BENQI_DAI_CTOKEN")),
-            comptroller
-        );
+        setVault(ERC20(vm.envAddress("BENQI_DAI_ASSET")), IBERC20(vm.envAddress("BENQI_DAI_CTOKEN")), comptroller);
 
         asset = ERC20(vm.envAddress("BENQI_DAI_ASSET"));
         reward = ERC20(vm.envAddress("BENQI_REWARD_QI"));
@@ -71,11 +67,7 @@ contract BenqiERC4626ReinvestTest is Test {
         vm.makePersistent(bob);
     }
 
-    function setVault(
-        ERC20 underylyingAsset,
-        IBERC20 cToken_,
-        IBComptroller comptroller_
-    ) public {
+    function setVault(ERC20 underylyingAsset, IBERC20 cToken_, IBComptroller comptroller_) public {
         vm.startPrank(manager);
 
         asset = underylyingAsset;
@@ -113,11 +105,7 @@ contract BenqiERC4626ReinvestTest is Test {
         assertEq(vault.balanceOf(alice), aliceShareAmount);
 
         uint256 preWithdrawBalance = asset.balanceOf(alice);
-        uint256 sharesBurned = vault.withdraw(
-            aliceAssetsToWithdraw,
-            alice,
-            alice
-        );
+        uint256 sharesBurned = vault.withdraw(aliceAssetsToWithdraw, alice, alice);
         uint256 totalBalance = aliceAssetsToWithdraw + preWithdrawBalance;
 
         assertEq(totalBalance, asset.balanceOf(alice));
@@ -144,10 +132,7 @@ contract BenqiERC4626ReinvestTest is Test {
         console.log("rewardsAccrued", rewardsAccrued);
         console.log("totalAssets", vault.totalAssets());
 
-        (uint224 index, uint32 timestamp) = comptroller.rewardSupplyState(
-            0,
-            address(cToken)
-        );
+        (uint224 index, uint32 timestamp) = comptroller.rewardSupplyState(0, address(cToken));
         console.log("index", index);
         console.log("timestamp", timestamp);
 

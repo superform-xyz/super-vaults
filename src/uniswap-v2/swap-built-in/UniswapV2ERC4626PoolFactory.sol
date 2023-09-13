@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
@@ -40,38 +40,23 @@ contract UniswapV2ERC4626PoolFactory {
 
     function create(IUniswapV2Pair pair_, uint24 fee_)
         external
-        returns (
-            UniswapV2ERC4626Swap v0,
-            UniswapV2ERC4626Swap v1,
-            address oracle
-        )
+        returns (UniswapV2ERC4626Swap v0, UniswapV2ERC4626Swap v1, address oracle)
     {
         /// @dev Tokens sorted by uniswapV2pair
         ERC20 token0 = ERC20(pair_.token0());
         ERC20 token1 = ERC20(pair_.token1());
 
         /// @dev Each UniV3 Pool is a twap oracle
-        if (
-            (oracle = twap(address(token0), address(token1), fee_)) ==
-            address(0)
-        ) revert TWAP_NON_EXISTENT();
+        if ((oracle = twap(address(token0), address(token1), fee_)) == address(0)) revert TWAP_NON_EXISTENT();
 
         IUniswapV3Pool oracle_ = IUniswapV3Pool(oracle);
 
         /// @dev For uniswap V2 only two tokens pool
         /// @dev using symbol for naming to keep it short
-        string memory name0 = string(
-            abi.encodePacked("UniV2-", token0.symbol(), "-ERC4626")
-        );
-        string memory name1 = string(
-            abi.encodePacked("UniV2-", token1.symbol(), "-ERC4626")
-        );
-        string memory symbol0 = string(
-            abi.encodePacked("UniV2-", token0.symbol())
-        );
-        string memory symbol1 = string(
-            abi.encodePacked("UniV2-", token1.symbol())
-        );
+        string memory name0 = string(abi.encodePacked("UniV2-", token0.symbol(), "-ERC4626"));
+        string memory name1 = string(abi.encodePacked("UniV2-", token1.symbol(), "-ERC4626"));
+        string memory symbol0 = string(abi.encodePacked("UniV2-", token0.symbol()));
+        string memory symbol1 = string(abi.encodePacked("UniV2-", token1.symbol()));
 
         /// @dev For uniswap V2 only two tokens pool
         v0 = new UniswapV2ERC4626Swap(
@@ -93,11 +78,7 @@ contract UniswapV2ERC4626PoolFactory {
         );
     }
 
-    function twap(
-        address token0_,
-        address token1_,
-        uint24 fee_
-    ) public view returns (address) {
+    function twap(address token0_, address token1_, uint24 fee_) public view returns (address) {
         return oracleFactory.getPool(token0_, token1_, fee_);
     }
 }

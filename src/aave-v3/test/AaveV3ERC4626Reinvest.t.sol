@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
@@ -58,9 +58,7 @@ contract AaveV3ERC4626ReinvestTest is Test {
             manager
         );
 
-        (, AaveV3ERC4626Reinvest v_) = setVault(
-            ERC20(vm.envAddress("AAVEV3_AVAX_USDC"))
-        );
+        (, AaveV3ERC4626Reinvest v_) = setVault(ERC20(vm.envAddress("AAVEV3_AVAX_USDC")));
 
         /// @dev Set rewards & routes (to abstract)
         swapToken = vm.envAddress("AAVEV3_AVAX_USDC_SWAPTOKEN");
@@ -71,9 +69,7 @@ contract AaveV3ERC4626ReinvestTest is Test {
         console.log("Vault deployed at", address(vault));
     }
 
-    function setVault(
-        ERC20 _asset
-    ) public returns (ERC4626 vault_, AaveV3ERC4626Reinvest vaultERC4626_) {
+    function setVault(ERC20 _asset) public returns (ERC4626 vault_, AaveV3ERC4626Reinvest vaultERC4626_) {
         vm.startPrank(manager);
 
         /// @dev If we need strict ERC4626 interface
@@ -100,9 +96,7 @@ contract AaveV3ERC4626ReinvestTest is Test {
         vm.startPrank(manager);
 
         /// @dev We deploy with different asset than at the runtime
-        ERC4626 v_ = factory.createERC4626(
-            ERC20(vm.envAddress("AAVEV3_AVAX_DAI"))
-        );
+        ERC4626 v_ = factory.createERC4626(ERC20(vm.envAddress("AAVEV3_AVAX_DAI")));
 
         AaveV3ERC4626Reinvest vault_ = AaveV3ERC4626Reinvest(address(v_));
 
@@ -176,22 +170,13 @@ contract AaveV3ERC4626ReinvestTest is Test {
 
         // Expect exchange rate to be 1:1 on initial deposit.
         assertEq(aliceUnderlyingAmount, aliceShareAmount);
-        assertEq(
-            vault.previewWithdraw(aliceShareAmount),
-            aliceUnderlyingAmount
-        );
+        assertEq(vault.previewWithdraw(aliceShareAmount), aliceUnderlyingAmount);
         assertEq(vault.previewDeposit(aliceUnderlyingAmount), aliceShareAmount);
         assertEq(vault.totalSupply(), aliceShareAmount);
         assertEq(vault.totalAssets(), aliceUnderlyingAmount);
         assertEq(vault.balanceOf(alice), aliceShareAmount);
-        assertEq(
-            vault.convertToAssets(vault.balanceOf(alice)),
-            aliceUnderlyingAmount
-        );
-        assertEq(
-            asset.balanceOf(alice),
-            alicePreDepositBal - aliceUnderlyingAmount
-        );
+        assertEq(vault.convertToAssets(vault.balanceOf(alice)), aliceUnderlyingAmount);
+        assertEq(asset.balanceOf(alice), alicePreDepositBal - aliceUnderlyingAmount);
 
         vm.prank(alice);
         vault.withdraw(aliceUnderlyingAmount, alice, alice);
@@ -218,22 +203,13 @@ contract AaveV3ERC4626ReinvestTest is Test {
 
         // Expect exchange rate to be 1:1 on initial mint.
         assertEq(aliceShareAmount, aliceUnderlyingAmount);
-        assertEq(
-            vault.previewWithdraw(aliceShareAmount),
-            aliceUnderlyingAmount
-        );
+        assertEq(vault.previewWithdraw(aliceShareAmount), aliceUnderlyingAmount);
         assertEq(vault.previewDeposit(aliceUnderlyingAmount), aliceShareAmount);
         assertEq(vault.totalSupply(), aliceShareAmount);
         assertEq(vault.totalAssets(), aliceUnderlyingAmount);
         assertEq(vault.balanceOf(alice), aliceUnderlyingAmount);
-        assertEq(
-            vault.convertToAssets(vault.balanceOf(alice)),
-            aliceUnderlyingAmount
-        );
-        assertEq(
-            asset.balanceOf(alice),
-            alicePreDepositBal - aliceUnderlyingAmount
-        );
+        assertEq(vault.convertToAssets(vault.balanceOf(alice)), aliceUnderlyingAmount);
+        assertEq(asset.balanceOf(alice), alicePreDepositBal - aliceUnderlyingAmount);
 
         vault.redeem(aliceShareAmount, alice, alice);
 
@@ -268,9 +244,7 @@ contract AaveV3ERC4626ReinvestTest is Test {
         vault.deposit(aliceUnderlyingAmount, alice);
 
         uint256 beforeHarvest = vault.totalAssets();
-        uint256 beforeHarvestReward = ERC20(rewardTokens[0]).balanceOf(
-            address(vault)
-        );
+        uint256 beforeHarvestReward = ERC20(rewardTokens[0]).balanceOf(address(vault));
 
         console.log("totalAssets before harvest", beforeHarvest);
         console.log("rewardBalance before harvest", beforeHarvestReward);
@@ -281,9 +255,7 @@ contract AaveV3ERC4626ReinvestTest is Test {
         vault.harvest(minAmount);
 
         uint256 afterHarvest = vault.totalAssets();
-        uint256 afterHarvestReward = ERC20(rewardTokens[0]).balanceOf(
-            address(vault)
-        );
+        uint256 afterHarvestReward = ERC20(rewardTokens[0]).balanceOf(address(vault));
         assertGe(afterHarvest, beforeHarvest);
         console.log("totalAssets after harvest", afterHarvest);
         console.log("rewardBalance after harvest", afterHarvestReward);

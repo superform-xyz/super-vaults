@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
@@ -59,11 +59,13 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
     constructor(
         string memory name_,
         string memory symbol_,
-        ERC20 asset_, /// Pair address (to opti)
+        ERC20 asset_,
+        /// Pair address (to opti)
         ERC20 token0_,
         ERC20 token1_,
         IUniswapV2Router router_,
-        IUniswapV2Pair pair_, /// Pair address (to opti)
+        IUniswapV2Pair pair_,
+        /// Pair address (to opti)
         uint256 slippage_
     ) ERC4626(asset_, name_, symbol_) {
         manager = msg.sender;
@@ -78,7 +80,8 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
     /// @param amount_ amount of slippage
     function setSlippage(uint256 amount_) external {
         require(msg.sender == manager, "owner");
-        require(amount_ < 10000 && amount_ > 9000); /// 10% max slippage
+        require(amount_ < 10000 && amount_ > 9000);
+        /// 10% max slippage
         slippage = amount_;
     }
 
@@ -91,10 +94,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
                           INTERNAL HOOKS LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function beforeWithdraw(uint256 assets_, uint256 shares_)
-        internal
-        override
-    {
+    function beforeWithdraw(uint256 assets_, uint256 shares_) internal override {
         (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets_);
 
         pair.approve(address(router), shares_);
@@ -140,21 +140,12 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
     /// @param getUniLpFromAssets_ Assume caller called getAssetsAmounts() first to know amount of assets to approve to this contract
     /// @param receiver_ - Who will receive shares (Standard ERC4626)
     /// @return shares - Of this Vault (Standard ERC4626)
-    function deposit(uint256 getUniLpFromAssets_, address receiver_)
-        public
-        override
-        returns (uint256 shares)
-    {
+    function deposit(uint256 getUniLpFromAssets_, address receiver_) public override returns (uint256 shares) {
         /// From 100 uniLP msg.sender gets N shares (of this Vault)
-        require(
-            (shares = previewDeposit(getUniLpFromAssets_)) != 0,
-            "ZERO_SHARES"
-        );
+        require((shares = previewDeposit(getUniLpFromAssets_)) != 0, "ZERO_SHARES");
 
         /// Ideally, msg.sender should call this function beforehand to get correct "assets" amount
-        (uint256 assets0, uint256 assets1) = getAssetsAmounts(
-            getUniLpFromAssets_
-        );
+        (uint256 assets0, uint256 assets1) = getAssetsAmounts(getUniLpFromAssets_);
 
         /// Best if we approve exact amounts, but because of UniV2 _min() we can sometimes approve to much/to little
         token0.safeTransferFrom(msg.sender, address(this), assets0);
@@ -173,11 +164,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
     /// @param sharesOfThisVault_ shares value == amount of Vault token (shares) to mint from requested lpToken. (1:1 with lpToken).
     /// @param receiver_ == receiver of shares (Vault token)
     /// @return assets == amount of LPTOKEN minted (1:1 with sharesOfThisVault_ input)
-    function mint(uint256 sharesOfThisVault_, address receiver_)
-        public
-        override
-        returns (uint256 assets)
-    {
+    function mint(uint256 sharesOfThisVault_, address receiver_) public override returns (uint256 assets) {
         assets = previewMint(sharesOfThisVault_);
 
         (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets);
@@ -210,8 +197,9 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         if (msg.sender != owner_) {
             uint256 allowed = allowance[owner_][msg.sender];
 
-            if (allowed != type(uint256).max)
+            if (allowed != type(uint256).max) {
                 allowance[owner_][msg.sender] = allowed - shares;
+            }
         }
 
         beforeWithdraw(assets_, shares);
@@ -230,16 +218,13 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
     /// @param shares_ - amount of UniLP to burn
     /// @param receiver_ - Who will receive shares (Standard ERC4626)
     /// @param owner_ - Who owns shares (Standard ERC4626)
-    function redeem(
-        uint256 shares_,
-        address receiver_,
-        address owner_
-    ) public override returns (uint256 assets) {
+    function redeem(uint256 shares_, address receiver_, address owner_) public override returns (uint256 assets) {
         if (msg.sender != owner_) {
             uint256 allowed = allowance[owner_][msg.sender]; // Saves gas for limited approvals.
 
-            if (allowed != type(uint256).max)
+            if (allowed != type(uint256).max) {
                 allowance[owner_][msg.sender] = allowed - shares_;
+            }
         }
 
         // Check for rounding error since we round down in previewRedeem.
@@ -259,17 +244,10 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
     }
 
     /// @notice for requested 100 UniLp tokens, how much tok0/1 we need to give?
-    function getAssetsAmounts(uint256 poolLpAmount_)
-        public
-        view
-        returns (uint256 assets0, uint256 assets1)
-    {
+    function getAssetsAmounts(uint256 poolLpAmount_) public view returns (uint256 assets0, uint256 assets1) {
         /// get xy=k here, where x=ra0,y=ra1
-        (uint256 reserveA, uint256 reserveB) = UniswapV2Library.getReserves(
-            address(pair),
-            address(token0),
-            address(token1)
-        );
+        (uint256 reserveA, uint256 reserveB) =
+            UniswapV2Library.getReserves(address(pair), address(token0), address(token1));
         /// shares of uni pair contract
         uint256 pairSupply = pair.totalSupply();
         /// amount of token0 to provide to receive poolLpAmount_
@@ -279,20 +257,10 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
     }
 
     /// @notice For requested N assets0 & N assets1, how much UniV2 LP do we get?
-    function getLiquidityAmountOutFor(uint256 assets0_, uint256 assets1_)
-        public
-        view
-        returns (uint256 poolLpAmount)
-    {
-        (uint256 reserveA, uint256 reserveB) = UniswapV2Library.getReserves(
-            address(pair),
-            address(token0),
-            address(token1)
-        );
-        poolLpAmount = _min(
-            ((assets0_ * pair.totalSupply()) / reserveA),
-            (assets1_ * pair.totalSupply()) / reserveB
-        );
+    function getLiquidityAmountOutFor(uint256 assets0_, uint256 assets1_) public view returns (uint256 poolLpAmount) {
+        (uint256 reserveA, uint256 reserveB) =
+            UniswapV2Library.getReserves(address(pair), address(token0), address(token1));
+        poolLpAmount = _min(((assets0_ * pair.totalSupply()) / reserveA), (assets1_ * pair.totalSupply()) / reserveB);
     }
 
     /// @notice Pool's LP token on contract balance

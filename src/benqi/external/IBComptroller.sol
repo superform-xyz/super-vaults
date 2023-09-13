@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 interface IBComptroller {
     function qiAddress() external view returns (address);
@@ -21,8 +21,5 @@ interface IBComptroller {
         uint32 timestamp;
     }
 
-    function rewardSupplyState(uint8, address)
-        external
-        view
-        returns (uint224, uint32);
+    function rewardSupplyState(uint8, address) external view returns (uint224, uint32);
 }

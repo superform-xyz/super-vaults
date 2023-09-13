@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
@@ -49,14 +49,9 @@ contract kycDAO4626Test is Test {
         vm.startPrank(kycNFTHolder);
 
         _wmatic.approve(address(vault), underlyingAmount);
-        assertEq(
-            _wmatic.allowance(kycNFTHolder, address(vault)),
-            underlyingAmount
-        );
+        assertEq(_wmatic.allowance(kycNFTHolder, address(vault)), underlyingAmount);
 
-        uint256 expectedSharesFromAssets = vault.convertToShares(
-            underlyingAmount
-        );
+        uint256 expectedSharesFromAssets = vault.convertToShares(underlyingAmount);
         uint256 shareAmount = vault.deposit(underlyingAmount, kycNFTHolder);
         assertEq(expectedSharesFromAssets, shareAmount);
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
@@ -30,24 +30,21 @@ contract UniswapV2TestSwap is Test {
     string name = "UniV2-ERC4626";
     string symbol = "Uni4626";
     ERC20 public asset = ERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
-    IUniswapV2Pair public pair =
-        IUniswapV2Pair(0xAE461cA67B15dc8dc81CE7615e0320dA1A9aB8D5);
-    IUniswapV2Router public router =
-        IUniswapV2Router(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
+    IUniswapV2Pair public pair = IUniswapV2Pair(0xAE461cA67B15dc8dc81CE7615e0320dA1A9aB8D5);
+    IUniswapV2Router public router = IUniswapV2Router(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
 
-    IUniswapV3Factory public oracleFactory =
-        IUniswapV3Factory(0x1F98431c8aD98523631AE4a59f267346ea31F984);
-    IUniswapV3Pool public oracle =
-        IUniswapV3Pool(0xa63b490aA077f541c9d64bFc1Cc0db2a752157b5);
+    IUniswapV3Factory public oracleFactory = IUniswapV3Factory(0x1F98431c8aD98523631AE4a59f267346ea31F984);
+    IUniswapV3Pool public oracle = IUniswapV3Pool(0xa63b490aA077f541c9d64bFc1Cc0db2a752157b5);
 
-    ERC20 public alternativeAsset =
-        ERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+    ERC20 public alternativeAsset = ERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
 
     address public alice;
     address public bob;
     address public manager;
 
-    uint24 public fee = 3000; /// 0.3
+    uint24 public fee = 3000;
+
+    /// 0.3
 
     function setUp() public {
         ethFork = vm.createFork(ETH_RPC_URL);
@@ -79,10 +76,7 @@ contract UniswapV2TestSwap is Test {
     function testFactoryDeploy() public {
         vm.startPrank(manager);
 
-        (UniswapV2ERC4626Swap v0, UniswapV2ERC4626Swap v1, ) = factory.create(
-            pair,
-            fee
-        );
+        (UniswapV2ERC4626Swap v0, UniswapV2ERC4626Swap v1,) = factory.create(pair, fee);
 
         console.log("v0 name", v0.name(), "v0 symbol", v0.symbol());
         console.log("v1 name", v1.name(), "v1 symbol", v1.symbol());
@@ -101,18 +95,9 @@ contract UniswapV2TestSwap is Test {
 
         console.log("aliceShareAmount", aliceShareAmount);
         console.log("aliceShareBalance", aliceShareBalance);
-        console.log(
-            previewWithdraw,
-            "shares to burn for",
-            aliceAssetsToWithdraw,
-            "assets"
-        );
+        console.log(previewWithdraw, "shares to burn for", aliceAssetsToWithdraw, "assets");
 
-        uint256 sharesBurned = vault.withdraw(
-            aliceAssetsToWithdraw,
-            alice,
-            alice
-        );
+        uint256 sharesBurned = vault.withdraw(aliceAssetsToWithdraw, alice, alice);
 
         console.log("aliceSharesBurned", sharesBurned);
         console.log("aliceShareBalance", vault.balanceOf(alice));

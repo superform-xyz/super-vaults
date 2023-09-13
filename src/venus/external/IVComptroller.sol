@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import {IVERC20} from "./IVERC20.sol";
 
@@ -19,29 +19,13 @@ interface IVComptroller {
 
     function claimVenus(address holder) external;
 
-    function venusSupplyState(address cToken)
-        external
-        view
-        returns (VenusMarketState memory);
+    function venusSupplyState(address cToken) external view returns (VenusMarketState memory);
 
-    function venusSupplierIndex(address cToken, address supplier)
-        external
-        view
-        returns (uint256);
+    function venusSupplierIndex(address cToken, address supplier) external view returns (uint256);
 
-    function venusAccrued(address user)
-        external
-        view
-        returns (uint256 venusRewards);
+    function venusAccrued(address user) external view returns (uint256 venusRewards);
 
     function mintGuardianPaused(IVERC20 cToken) external view returns (bool);
 
-    function getAccountLiquidity(address account)
-        external
-        view
-        returns (
-            uint256,
-            uint256,
-            uint256
-        );
+    function getAccountLiquidity(address account) external view returns (uint256, uint256, uint256);
 }

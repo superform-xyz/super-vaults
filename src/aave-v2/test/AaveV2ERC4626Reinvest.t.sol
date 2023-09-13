@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
@@ -40,12 +40,16 @@ contract AaveV2ERC4626ReinvestTest is Test {
 
     ////////////////////////////////////////
     constructor() {
-        ethFork = vm.createFork(POLYGON_RPC_URL); /// @dev No rewards on ETH mainnet
-        ftmFork = vm.createFork(POLYGON_RPC_URL); /// @dev No rewards on FTM
-        avaxFork = vm.createFork(POLYGON_RPC_URL); /// @dev No rewards on Avax
+        ethFork = vm.createFork(POLYGON_RPC_URL);
+        /// @dev No rewards on ETH mainnet
+        ftmFork = vm.createFork(POLYGON_RPC_URL);
+        /// @dev No rewards on FTM
+        avaxFork = vm.createFork(POLYGON_RPC_URL);
+        /// @dev No rewards on Avax
 
         /// @dev Use Polygon Fork
-        polyFork = vm.createFork(POLYGON_RPC_URL); /// @dev No rewards on Polygon
+        polyFork = vm.createFork(POLYGON_RPC_URL);
+        /// @dev No rewards on Polygon
 
         manager = msg.sender;
 
@@ -66,17 +70,12 @@ contract AaveV2ERC4626ReinvestTest is Test {
             manager
         );
 
-        (, AaveV2ERC4626Reinvest v_) = setVault(
-            ERC20(vm.envAddress("AAVEV2_POLYGON_DAI"))
-        );
+        (, AaveV2ERC4626Reinvest v_) = setVault(ERC20(vm.envAddress("AAVEV2_POLYGON_DAI")));
 
         vault = v_;
     }
 
-    function setVault(ERC20 _asset)
-        public
-        returns (ERC4626 vault_, AaveV2ERC4626Reinvest _vault_)
-    {
+    function setVault(ERC20 _asset) public returns (ERC4626 vault_, AaveV2ERC4626Reinvest _vault_) {
         vm.startPrank(manager);
 
         asset = _asset;
@@ -101,9 +100,7 @@ contract AaveV2ERC4626ReinvestTest is Test {
         vm.startPrank(manager);
 
         /// @dev We deploy with different asset than at runtime (constructor)
-        ERC4626 v_ = factory.createERC4626(
-            ERC20(vm.envAddress("AAVEV2_POLYGON_WMATIC"))
-        );
+        ERC4626 v_ = factory.createERC4626(ERC20(vm.envAddress("AAVEV2_POLYGON_WMATIC")));
         ERC20 vaultAsset = v_.asset();
 
         AaveV2ERC4626Reinvest vault_ = AaveV2ERC4626Reinvest(address(v_));
@@ -154,22 +151,13 @@ contract AaveV2ERC4626ReinvestTest is Test {
 
         // Expect exchange rate to be 1:1 on initial deposit.
         assertEq(aliceUnderlyingAmount, aliceShareAmount);
-        assertEq(
-            vault.previewWithdraw(aliceShareAmount),
-            aliceUnderlyingAmount
-        );
+        assertEq(vault.previewWithdraw(aliceShareAmount), aliceUnderlyingAmount);
         assertEq(vault.previewDeposit(aliceUnderlyingAmount), aliceShareAmount);
         assertEq(vault.totalSupply(), aliceShareAmount);
         assertEq(vault.totalAssets(), aliceUnderlyingAmount);
         assertEq(vault.balanceOf(alice), aliceShareAmount);
-        assertEq(
-            vault.convertToAssets(vault.balanceOf(alice)),
-            aliceUnderlyingAmount
-        );
-        assertEq(
-            asset.balanceOf(alice),
-            alicePreDepositBal - aliceUnderlyingAmount
-        );
+        assertEq(vault.convertToAssets(vault.balanceOf(alice)), aliceUnderlyingAmount);
+        assertEq(asset.balanceOf(alice), alicePreDepositBal - aliceUnderlyingAmount);
 
         vault.withdraw(aliceUnderlyingAmount, alice, alice);
 
@@ -195,22 +183,13 @@ contract AaveV2ERC4626ReinvestTest is Test {
 
         // Expect exchange rate to be 1:1 on initial mint.
         assertEq(aliceShareAmount, aliceUnderlyingAmount);
-        assertEq(
-            vault.previewWithdraw(aliceShareAmount),
-            aliceUnderlyingAmount
-        );
+        assertEq(vault.previewWithdraw(aliceShareAmount), aliceUnderlyingAmount);
         assertEq(vault.previewDeposit(aliceUnderlyingAmount), aliceShareAmount);
         assertEq(vault.totalSupply(), aliceShareAmount);
         assertEq(vault.totalAssets(), aliceUnderlyingAmount);
         assertEq(vault.balanceOf(alice), aliceUnderlyingAmount);
-        assertEq(
-            vault.convertToAssets(vault.balanceOf(alice)),
-            aliceUnderlyingAmount
-        );
-        assertEq(
-            asset.balanceOf(alice),
-            alicePreDepositBal - aliceUnderlyingAmount
-        );
+        assertEq(vault.convertToAssets(vault.balanceOf(alice)), aliceUnderlyingAmount);
+        assertEq(asset.balanceOf(alice), alicePreDepositBal - aliceUnderlyingAmount);
 
         vault.redeem(aliceShareAmount, alice, alice);
 

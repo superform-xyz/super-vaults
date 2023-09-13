@@ -1,5 +1,5 @@
 /// SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
@@ -18,14 +18,23 @@ contract AlpacaERC4626ReinvestTest is Test {
 
     AlpacaERC4626Reinvest public vault;
 
-    IBToken public token = IBToken(0x7C9e73d4C71dae564d41F78d56439bB4ba87592f); /// @dev ibBUSD
-    IFairLaunch public fairLaunch = IFairLaunch(0xA625AB01B08ce023B2a342Dbb12a16f2C8489A8F); /// @dev Same addr accross impls
+    IBToken public token = IBToken(0x7C9e73d4C71dae564d41F78d56439bB4ba87592f);
 
-    uint256 poolId = 3; /// @dev Check mainnet.json for poolId
-    ERC20 public asset; /// @dev BUSD from ib(Token)
+    /// @dev ibBUSD
+    IFairLaunch public fairLaunch = IFairLaunch(0xA625AB01B08ce023B2a342Dbb12a16f2C8489A8F);
+    /// @dev Same addr accross impls
 
-    ERC20 public alpacaToken = ERC20(0x8F0528cE5eF7B51152A59745bEfDD91D97091d2F); /// @dev AlpacaToken (reward token)
-    address swapPair1 = 0x7752e1FA9F3a2e860856458517008558DEb989e3; /// ALPACA / BUSD
+    uint256 poolId = 3;
+
+    /// @dev Check mainnet.json for poolId
+    ERC20 public asset;
+    /// @dev BUSD from ib(Token)
+
+    ERC20 public alpacaToken = ERC20(0x8F0528cE5eF7B51152A59745bEfDD91D97091d2F);
+
+    /// @dev AlpacaToken (reward token)
+    address swapPair1 = 0x7752e1FA9F3a2e860856458517008558DEb989e3;
+    /// ALPACA / BUSD
 
     function setUp() public {
         bscFork = vm.createFork(BSC_RPC_URL);
@@ -60,9 +69,9 @@ contract AlpacaERC4626ReinvestTest is Test {
         uint256 amount = 10000 ether;
 
         vm.startPrank(alice);
-        
+
         uint256 aliceUnderlyingAmount = amount;
-        
+
         asset.approve(address(vault), aliceUnderlyingAmount);
         assertEq(asset.allowance(alice, address(vault)), aliceUnderlyingAmount);
 
@@ -73,16 +82,16 @@ contract AlpacaERC4626ReinvestTest is Test {
         assertEq(vault.totalSupply(), aliceShareAmount);
         assertEq(vault.balanceOf(alice), aliceShareAmount);
 
-        vault.withdraw(aliceAssetsToWithdraw, alice, alice);      
+        vault.withdraw(aliceAssetsToWithdraw, alice, alice);
     }
 
     function testHarvest() public {
         uint256 amount = 10000 ether;
 
         vm.startPrank(alice);
-        
+
         uint256 aliceUnderlyingAmount = amount;
-        
+
         asset.approve(address(vault), aliceUnderlyingAmount);
         assertEq(asset.allowance(alice, address(vault)), aliceUnderlyingAmount);
 
@@ -96,5 +105,4 @@ contract AlpacaERC4626ReinvestTest is Test {
         deal(address(alpacaToken), address(vault), 100000 ether);
         vault.harvest(1);
     }
-
 }

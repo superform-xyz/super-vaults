@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
@@ -56,7 +56,7 @@ contract BenqiERC4626StakingTest is Test {
 
         uint256 expectedSharesFromAssets = vault.previewDeposit(aliceUnderlyingAmount);
         uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
-        
+
         assertEq(expectedSharesFromAssets, aliceShareAmount);
         console.log("aliceShareAmount", aliceShareAmount);
 
@@ -77,7 +77,7 @@ contract BenqiERC4626StakingTest is Test {
 
         uint256 expectedSharesFromAssets = vault.previewDeposit(aliceUnderlyingAmount);
         uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
-        
+
         assertEq(expectedSharesFromAssets, aliceShareAmount);
         console.log("aliceShareAmount", aliceShareAmount);
 
@@ -97,29 +97,26 @@ contract BenqiERC4626StakingTest is Test {
 
         uint256 expectedSharesFromAssets = vault.previewDeposit(aliceUnderlyingAmount);
         uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
-        
+
         assertEq(expectedSharesFromAssets, aliceShareAmount);
         console.log("aliceShareAmount", aliceShareAmount);
 
         /// @dev The best way to calculate withdraw amount which virtually reflects amount in AVAX (accrued yield)
-        /// Here, we just withdraw all available shares 
+        /// Here, we just withdraw all available shares
         uint256 aliceAssetsFromShares = vault.previewRedeem(aliceShareAmount);
         uint256 aliceSharesToBurnForAssets = vault.previewWithdraw(aliceAssetsFromShares);
         console.log("aliceAssetsFromShares", aliceAssetsFromShares);
         console.log("aliceSharesToBurnForAssets", aliceSharesToBurnForAssets);
-        
+
         vault.withdraw(aliceSharesToBurnForAssets, alice, alice);
     }
-
 
     function testMintRedeem() public {
         uint256 aliceSharesMint = HUNDRED_E18;
 
         vm.startPrank(alice);
 
-        uint256 expectedAssetFromShares = vault.previewMint(
-            aliceSharesMint
-        );
+        uint256 expectedAssetFromShares = vault.previewMint(aliceSharesMint);
 
         console.log("expectedAssetFromShares (to approve)", expectedAssetFromShares);
 
@@ -144,6 +141,5 @@ contract BenqiERC4626StakingTest is Test {
         uint256 expectedSharesFromAsset = vault.convertToShares(aliceEth);
         uint256 aliceShareAmount = vault.deposit{value: aliceEth}(alice);
         assertEq(expectedSharesFromAsset, aliceShareAmount);
-
     }
 }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 /**
  * @title Compound's Comet Main Interface (without Ext)
@@ -31,28 +31,34 @@ abstract contract CometMainInterface {
     error TransferOutFailed();
     error Unauthorized();
 
-    event Supply(address indexed from, address indexed dst, uint amount);
-    event Transfer(address indexed from, address indexed to, uint amount);
-    event Withdraw(address indexed src, address indexed to, uint amount);
+    event Supply(address indexed from, address indexed dst, uint256 amount);
+    event Transfer(address indexed from, address indexed to, uint256 amount);
+    event Withdraw(address indexed src, address indexed to, uint256 amount);
 
-    event SupplyCollateral(address indexed from, address indexed dst, address indexed asset, uint amount);
-    event TransferCollateral(address indexed from, address indexed to, address indexed asset, uint amount);
-    event WithdrawCollateral(address indexed src, address indexed to, address indexed asset, uint amount);
+    event SupplyCollateral(address indexed from, address indexed dst, address indexed asset, uint256 amount);
+    event TransferCollateral(address indexed from, address indexed to, address indexed asset, uint256 amount);
+    event WithdrawCollateral(address indexed src, address indexed to, address indexed asset, uint256 amount);
 
     /// @notice Event emitted when a borrow position is absorbed by the protocol
-    event AbsorbDebt(address indexed absorber, address indexed borrower, uint basePaidOut, uint usdValue);
+    event AbsorbDebt(address indexed absorber, address indexed borrower, uint256 basePaidOut, uint256 usdValue);
 
     /// @notice Event emitted when a user's collateral is absorbed by the protocol
-    event AbsorbCollateral(address indexed absorber, address indexed borrower, address indexed asset, uint collateralAbsorbed, uint usdValue);
+    event AbsorbCollateral(
+        address indexed absorber,
+        address indexed borrower,
+        address indexed asset,
+        uint256 collateralAbsorbed,
+        uint256 usdValue
+    );
 
     /// @notice Event emitted when a collateral asset is purchased from the protocol
-    event BuyCollateral(address indexed buyer, address indexed asset, uint baseAmount, uint collateralAmount);
+    event BuyCollateral(address indexed buyer, address indexed asset, uint256 baseAmount, uint256 collateralAmount);
 
     /// @notice Event emitted when an action is paused/unpaused
     event PauseAction(bool supplyPaused, bool transferPaused, bool withdrawPaused, bool absorbPaused, bool buyPaused);
 
     /// @notice Event emitted when reserves are withdrawn by the governor
-    event WithdrawReserves(address indexed to, uint amount);
+    event WithdrawReserves(address indexed to, uint256 amount);
 
     struct AssetInfo {
         uint8 offset;
@@ -65,99 +71,101 @@ abstract contract CometMainInterface {
         uint128 supplyCap;
     }
 
-    function supply(address asset, uint amount) virtual external;
-    function supplyTo(address dst, address asset, uint amount) virtual external;
-    function supplyFrom(address from, address dst, address asset, uint amount) virtual external;
+    function supply(address asset, uint256 amount) external virtual;
+    function supplyTo(address dst, address asset, uint256 amount) external virtual;
+    function supplyFrom(address from, address dst, address asset, uint256 amount) external virtual;
 
-    function transfer(address dst, uint amount) virtual external returns (bool);
-    function transferFrom(address src, address dst, uint amount) virtual external returns (bool);
+    function transfer(address dst, uint256 amount) external virtual returns (bool);
+    function transferFrom(address src, address dst, uint256 amount) external virtual returns (bool);
 
-    function transferAsset(address dst, address asset, uint amount) virtual external;
-    function transferAssetFrom(address src, address dst, address asset, uint amount) virtual external;
+    function transferAsset(address dst, address asset, uint256 amount) external virtual;
+    function transferAssetFrom(address src, address dst, address asset, uint256 amount) external virtual;
 
-    function withdraw(address asset, uint amount) virtual external;
-    function withdrawTo(address to, address asset, uint amount) virtual external;
-    function withdrawFrom(address src, address to, address asset, uint amount) virtual external;
+    function withdraw(address asset, uint256 amount) external virtual;
+    function withdrawTo(address to, address asset, uint256 amount) external virtual;
+    function withdrawFrom(address src, address to, address asset, uint256 amount) external virtual;
 
-    function approveThis(address manager, address asset, uint amount) virtual external;
-    function withdrawReserves(address to, uint amount) virtual external;
+    function approveThis(address manager, address asset, uint256 amount) external virtual;
+    function withdrawReserves(address to, uint256 amount) external virtual;
 
-    function absorb(address absorber, address[] calldata accounts) virtual external;
-    function buyCollateral(address asset, uint minAmount, uint baseAmount, address recipient) virtual external;
-    function quoteCollateral(address asset, uint baseAmount) virtual public view returns (uint);
+    function absorb(address absorber, address[] calldata accounts) external virtual;
+    function buyCollateral(address asset, uint256 minAmount, uint256 baseAmount, address recipient) external virtual;
+    function quoteCollateral(address asset, uint256 baseAmount) public view virtual returns (uint256);
 
-    function getAssetInfo(uint8 i) virtual public view returns (AssetInfo memory);
-    function getAssetInfoByAddress(address asset) virtual public view returns (AssetInfo memory);
-    function getCollateralReserves(address asset) virtual public view returns (uint);
-    function getReserves() virtual public view returns (int);
-    function getPrice(address priceFeed) virtual public view returns (uint);
+    function getAssetInfo(uint8 i) public view virtual returns (AssetInfo memory);
+    function getAssetInfoByAddress(address asset) public view virtual returns (AssetInfo memory);
+    function getCollateralReserves(address asset) public view virtual returns (uint256);
+    function getReserves() public view virtual returns (int256);
+    function getPrice(address priceFeed) public view virtual returns (uint256);
 
-    function isBorrowCollateralized(address account) virtual public view returns (bool);
-    function isLiquidatable(address account) virtual public view returns (bool);
+    function isBorrowCollateralized(address account) public view virtual returns (bool);
+    function isLiquidatable(address account) public view virtual returns (bool);
 
-    function totalSupply() virtual external view returns (uint256);
-    function totalBorrow() virtual external view returns (uint256);
-    function balanceOf(address owner) virtual public view returns (uint256);
-    function borrowBalanceOf(address account) virtual public view returns (uint256);
+    function totalSupply() external view virtual returns (uint256);
+    function totalBorrow() external view virtual returns (uint256);
+    function balanceOf(address owner) public view virtual returns (uint256);
+    function borrowBalanceOf(address account) public view virtual returns (uint256);
 
-    function pause(bool supplyPaused, bool transferPaused, bool withdrawPaused, bool absorbPaused, bool buyPaused) virtual external;
-    function isSupplyPaused() virtual public view returns (bool);
-    function isTransferPaused() virtual public view returns (bool);
-    function isWithdrawPaused() virtual public view returns (bool);
-    function isAbsorbPaused() virtual public view returns (bool);
-    function isBuyPaused() virtual public view returns (bool);
+    function pause(bool supplyPaused, bool transferPaused, bool withdrawPaused, bool absorbPaused, bool buyPaused)
+        external
+        virtual;
+    function isSupplyPaused() public view virtual returns (bool);
+    function isTransferPaused() public view virtual returns (bool);
+    function isWithdrawPaused() public view virtual returns (bool);
+    function isAbsorbPaused() public view virtual returns (bool);
+    function isBuyPaused() public view virtual returns (bool);
 
-    function accrueAccount(address account) virtual external;
-    function getSupplyRate(uint utilization) virtual public view returns (uint64);
-    function getBorrowRate(uint utilization) virtual public view returns (uint64);
-    function getUtilization() virtual public view returns (uint);
+    function accrueAccount(address account) external virtual;
+    function getSupplyRate(uint256 utilization) public view virtual returns (uint64);
+    function getBorrowRate(uint256 utilization) public view virtual returns (uint64);
+    function getUtilization() public view virtual returns (uint256);
 
-    function governor() virtual external view returns (address);
-    function pauseGuardian() virtual external view returns (address);
-    function baseToken() virtual external view returns (address);
-    function baseTokenPriceFeed() virtual external view returns (address);
-    function extensionDelegate() virtual external view returns (address);
-
-    /// @dev uint64
-    function supplyKink() virtual external view returns (uint);
-    /// @dev uint64
-    function supplyPerSecondInterestRateSlopeLow() virtual external view returns (uint);
-    /// @dev uint64
-    function supplyPerSecondInterestRateSlopeHigh() virtual external view returns (uint);
-    /// @dev uint64
-    function supplyPerSecondInterestRateBase() virtual external view returns (uint);
-    /// @dev uint64
-    function borrowKink() virtual external view returns (uint);
-    /// @dev uint64
-    function borrowPerSecondInterestRateSlopeLow() virtual external view returns (uint);
-    /// @dev uint64
-    function borrowPerSecondInterestRateSlopeHigh() virtual external view returns (uint);
-    /// @dev uint64
-    function borrowPerSecondInterestRateBase() virtual external view returns (uint);
-    /// @dev uint64
-    function storeFrontPriceFactor() virtual external view returns (uint);
+    function governor() external view virtual returns (address);
+    function pauseGuardian() external view virtual returns (address);
+    function baseToken() external view virtual returns (address);
+    function baseTokenPriceFeed() external view virtual returns (address);
+    function extensionDelegate() external view virtual returns (address);
 
     /// @dev uint64
-    function baseScale() virtual external view returns (uint);
+    function supplyKink() external view virtual returns (uint256);
     /// @dev uint64
-    function trackingIndexScale() virtual external view returns (uint);
+    function supplyPerSecondInterestRateSlopeLow() external view virtual returns (uint256);
+    /// @dev uint64
+    function supplyPerSecondInterestRateSlopeHigh() external view virtual returns (uint256);
+    /// @dev uint64
+    function supplyPerSecondInterestRateBase() external view virtual returns (uint256);
+    /// @dev uint64
+    function borrowKink() external view virtual returns (uint256);
+    /// @dev uint64
+    function borrowPerSecondInterestRateSlopeLow() external view virtual returns (uint256);
+    /// @dev uint64
+    function borrowPerSecondInterestRateSlopeHigh() external view virtual returns (uint256);
+    /// @dev uint64
+    function borrowPerSecondInterestRateBase() external view virtual returns (uint256);
+    /// @dev uint64
+    function storeFrontPriceFactor() external view virtual returns (uint256);
 
     /// @dev uint64
-    function baseTrackingSupplySpeed() virtual external view returns (uint);
+    function baseScale() external view virtual returns (uint256);
     /// @dev uint64
-    function baseTrackingBorrowSpeed() virtual external view returns (uint);
+    function trackingIndexScale() external view virtual returns (uint256);
+
+    /// @dev uint64
+    function baseTrackingSupplySpeed() external view virtual returns (uint256);
+    /// @dev uint64
+    function baseTrackingBorrowSpeed() external view virtual returns (uint256);
     /// @dev uint104
-    function baseMinForRewards() virtual external view returns (uint);
+    function baseMinForRewards() external view virtual returns (uint256);
     /// @dev uint104
-    function baseBorrowMin() virtual external view returns (uint);
+    function baseBorrowMin() external view virtual returns (uint256);
     /// @dev uint104
-    function targetReserves() virtual external view returns (uint);
+    function targetReserves() external view virtual returns (uint256);
 
-    function numAssets() virtual external view returns (uint8);
-    function decimals() virtual external view returns (uint8);
+    function numAssets() external view virtual returns (uint8);
+    function decimals() external view virtual returns (uint8);
 
-    function initializeStorage() virtual external;
-    function claim(address comet, address src, bool shouldAccrue) virtual external;
+    function initializeStorage() external virtual;
+    function claim(address comet, address src, bool shouldAccrue) external virtual;
 
-    function baseTrackingAccrued(address account) virtual external returns(uint64);
+    function baseTrackingAccrued(address account) external virtual returns (uint64);
 }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 /**
  * @title IRewardsController
@@ -10,21 +10,16 @@ interface IRewardsController {
     function getAllUserRewards(address[] calldata assets, address user)
         external
         view
-        returns (
-            address[] memory rewardsList,
-            uint256[] memory unclaimedAmounts
-        );
+        returns (address[] memory rewardsList, uint256[] memory unclaimedAmounts);
 
     /**
      * @dev Returns the list of available reward token addresses of an incentivized asset
      * @param asset The incentivized asset
      * @return List of rewards addresses of the input asset
-     **/
+     *
+     */
 
-    function getRewardsByAsset(address asset)
-        external
-        view
-        returns (address[] memory);
+    function getRewardsByAsset(address asset) external view returns (address[] memory);
 
     /**
      * @dev Claims all rewards for a user to the desired address, on all the assets of the pool, accumulating the pending rewards

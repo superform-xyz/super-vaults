@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
@@ -56,10 +56,7 @@ contract StMATIC4626 is ERC4626 {
                           INTERNAL HOOKS LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function _addLiquidity(uint256 assets_, uint256)
-        internal
-        returns (uint256 stMaticAmount)
-    {
+    function _addLiquidity(uint256 assets_, uint256) internal returns (uint256 stMaticAmount) {
         asset.approve(address(stMatic), assets_);
 
         /// @dev Lido's stMatic pool submit() isn't payable, MATIC is ERC20 compatible
@@ -71,11 +68,7 @@ contract StMATIC4626 is ERC4626 {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Deposit MATIC, receive ERC4626-stMatic shares for 1:1 stMatic
-    function deposit(uint256 assets_, address receiver_)
-        public
-        override
-        returns (uint256 shares)
-    {
+    function deposit(uint256 assets_, address receiver_) public override returns (uint256 shares) {
         asset.safeTransferFrom(msg.sender, address(this), assets_);
 
         shares = _addLiquidity(assets_, shares);
@@ -86,11 +79,7 @@ contract StMATIC4626 is ERC4626 {
     }
 
     /// @notice Mint ERC4626-stMatic shares covered 1:1 wih stMatic
-    function mint(uint256 shares_, address receiver_)
-        public
-        override
-        returns (uint256 assets)
-    {
+    function mint(uint256 shares_, address receiver_) public override returns (uint256 assets) {
         assets = previewMint(shares_);
 
         asset.safeTransferFrom(msg.sender, address(this), assets);
@@ -103,18 +92,15 @@ contract StMATIC4626 is ERC4626 {
     }
 
     /// @notice Withdraw stMatic from the Vault, burn ERC4626-stMatic shares for 1:1 stMatic
-    function withdraw(
-        uint256 assets_,
-        address receiver_,
-        address owner_
-    ) public override returns (uint256 shares) {
+    function withdraw(uint256 assets_, address receiver_, address owner_) public override returns (uint256 shares) {
         shares = previewWithdraw(assets_);
 
         if (msg.sender != owner_) {
             uint256 allowed = allowance[owner_][msg.sender];
 
-            if (allowed != type(uint256).max)
+            if (allowed != type(uint256).max) {
                 allowance[owner_][msg.sender] = allowed - shares;
+            }
         }
 
         _burn(owner_, shares);
@@ -126,16 +112,13 @@ contract StMATIC4626 is ERC4626 {
     }
 
     /// @notice Redeem ERC4626-stMatic shares for 1:1 stMatic fro the Vault
-    function redeem(
-        uint256 shares_,
-        address receiver_,
-        address owner_
-    ) public override returns (uint256 assets) {
+    function redeem(uint256 shares_, address receiver_, address owner_) public override returns (uint256 assets) {
         if (msg.sender != owner_) {
             uint256 allowed = allowance[owner_][msg.sender];
 
-            if (allowed != type(uint256).max)
+            if (allowed != type(uint256).max) {
                 allowance[owner_][msg.sender] = allowed - shares_;
+            }
         }
 
         if ((assets = previewRedeem(shares_)) == 0) revert ZERO_ASSETS();
@@ -164,63 +147,27 @@ contract StMATIC4626 is ERC4626 {
     
     //////////////////////////////////////////////////////////////*/
 
-    function convertToShares(uint256 assets_)
-        public
-        view
-        virtual
-        override
-        returns (uint256 shares)
-    {
-        (shares, , ) = stMatic.convertMaticToStMatic(assets_);
+    function convertToShares(uint256 assets_) public view virtual override returns (uint256 shares) {
+        (shares,,) = stMatic.convertMaticToStMatic(assets_);
     }
 
-    function convertToAssets(uint256 shares_)
-        public
-        view
-        virtual
-        override
-        returns (uint256 assets)
-    {
-        (assets, , ) = stMatic.convertStMaticToMatic(shares_);
+    function convertToAssets(uint256 shares_) public view virtual override returns (uint256 assets) {
+        (assets,,) = stMatic.convertStMaticToMatic(shares_);
     }
 
-    function previewDeposit(uint256 assets_)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function previewDeposit(uint256 assets_) public view virtual override returns (uint256) {
         return convertToShares(assets_);
     }
 
-    function previewWithdraw(uint256 assets_)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function previewWithdraw(uint256 assets_) public view virtual override returns (uint256) {
         return convertToShares(assets_);
     }
 
-    function previewRedeem(uint256 shares_)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function previewRedeem(uint256 shares_) public view virtual override returns (uint256) {
         return convertToAssets(shares_);
     }
 
-    function previewMint(uint256 shares_)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function previewMint(uint256 shares_) public view virtual override returns (uint256) {
         return convertToAssets(shares_);
     }
 }

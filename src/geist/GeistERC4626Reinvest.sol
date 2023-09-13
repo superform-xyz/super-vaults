@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
@@ -39,13 +39,10 @@ contract GeistERC4626Reinvest is ERC4626 {
                             CONSTANTS
     //////////////////////////////////////////////////////////////*/
 
-    uint256 internal constant ACTIVE_MASK =
-        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFFFFFFFFFF;
-    uint256 internal constant FROZEN_MASK =
-        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDFFFFFFFFFFFFFF;
+    uint256 internal constant ACTIVE_MASK = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFFFFFFFFFF;
+    uint256 internal constant FROZEN_MASK = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDFFFFFFFFFFFFFF;
 
-    address public immutable spookySwap =
-        0xF491e7B69E4244ad4002BC14e878a34207E38c29;
+    address public immutable spookySwap = 0xF491e7B69E4244ad4002BC14e878a34207E38c29;
 
     /*//////////////////////////////////////////////////////////////
                         IMMUTABLES & VARIABLES
@@ -104,11 +101,7 @@ contract GeistERC4626Reinvest is ERC4626 {
                         R       EWARDS
     //////////////////////////////////////////////////////////////*/
 
-    function setRoute(
-        address token_,
-        address pair1_,
-        address pair2_
-    ) external {
+    function setRoute(address token_, address pair1_, address pair2_) external {
         if (msg.sender != manager) revert INVALID_ACCESS();
 
         SwapInfo = swapInfo(token_, pair1_, pair2_);
@@ -129,9 +122,11 @@ contract GeistERC4626Reinvest is ERC4626 {
             reinvestAmount = DexSwap.swap(
                 earned,
                 address(rewardToken), // from GEIST
-                SwapInfo.token, /// to intermediary token FTM (no direct pools)
-                SwapInfo.pair1 /// pairToken (pool)
+                SwapInfo.token,
+                /// to intermediary token FTM (no direct pools)
+                SwapInfo.pair1
             );
+            /// pairToken (pool)
         } else {
             rewardToken.approve(SwapInfo.pair1, earned);
 
@@ -139,18 +134,22 @@ contract GeistERC4626Reinvest is ERC4626 {
             uint256 swapTokenAmount = DexSwap.swap(
                 earned,
                 address(rewardToken), // from GEIST
-                SwapInfo.token, /// to intermediary token FTM (no direct pools)
-                SwapInfo.pair1 /// pairToken (pool)
+                SwapInfo.token,
+                /// to intermediary token FTM (no direct pools)
+                SwapInfo.pair1
             );
+            /// pairToken (pool)
 
             ERC20(SwapInfo.token).approve(SwapInfo.pair2, swapTokenAmount);
 
             reinvestAmount = DexSwap.swap(
                 swapTokenAmount,
                 SwapInfo.token, // from received FTM
-                address(asset), /// to target underlying of BaseWrapper Vault
-                SwapInfo.pair2 /// pairToken (pool)
+                address(asset),
+                /// to target underlying of BaseWrapper Vault
+                SwapInfo.pair2
             );
+            /// pairToken (pool)
         }
         if (reinvestAmount < minAmountOut_) {
             revert MIN_AMOUNT_ERROR();
@@ -158,11 +157,7 @@ contract GeistERC4626Reinvest is ERC4626 {
         afterDeposit(asset.balanceOf(address(this)), 0);
     }
 
-    function getRewardsAccrued()
-        public
-        view
-        returns (IMultiFeeDistribution.RewardData[] memory r)
-    {
+    function getRewardsAccrued() public view returns (IMultiFeeDistribution.RewardData[] memory r) {
         return rewards.claimableRewards(address(this));
     }
 
@@ -170,18 +165,20 @@ contract GeistERC4626Reinvest is ERC4626 {
                         ERC4626 OVERRIDES
     //////////////////////////////////////////////////////////////*/
 
-    function withdraw(
-        uint256 assets_,
-        address receiver_,
-        address owner_
-    ) public virtual override returns (uint256 shares) {
+    function withdraw(uint256 assets_, address receiver_, address owner_)
+        public
+        virtual
+        override
+        returns (uint256 shares)
+    {
         shares = previewWithdraw(assets_); // No need to check for rounding error, previewWithdraw rounds up.
 
         if (msg.sender != owner_) {
             uint256 allowed = allowance[owner_][msg.sender]; // Saves gas for limited approvals.
 
-            if (allowed != type(uint256).max)
+            if (allowed != type(uint256).max) {
                 allowance[owner_][msg.sender] = allowed - shares;
+            }
         }
 
         beforeWithdraw(assets_, shares);
@@ -194,16 +191,18 @@ contract GeistERC4626Reinvest is ERC4626 {
         lendingPool.withdraw(address(asset), assets_, receiver_);
     }
 
-    function redeem(
-        uint256 shares_,
-        address receiver_,
-        address owner_
-    ) public virtual override returns (uint256 assets) {
+    function redeem(uint256 shares_, address receiver_, address owner_)
+        public
+        virtual
+        override
+        returns (uint256 assets)
+    {
         if (msg.sender != owner_) {
             uint256 allowed = allowance[owner_][msg.sender]; // Saves gas for limited approvals.
 
-            if (allowed != type(uint256).max)
+            if (allowed != type(uint256).max) {
                 allowance[owner_][msg.sender] = allowed - shares_;
+            }
         }
 
         // Check for rounding error since we round down in previewRedeem.
@@ -223,10 +222,7 @@ contract GeistERC4626Reinvest is ERC4626 {
         return aToken.balanceOf(address(this));
     }
 
-    function afterDeposit(
-        uint256 assets_,
-        uint256 /*shares*/
-    ) internal virtual override {
+    function afterDeposit(uint256 assets_, uint256 /*shares*/ ) internal virtual override {
         /*//////////////////////////////////////////////////////////////
          Deposit assets into Aave
         //////////////////////////////////////////////////////////////*/
@@ -238,23 +234,14 @@ contract GeistERC4626Reinvest is ERC4626 {
         lendingPool.deposit(address(asset), assets_, address(this), 0);
     }
 
-    function maxDeposit(address)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function maxDeposit(address) public view virtual override returns (uint256) {
         // check if pool is paused
         if (lendingPool.paused()) {
             return 0;
         }
 
         // check if asset is paused
-        uint256 configData = lendingPool
-            .getReserveData(address(asset))
-            .configuration
-            .data;
+        uint256 configData = lendingPool.getReserveData(address(asset)).configuration.data;
         if (!(_getActive(configData) && !_getFrozen(configData))) {
             return 0;
         }
@@ -269,10 +256,7 @@ contract GeistERC4626Reinvest is ERC4626 {
         }
 
         // check if asset is paused
-        uint256 configData = lendingPool
-            .getReserveData(address(asset))
-            .configuration
-            .data;
+        uint256 configData = lendingPool.getReserveData(address(asset)).configuration.data;
         if (!(_getActive(configData) && !_getFrozen(configData))) {
             return 0;
         }
@@ -280,23 +264,14 @@ contract GeistERC4626Reinvest is ERC4626 {
         return type(uint256).max;
     }
 
-    function maxWithdraw(address owner_)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function maxWithdraw(address owner_) public view virtual override returns (uint256) {
         // check if pool is paused
         if (lendingPool.paused()) {
             return 0;
         }
 
         // check if asset is paused
-        uint256 configData = lendingPool
-            .getReserveData(address(asset))
-            .configuration
-            .data;
+        uint256 configData = lendingPool.getReserveData(address(asset)).configuration.data;
         if (!_getActive(configData)) {
             return 0;
         }
@@ -306,23 +281,14 @@ contract GeistERC4626Reinvest is ERC4626 {
         return cash < assetsBalance ? cash : assetsBalance;
     }
 
-    function maxRedeem(address owner_)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function maxRedeem(address owner_) public view virtual override returns (uint256) {
         // check if pool is paused
         if (lendingPool.paused()) {
             return 0;
         }
 
         // check if asset is paused
-        uint256 configData = lendingPool
-            .getReserveData(address(asset))
-            .configuration
-            .data;
+        uint256 configData = lendingPool.getReserveData(address(asset)).configuration.data;
         if (!_getActive(configData)) {
             return 0;
         }
@@ -337,21 +303,11 @@ contract GeistERC4626Reinvest is ERC4626 {
                     ERC20 METADATA GENERATION
     //////////////////////////////////////////////////////////////*/
 
-    function _vaultName(ERC20 asset_)
-        internal
-        view
-        virtual
-        returns (string memory vaultName)
-    {
+    function _vaultName(ERC20 asset_) internal view virtual returns (string memory vaultName) {
         vaultName = string.concat("ERC4626-Wrapped Geist-", asset_.symbol());
     }
 
-    function _vaultSymbol(ERC20 asset_)
-        internal
-        view
-        virtual
-        returns (string memory vaultSymbol)
-    {
+    function _vaultSymbol(ERC20 asset_) internal view virtual returns (string memory vaultSymbol) {
         vaultSymbol = string.concat("gs4626-", asset_.symbol());
     }
 

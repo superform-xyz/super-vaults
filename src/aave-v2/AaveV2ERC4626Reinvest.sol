@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
@@ -25,10 +25,8 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
                             CONSTANTS
     //////////////////////////////////////////////////////////////*/
 
-    uint256 internal constant ACTIVE_MASK =
-        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFFFFFFFFFF;
-    uint256 internal constant FROZEN_MASK =
-        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDFFFFFFFFFFFFFF;
+    uint256 internal constant ACTIVE_MASK = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFFFFFFFFFF;
+    uint256 internal constant FROZEN_MASK = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDFFFFFFFFFFFFFF;
 
     /*//////////////////////////////////////////////////////////////
                                 ERRORS
@@ -111,11 +109,7 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
     /// @param token_ address of intermediary token with high liquidity (no direct pools)
     /// @param pair1_ address of pairToken (pool) for first swap (rewardToken => high liquidity token)
     /// @param pair2_ address of pairToken (pool) for second swap (high liquidity token => asset)
-    function setRoute(
-        address token_,
-        address pair1_,
-        address pair2_
-    ) external {
+    function setRoute(address token_, address pair1_, address pair2_) external {
         if (msg.sender != manager) revert INVALID_ACCESS();
         SwapInfo = swapInfo(token_, pair1_, pair2_);
         rewardsSet = true;
@@ -127,11 +121,7 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
         /// @dev Claim rewards from AAVE-Fork
         address[] memory assets = new address[](1);
         assets[0] = address(aToken);
-        uint256 earned = rewards.claimRewards(
-            assets,
-            type(uint256).max,
-            address(this)
-        );
+        uint256 earned = rewards.claimRewards(assets, type(uint256).max, address(this));
 
         ERC20 rewardToken_ = ERC20(rewardToken);
         uint256 reinvestAmount;
@@ -139,33 +129,42 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
         /// If one swap needed (high liquidity pair) - set swapInfo.token0/token/pair2 to 0x
         /// @dev Swap AAVE-Fork token for asset
         if (SwapInfo.token == address(asset)) {
-            rewardToken_.approve(SwapInfo.pair1, earned); /// max approves address
+            rewardToken_.approve(SwapInfo.pair1, earned);
+            /// max approves address
 
             reinvestAmount = DexSwap.swap(
-                earned, /// REWARDS amount to swap
+                earned,
+                /// REWARDS amount to swap
                 rewardToken, // from REWARD-TOKEN
-                address(asset), /// to target underlying of this Vault
-                SwapInfo.pair1 /// pairToken (pool)
+                address(asset),
+                /// to target underlying of this Vault
+                SwapInfo.pair1
             );
+            /// pairToken (pool)
             /// If two swaps needed
         } else {
-            rewardToken_.approve(SwapInfo.pair1, type(uint256).max); /// max approves address
+            rewardToken_.approve(SwapInfo.pair1, type(uint256).max);
+            /// max approves address
 
             uint256 swapTokenAmount = DexSwap.swap(
                 earned,
                 rewardToken, // from AAVE-Fork
-                SwapInfo.token, /// to intermediary token with high liquidity (no direct pools)
-                SwapInfo.pair1 /// pairToken (pool)
+                SwapInfo.token,
+                /// to intermediary token with high liquidity (no direct pools)
+                SwapInfo.pair1
             );
+            /// pairToken (pool)
 
             ERC20(SwapInfo.token).approve(SwapInfo.pair2, swapTokenAmount);
 
             reinvestAmount = DexSwap.swap(
                 swapTokenAmount,
                 SwapInfo.token, // from received token
-                address(asset), /// to target underlying of this Vault
-                SwapInfo.pair2 /// pairToken (pool)
+                address(asset),
+                /// to target underlying of this Vault
+                SwapInfo.pair2
             );
+            /// pairToken (pool)
         }
         if (reinvestAmount < minAmountOut_) {
             revert MIN_AMOUNT_ERROR();
@@ -187,18 +186,20 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
     ///@param assets_ Amount of assets to withdraw
     ///@param receiver_ Address to send withdrawn assets to
     ///@param owner_ Address to burn shares from
-    function withdraw(
-        uint256 assets_,
-        address receiver_,
-        address owner_
-    ) public virtual override returns (uint256 shares) {
+    function withdraw(uint256 assets_, address receiver_, address owner_)
+        public
+        virtual
+        override
+        returns (uint256 shares)
+    {
         shares = previewWithdraw(assets_); // No need to check for rounding error, previewWithdraw rounds up.
 
         if (msg.sender != owner_) {
             uint256 allowed = allowance[owner_][msg.sender]; // Saves gas for limited approvals.
 
-            if (allowed != type(uint256).max)
+            if (allowed != type(uint256).max) {
                 allowance[owner_][msg.sender] = allowed - shares;
+            }
         }
 
         beforeWithdraw(assets_, shares);
@@ -215,16 +216,18 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
     ///@param shares_ Amount of shares to redeem
     ///@param receiver_ Address to send redeemed assets to
     ///@param owner_ Address to burn shares from
-    function redeem(
-        uint256 shares_,
-        address receiver_,
-        address owner_
-    ) public virtual override returns (uint256 assets) {
+    function redeem(uint256 shares_, address receiver_, address owner_)
+        public
+        virtual
+        override
+        returns (uint256 assets)
+    {
         if (msg.sender != owner_) {
             uint256 allowed = allowance[owner_][msg.sender]; // Saves gas for limited approvals.
 
-            if (allowed != type(uint256).max)
+            if (allowed != type(uint256).max) {
                 allowance[owner_][msg.sender] = allowed - shares_;
+            }
         }
 
         // Check for rounding error since we round down in previewRedeem.
@@ -250,10 +253,7 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
 
     ///@notice called by deposit and mint to deposit assets into Aave
     ///@param assets_ Amount of assets to deposit
-    function afterDeposit(
-        uint256 assets_,
-        uint256 /*shares_*/
-    ) internal virtual override {
+    function afterDeposit(uint256 assets_, uint256 /*shares_*/ ) internal virtual override {
         /// -----------------------------------------------------------------------
         /// Deposit assets into Aave
         /// -----------------------------------------------------------------------
@@ -266,23 +266,14 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
     }
 
     ///@notice returns max amount of assets that can be deposited
-    function maxDeposit(address)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function maxDeposit(address) public view virtual override returns (uint256) {
         // check if pool is paused
         if (lendingPool.paused()) {
             return 0;
         }
 
         // check if asset is paused
-        uint256 configData = lendingPool
-            .getReserveData(address(asset))
-            .configuration
-            .data;
+        uint256 configData = lendingPool.getReserveData(address(asset)).configuration.data;
         if (!(_getActive(configData) && !_getFrozen(configData))) {
             return 0;
         }
@@ -298,10 +289,7 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
         }
 
         // check if asset is paused
-        uint256 configData = lendingPool
-            .getReserveData(address(asset))
-            .configuration
-            .data;
+        uint256 configData = lendingPool.getReserveData(address(asset)).configuration.data;
         if (!(_getActive(configData) && !_getFrozen(configData))) {
             return 0;
         }
@@ -311,23 +299,14 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
 
     ///@notice returns max amount of assets that can be withdrawn
     ///@param owner_ Address to check max withdraw for
-    function maxWithdraw(address owner_)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function maxWithdraw(address owner_) public view virtual override returns (uint256) {
         // check if pool is paused
         if (lendingPool.paused()) {
             return 0;
         }
 
         // check if asset is paused
-        uint256 configData = lendingPool
-            .getReserveData(address(asset))
-            .configuration
-            .data;
+        uint256 configData = lendingPool.getReserveData(address(asset)).configuration.data;
         if (!_getActive(configData)) {
             return 0;
         }
@@ -339,23 +318,14 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
 
     ///@notice returns max amount of shares that can be redeemed
     ///@param owner_ Address to check max redeem for
-    function maxRedeem(address owner_)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function maxRedeem(address owner_) public view virtual override returns (uint256) {
         // check if pool is paused
         if (lendingPool.paused()) {
             return 0;
         }
 
         // check if asset is paused
-        uint256 configData = lendingPool
-            .getReserveData(address(asset))
-            .configuration
-            .data;
+        uint256 configData = lendingPool.getReserveData(address(asset)).configuration.data;
         if (!_getActive(configData)) {
             return 0;
         }
@@ -370,21 +340,11 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
                             ERC20 METADATA 
     //////////////////////////////////////////////////////////////*/
 
-    function _vaultName(ERC20 asset_)
-        internal
-        view
-        virtual
-        returns (string memory vaultName)
-    {
+    function _vaultName(ERC20 asset_) internal view virtual returns (string memory vaultName) {
         vaultName = string.concat("ERC4626-Wrapped Aave v2 ", asset_.symbol());
     }
 
-    function _vaultSymbol(ERC20 asset_)
-        internal
-        view
-        virtual
-        returns (string memory vaultSymbol)
-    {
+    function _vaultSymbol(ERC20 asset_) internal view virtual returns (string memory vaultSymbol) {
         vaultSymbol = string.concat("wa2-", asset_.symbol());
     }
 

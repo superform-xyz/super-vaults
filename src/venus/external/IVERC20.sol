@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
@@ -20,24 +20,13 @@ abstract contract IVERC20 is ERC20 {
 
     function accrualBlockNumber() external view virtual returns (uint256);
 
-    function redeemUnderlying(uint256 underlyingAmount)
-        external
-        virtual
-        returns (uint256);
+    function redeemUnderlying(uint256 underlyingAmount) external virtual returns (uint256);
 
     function balanceOfUnderlying(address) external virtual returns (uint256);
 
     function reserveFactorMantissa() external view virtual returns (uint256);
 
-    function interestRateModel()
-        external
-        view
-        virtual
-        returns (IVInterestRateModel);
+    function interestRateModel() external view virtual returns (IVInterestRateModel);
 
-    function initialExchangeRateMantissa()
-        external
-        view
-        virtual
-        returns (uint256);
+    function initialExchangeRateMantissa() external view virtual returns (uint256);
 }

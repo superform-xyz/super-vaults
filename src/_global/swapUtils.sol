@@ -1,25 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
 interface IPair {
-    function getReserves()
-        external
-        view
-        returns (
-            uint112 reserve0,
-            uint112 reserve1,
-            uint32 blockTimestampLast
-        );
+    function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast);
 
-    function swap(
-        uint256 amount0Out,
-        uint256 amount1Out,
-        address to,
-        bytes calldata data
-    ) external;
+    function swap(uint256 amount0Out, uint256 amount1Out, address to, bytes calldata data) external;
 }
 
 library DexSwap {
@@ -33,20 +21,16 @@ library DexSwap {
      * @param pairToken Pair used for swap
      * @return output amount
      */
-    function swap(
-        uint256 amountIn,
-        address fromToken,
-        address toToken,
-        address pairToken
-    ) internal returns (uint256) {
+    function swap(uint256 amountIn, address fromToken, address toToken, address pairToken) internal returns (uint256) {
         IPair pair = IPair(pairToken);
-        (address token0, ) = sortTokens(fromToken, toToken);
-        (uint112 reserve0, uint112 reserve1, ) = pair.getReserves();
+        (address token0,) = sortTokens(fromToken, toToken);
+        (uint112 reserve0, uint112 reserve1,) = pair.getReserves();
         if (token0 != fromToken) (reserve0, reserve1) = (reserve1, reserve0);
         uint256 amountOut1 = 0;
         uint256 amountOut2 = getAmountOut(amountIn, reserve0, reserve1);
-        if (token0 != fromToken)
+        if (token0 != fromToken) {
             (amountOut1, amountOut2) = (amountOut2, amountOut1);
+        }
         ERC20(fromToken).safeTransfer(address(pair), amountIn);
         pair.swap(amountOut1, amountOut2, address(this), new bytes(0));
         return amountOut2 > amountOut1 ? amountOut2 : amountOut1;
@@ -60,11 +44,7 @@ library DexSwap {
      * @param reserveOut size of output asset reserve
      * @return maximum output amount
      */
-    function getAmountOut(
-        uint256 amountIn,
-        uint256 reserveIn,
-        uint256 reserveOut
-    ) internal pure returns (uint256) {
+    function getAmountOut(uint256 amountIn, uint256 reserveIn, uint256 reserveOut) internal pure returns (uint256) {
         uint256 amountInWithFee = amountIn * 997;
         uint256 numerator = amountInWithFee * (reserveOut);
         uint256 denominator = (reserveIn * 1000) + (amountInWithFee);
@@ -78,11 +58,7 @@ library DexSwap {
      * @param tokenB address
      * @return sorted tokens
      */
-    function sortTokens(address tokenA, address tokenB)
-        internal
-        pure
-        returns (address, address)
-    {
+    function sortTokens(address tokenA, address tokenB) internal pure returns (address, address) {
         return tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
     }
 }

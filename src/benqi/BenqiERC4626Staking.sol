@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
@@ -62,10 +62,7 @@ contract BenqiERC4626Staking is ERC4626 {
                           INTERNAL HOOKS LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function _addLiquidity(uint256 wAvaxAmt_, uint256)
-        internal
-        returns (uint256 sAvaxAmt)
-    {
+    function _addLiquidity(uint256 wAvaxAmt_, uint256) internal returns (uint256 sAvaxAmt) {
         sAvaxAmt = sAVAX.submit{value: wAvaxAmt_}();
     }
 
@@ -75,11 +72,7 @@ contract BenqiERC4626Staking is ERC4626 {
 
     /// @notice Deposit AVAX. Standard ERC4626 deposit can only accept ERC20.
     /// @notice Vault's underlying is WAVAX (ERC20), Benqi expects AVAX (Native), we use WAVAX wraper
-    function deposit(uint256 assets_, address receiver_)
-        public
-        override
-        returns (uint256 shares)
-    {
+    function deposit(uint256 assets_, address receiver_) public override returns (uint256 shares) {
         if ((shares = previewDeposit(assets_)) == 0) revert ZERO_SHARES();
 
         asset.safeTransferFrom(msg.sender, address(this), assets_);
@@ -95,11 +88,7 @@ contract BenqiERC4626Staking is ERC4626 {
     }
 
     /// @notice Deposit function accepting WAVAX (Native) directly
-    function deposit(address receiver_)
-        public
-        payable
-        returns (uint256 shares)
-    {
+    function deposit(address receiver_) public payable returns (uint256 shares) {
         if ((shares = previewDeposit(msg.value)) == 0) revert ZERO_SHARES();
 
         shares = _addLiquidity(msg.value, shares);
@@ -110,11 +99,7 @@ contract BenqiERC4626Staking is ERC4626 {
     }
 
     /// @notice Mint amount of stEth / ERC4626-stEth
-    function mint(uint256 shares_, address receiver_)
-        public
-        override
-        returns (uint256 assets)
-    {
+    function mint(uint256 shares_, address receiver_) public override returns (uint256 assets) {
         assets = previewMint(shares_);
 
         asset.safeTransferFrom(msg.sender, address(this), assets);
@@ -129,19 +114,16 @@ contract BenqiERC4626Staking is ERC4626 {
     }
 
     /// @notice Withdraw amount of ETH represented by stEth / ERC4626-stEth. Output token is stEth.
-    function withdraw(
-        uint256 assets_,
-        address receiver_,
-        address owner_
-    ) public override returns (uint256 shares) {
+    function withdraw(uint256 assets_, address receiver_, address owner_) public override returns (uint256 shares) {
         /// @dev In base implementation, previeWithdraw allows to get sAvax amount to withdraw for virtual amount from convertToAssets
         shares = previewWithdraw(assets_);
 
         if (msg.sender != owner_) {
             uint256 allowed = allowance[owner_][msg.sender];
 
-            if (allowed != type(uint256).max)
+            if (allowed != type(uint256).max) {
                 allowance[owner_][msg.sender] = allowed - shares;
+            }
         }
 
         _burn(owner_, shares);
@@ -152,16 +134,13 @@ contract BenqiERC4626Staking is ERC4626 {
     }
 
     /// @notice Redeem exact amount of stEth / ERC4626-stEth from this Vault. Output token is stEth.
-    function redeem(
-        uint256 shares_,
-        address receiver,
-        address owner_
-    ) public override returns (uint256 assets) {
+    function redeem(uint256 shares_, address receiver, address owner_) public override returns (uint256 assets) {
         if (msg.sender != owner_) {
             uint256 allowed = allowance[owner_][msg.sender];
 
-            if (allowed != type(uint256).max)
+            if (allowed != type(uint256).max) {
                 allowance[owner_][msg.sender] = allowed - shares_;
+            }
         }
 
         if ((assets = previewRedeem(shares_)) == 0) revert ZERO_ASSETS();
@@ -179,76 +158,35 @@ contract BenqiERC4626Staking is ERC4626 {
     }
 
     /// @notice Calculate amount of stEth you get in exchange for ETH (WETH)
-    function convertToShares(uint256 assets_)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function convertToShares(uint256 assets_) public view virtual override returns (uint256) {
         return sAVAX.getSharesByPooledAvax(assets_);
     }
 
     /// @notice Calculate amount of ETH you get in exchange for stEth (ERC4626-stEth)
     /// @notice Used as "virtual" amount in base implementation. No ETH is ever withdrawn.
-    function convertToAssets(uint256 shares_)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function convertToAssets(uint256 shares_) public view virtual override returns (uint256) {
         return sAVAX.getPooledAvaxByShares(shares_);
     }
 
-    function previewDeposit(uint256 assets_)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function previewDeposit(uint256 assets_) public view virtual override returns (uint256) {
         return convertToShares(assets_);
     }
 
-    function previewWithdraw(uint256 assets_)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function previewWithdraw(uint256 assets_) public view virtual override returns (uint256) {
         return convertToShares(assets_);
     }
 
-    function previewRedeem(uint256 shares_)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function previewRedeem(uint256 shares_) public view virtual override returns (uint256) {
         return convertToAssets(shares_);
     }
 
-    function previewMint(uint256 shares_)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function previewMint(uint256 shares_) public view virtual override returns (uint256) {
         return convertToAssets(shares_);
     }
 
     /// @notice maxWithdraw is equal to shares balance only in base implementation
     /// @notice That is because output token is still stEth and not ETH+yield
-    function maxWithdraw(address owner_)
-        public
-        view
-        override
-        returns (uint256)
-    {
+    function maxWithdraw(address owner_) public view override returns (uint256) {
         return balanceOf[owner_];
     }
 

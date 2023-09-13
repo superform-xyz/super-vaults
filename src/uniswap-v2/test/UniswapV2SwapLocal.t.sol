@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
@@ -58,36 +58,23 @@ contract UniswapV2TestSwapLocalHost is Test {
 
         asset = token0;
 
-        address uniFactory_ = deployCode(
-            "src/uniswap-v2/build/UniswapV2Factory.json",
-            abi.encode(manager)
-        );
+        address uniFactory_ = deployCode("src/uniswap-v2/build/UniswapV2Factory.json", abi.encode(manager));
         uniFactory = IUniswapV2Factory(uniFactory_);
 
-        address uniRouter_ = deployCode(
-            "src/uniswap-v2/build/UniswapV2Router02.json",
-            abi.encode(uniFactory_, address(weth))
-        );
+        address uniRouter_ =
+            deployCode("src/uniswap-v2/build/UniswapV2Router02.json", abi.encode(uniFactory_, address(weth)));
         uniRouter = IUniswapV2Router(uniRouter_);
 
-        address oracleFactory_ = deployCode(
-            "src/uniswap-v2/build/UniswapV3Factory.json"
-        );
+        address oracleFactory_ = deployCode("src/uniswap-v2/build/UniswapV3Factory.json");
 
         oracleFactory = IUniswapV3Factory(oracleFactory_);
 
         /// @dev NOTE: deployCode() does not work with UniswapV3Pool?
         /// temp oracle is probably to be removed
-        address oracle_ = oracleFactory.createPool(
-            address(token0),
-            address(token1),
-            3000
-        );
+        address oracle_ = oracleFactory.createPool(address(token0), address(token1), 3000);
         oracle = IUniswapV3Pool(oracle_);
 
-        pair = IUniswapV2Pair(
-            uniFactory.createPair(address(token0), address(token1))
-        );
+        pair = IUniswapV2Pair(uniFactory.createPair(address(token0), address(token1)));
 
         /// @dev Default Vault for tests
         vault = new UniswapV2ERC4626Swap(
@@ -117,13 +104,7 @@ contract UniswapV2TestSwapLocalHost is Test {
             uint256 amount = 10000e18;
 
             /// @dev generate pseudo random address for 100 deposits into pool
-            address poolUser = address(
-                uint160(
-                    uint256(
-                        keccak256(abi.encodePacked(i, blockhash(block.number)))
-                    )
-                )
-            );
+            address poolUser = address(uint160(uint256(keccak256(abi.encodePacked(i, blockhash(block.number))))));
             vm.startPrank(poolUser);
 
             /// mint token0 and token1
@@ -143,14 +124,7 @@ contract UniswapV2TestSwapLocalHost is Test {
             token0.approve(address(uniRouter), randAmount);
             token1.approve(address(uniRouter), randAmount);
             uniRouter.addLiquidity(
-                address(token0),
-                address(token1),
-                randAmount,
-                randAmount,
-                1,
-                1,
-                poolUser,
-                block.timestamp
+                address(token0), address(token1), randAmount, randAmount, 1, 1, poolUser, block.timestamp
             );
             vm.stopPrank();
         }
@@ -161,13 +135,7 @@ contract UniswapV2TestSwapLocalHost is Test {
             uint256 amount = 1000e18;
 
             /// @dev generate pseudo random address for 100 deposits into pool
-            address poolUser = address(
-                uint160(
-                    uint256(
-                        keccak256(abi.encodePacked(i, blockhash(block.number)))
-                    )
-                )
-            );
+            address poolUser = address(uint160(uint256(keccak256(abi.encodePacked(i, blockhash(block.number))))));
 
             vm.startPrank(poolUser);
 
@@ -193,13 +161,7 @@ contract UniswapV2TestSwapLocalHost is Test {
             path[0] = address(token0);
             path[1] = address(token1);
 
-            uniRouter.swapExactTokensForTokens(
-                randAmount,
-                1,
-                path,
-                poolUser,
-                block.timestamp
-            );
+            uniRouter.swapExactTokensForTokens(randAmount, 1, path, poolUser, block.timestamp);
 
             vm.stopPrank();
         }
@@ -235,20 +197,14 @@ contract UniswapV2TestSwapLocalHost is Test {
         vm.startPrank(alice);
 
         uint256 aliceAssetsToWithdraw = vault.previewRedeem(aliceShareAmount);
-        uint256 aliceSharesToBurn = vault.previewWithdraw(
-            aliceAssetsToWithdraw
-        );
+        uint256 aliceSharesToBurn = vault.previewWithdraw(aliceAssetsToWithdraw);
 
         console.log("aliceSharesToBurn", aliceSharesToBurn);
 
         /// alice should be able to withdraw more assets than she deposited
         assertGe(aliceAssetsToWithdraw, previewRedeemInit);
 
-        uint256 sharesBurned = vault.withdraw(
-            aliceAssetsToWithdraw,
-            alice,
-            alice
-        );
+        uint256 sharesBurned = vault.withdraw(aliceAssetsToWithdraw, alice, alice);
 
         /// alice balance should be bigger than her initial balance (yield accrued)
         assertGe(asset.balanceOf(alice), startBalance);
@@ -300,14 +256,10 @@ contract UniswapV2TestSwapLocalHost is Test {
         assertGe(aliceBalanceOfShares, amountOfSharesToMint);
         assertEq(asset.balanceOf(alice), (startBalance - assetsToApprove));
 
-        uint256 aliceAssetsToWithdraw = vault.previewRedeem(
-            aliceBalanceOfShares
-        );
+        uint256 aliceAssetsToWithdraw = vault.previewRedeem(aliceBalanceOfShares);
         console.log("aliceAssetsToWithdraw", aliceAssetsToWithdraw);
 
-        uint256 aliceSharesToBurn = vault.previewWithdraw(
-            aliceAssetsToWithdraw
-        );
+        uint256 aliceSharesToBurn = vault.previewWithdraw(aliceAssetsToWithdraw);
         console.log("aliceSharesToBurn", aliceSharesToBurn);
 
         uint256 assetsReceived = vault.redeem(aliceBalanceOfShares, alice, alice);
@@ -345,9 +297,7 @@ contract UniswapV2TestSwapLocalHost is Test {
         vm.startPrank(alice);
 
         uint256 aliceAssetsToWithdraw = vault.previewRedeem(aliceShareBalance);
-        uint256 aliceSharesToBurn = vault.previewWithdraw(
-            aliceAssetsToWithdraw
-        );
+        uint256 aliceSharesToBurn = vault.previewWithdraw(aliceAssetsToWithdraw);
 
         console.log("aliceSharesToBurn", aliceSharesToBurn);
 
@@ -378,7 +328,7 @@ contract UniswapV2TestSwapLocalHost is Test {
         uint256 previewDepositInit = vault.previewDeposit(amount);
 
         console.log("previewDepositInit", previewDepositInit);
-        
+
         /// @dev calculate min shares out (shares expected to receive - slippage)
         uint256 minSharesOut = (previewDepositInit * 997) / 1000;
 
@@ -386,12 +336,8 @@ contract UniswapV2TestSwapLocalHost is Test {
 
         /// @dev Deposit
         asset.approve(address(vault), amount);
-        uint256 aliceShareAmount = vault.deposit(
-            amount,
-            alice,
-            minSharesOut
-        );
-        
+        uint256 aliceShareAmount = vault.deposit(amount, alice, minSharesOut);
+
         uint256 aliceShareBalance = vault.balanceOf(alice);
 
         /// alice should own eq or more shares than she requested for in previewDeposit()
@@ -409,9 +355,7 @@ contract UniswapV2TestSwapLocalHost is Test {
         vm.startPrank(alice);
 
         uint256 aliceAssetsToWithdraw = vault.previewRedeem(aliceShareAmount);
-        uint256 aliceSharesToBurn = vault.previewWithdraw(
-            aliceAssetsToWithdraw
-        );
+        uint256 aliceSharesToBurn = vault.previewWithdraw(aliceAssetsToWithdraw);
 
         console.log("aliceSharesToBurn", aliceSharesToBurn);
 
@@ -424,12 +368,7 @@ contract UniswapV2TestSwapLocalHost is Test {
         minAmountOut = (minAmountOut * 995) / 1000;
         console.log("minAmountOut", minAmountOut);
 
-        uint256 sharesBurned = vault.withdraw(
-            aliceAssetsToWithdraw,
-            alice,
-            alice,
-            minAmountOut
-        );
+        uint256 sharesBurned = vault.withdraw(aliceAssetsToWithdraw, alice, alice, minAmountOut);
 
         /// alice balance should be bigger than her initial balance (yield accrued)
         assertGe(asset.balanceOf(alice), startBalance);
@@ -444,7 +383,6 @@ contract UniswapV2TestSwapLocalHost is Test {
         console.log("assetsLeftover", aliceAssetsToWithdraw);
 
         sharesBurned = vault.withdraw(vault.balanceOf(alice), alice, alice);
-
     }
 
     function testProtectedMintRedeem() public {
@@ -479,24 +417,19 @@ contract UniswapV2TestSwapLocalHost is Test {
         assertGe(aliceBalanceOfShares, amountOfSharesToMint);
         assertEq(asset.balanceOf(alice), (startBalance - assetsToApprove));
 
-        uint256 aliceAssetsToWithdraw = vault.previewRedeem(
-            aliceBalanceOfShares
-        );
+        uint256 aliceAssetsToWithdraw = vault.previewRedeem(aliceBalanceOfShares);
         console.log("aliceAssetsToWithdraw", aliceAssetsToWithdraw);
 
-        uint256 aliceSharesToBurn = vault.previewWithdraw(
-            aliceAssetsToWithdraw
-        );
+        uint256 aliceSharesToBurn = vault.previewWithdraw(aliceAssetsToWithdraw);
         console.log("aliceSharesToBurn", aliceSharesToBurn);
 
         /// @dev Caller assumes trust in previewMint, under normal circumstances it should be queried few times or calculated fully off-chain
         uint256 minAmountOut = (aliceAssetsToWithdraw * 30) / 1000;
         uint256 assetsReceived = vault.redeem(aliceBalanceOfShares, alice, alice, minAmountOut);
-        
+
         console.log("assetsReceived", assetsReceived);
 
         assertGe(asset.balanceOf(alice), startBalance);
-        assertGe((startBalance + aliceAssetsToWithdraw), startBalance);      
+        assertGe((startBalance + aliceAssetsToWithdraw), startBalance);
     }
-
 }

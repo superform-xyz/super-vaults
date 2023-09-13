@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
@@ -64,8 +64,7 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
     /// @notice Pointer to swapInfo
     bytes public swapPath;
 
-    ISwapRouter public immutable swapRouter =
-        ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
+    ISwapRouter public immutable swapRouter = ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
 
     /// Compact struct to make two swaps (PancakeSwap on BSC)
     /// A => B (using pair1) then B => asset (of Wrapper) (using pair2)
@@ -109,24 +108,16 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
     /// @param poolFee1_ fee for first swap
     /// @param tokenMid_ token for first swap
     /// @param poolFee2_ fee for second swap
-    function setRoute(
-        uint24 poolFee1_,
-        address tokenMid_,
-        uint24 poolFee2_
-    ) external {
+    function setRoute(uint24 poolFee1_, address tokenMid_, uint24 poolFee2_) external {
         if (msg.sender != manager) revert INVALID_ACCESS_ERROR();
         if (poolFee1_ == 0) revert INVALID_FEE_ERROR();
-        if (poolFee2_ == 0 || tokenMid_ == address(0))
+        if (poolFee2_ == 0 || tokenMid_ == address(0)) {
             swapPath = abi.encodePacked(reward, poolFee1_, address(asset));
-        else
-            swapPath = abi.encodePacked(
-                reward,
-                poolFee1_,
-                tokenMid_,
-                poolFee2_,
-                address(asset)
-            );
-        ERC20(reward).approve(address(swapRouter), type(uint256).max); /// max approve
+        } else {
+            swapPath = abi.encodePacked(reward, poolFee1_, tokenMid_, poolFee2_, address(asset));
+        }
+        ERC20(reward).approve(address(swapRouter), type(uint256).max);
+        /// max approve
     }
 
     /// @notice Claims liquidity mining rewards from Compound and performs low-lvl swap with instant reinvesting
@@ -140,14 +131,13 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
         uint256 earned = ERC20(reward).balanceOf(address(this));
         uint256 reinvestAmount;
         /// @dev Swap rewards to asset
-        ISwapRouter.ExactInputParams memory params = ISwapRouter
-            .ExactInputParams({
-                path: swapPath,
-                recipient: msg.sender,
-                deadline: block.timestamp,
-                amountIn: earned,
-                amountOutMinimum: minAmountOut_
-            });
+        ISwapRouter.ExactInputParams memory params = ISwapRouter.ExactInputParams({
+            path: swapPath,
+            recipient: msg.sender,
+            deadline: block.timestamp,
+            amountIn: earned,
+            amountOutMinimum: minAmountOut_
+        });
 
         // Executes the swap.
         reinvestAmount = swapRouter.exactInput(params);
@@ -166,20 +156,14 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
         return cToken.viewUnderlyingBalanceOf(address(this));
     }
 
-    function beforeWithdraw(
-        uint256 assets_,
-        uint256 /*shares*/
-    ) internal virtual override {
+    function beforeWithdraw(uint256 assets_, uint256 /*shares*/ ) internal virtual override {
         uint256 errorCode = cToken.redeemUnderlying(assets_);
         if (errorCode != NO_ERROR) {
             revert COMPOUND_ERROR(errorCode);
         }
     }
 
-    function afterDeposit(
-        uint256 assets_,
-        uint256 /*shares*/
-    ) internal virtual override {
+    function afterDeposit(uint256 assets_, uint256 /*shares*/ ) internal virtual override {
         // approve to cToken
         asset.safeApprove(address(cToken), assets_);
         // deposit into cToken
@@ -199,12 +183,7 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
         return type(uint256).max;
     }
 
-    function maxWithdraw(address owner_)
-        public
-        view
-        override
-        returns (uint256)
-    {
+    function maxWithdraw(address owner_) public view override returns (uint256) {
         uint256 cash = cToken.getCash();
         uint256 assetsBalance = convertToAssets(balanceOf[owner_]);
         return cash < assetsBalance ? cash : assetsBalance;
@@ -221,21 +200,11 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
                         ERC20 METADATA
     //////////////////////////////////////////////////////////////*/
 
-    function _vaultName(ERC20 asset_)
-        internal
-        view
-        virtual
-        returns (string memory vaultName)
-    {
+    function _vaultName(ERC20 asset_) internal view virtual returns (string memory vaultName) {
         vaultName = string.concat("CompStratERC4626- ", asset_.symbol());
     }
 
-    function _vaultSymbol(ERC20 asset_)
-        internal
-        view
-        virtual
-        returns (string memory vaultSymbol)
-    {
+    function _vaultSymbol(ERC20 asset_) internal view virtual returns (string memory vaultSymbol) {
         vaultSymbol = string.concat("cS-", asset_.symbol());
     }
 }
