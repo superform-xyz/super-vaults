@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.21;
 
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {ERC4626} from "solmate/mixins/ERC4626.sol";
-import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
-import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
-import {IKycValidity} from "./interfaces/IKycValidity.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { ERC4626 } from "solmate/mixins/ERC4626.sol";
+import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
+import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
+import { IKycValidity } from "./interfaces/IKycValidity.sol";
 
 /// @title kycDAO4626
 /// @notice NFT-gated ERC-4626 using KYCDAO https://docs.kycdao.xyz/smartcontracts/evm/
@@ -87,7 +87,11 @@ contract kycDAO4626 is ERC4626 {
         afterDeposit(assets, shares_);
     }
 
-    function withdraw(uint256 assets_, address receiver_, address owner_)
+    function withdraw(
+        uint256 assets_,
+        address receiver_,
+        address owner_
+    )
         public
         virtual
         override
@@ -113,7 +117,11 @@ contract kycDAO4626 is ERC4626 {
         asset.safeTransfer(receiver_, assets_);
     }
 
-    function redeem(uint256 shares_, address receiver_, address owner_)
+    function redeem(
+        uint256 shares_,
+        address receiver_,
+        address owner_
+    )
         public
         virtual
         override

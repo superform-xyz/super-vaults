@@ -4,11 +4,11 @@ pragma solidity 0.8.21;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {StMATIC4626} from "../stMATIC.sol";
-import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
-import {IStMATIC} from "../interfaces/IStMATIC.sol";
-import {IWETH} from "../interfaces/IWETH.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { StMATIC4626 } from "../stMATIC.sol";
+import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
+import { IStMATIC } from "../interfaces/IStMATIC.sol";
+import { IWETH } from "../interfaces/IWETH.sol";
 
 contract stMaticTest is Test {
     uint256 public ethFork;

@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.21;
 
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {ERC4626} from "solmate/mixins/ERC4626.sol";
-import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { ERC4626 } from "solmate/mixins/ERC4626.sol";
+import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
 
-import {ILendingPool} from "./aave/ILendingPool.sol";
-import {IAaveMining} from "./aave/IAaveMining.sol";
+import { ILendingPool } from "./aave/ILendingPool.sol";
+import { IAaveMining } from "./aave/IAaveMining.sol";
 
-import {DexSwap} from "../_global/swapUtils.sol";
+import { DexSwap } from "../_global/swapUtils.sol";
 
 /// @title AaveV2ERC4626ReinvestIncentive
-/// @notice Extended implementation of yield-daddy AaveV2 wrapper with reinvesting logic - with incentives to call harvest() built-in
+/// @notice Extended implementation of yield-daddy AaveV2 wrapper with reinvesting logic - with incentives to call
+/// harvest() built-in
 /// @notice Reinvests rewards accrued for higher APY
 /// @author ZeroPoint Labs
 contract AaveV2ERC4626ReinvestIncentive is ERC4626 {
@@ -95,7 +96,9 @@ contract AaveV2ERC4626ReinvestIncentive is ERC4626 {
         ILendingPool lendingPool_,
         address rewardToken_,
         address manager_
-    ) ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_)) {
+    )
+        ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_))
+    {
         aToken = aToken_;
         rewards = rewards_;
         lendingPool = lendingPool_;
@@ -162,7 +165,11 @@ contract AaveV2ERC4626ReinvestIncentive is ERC4626 {
                       ERC4626 OVERRIDE FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
-    function withdraw(uint256 assets_, address receiver_, address owner_)
+    function withdraw(
+        uint256 assets_,
+        address receiver_,
+        address owner_
+    )
         public
         virtual
         override
@@ -188,7 +195,11 @@ contract AaveV2ERC4626ReinvestIncentive is ERC4626 {
         lendingPool.withdraw(address(asset), assets_, receiver_);
     }
 
-    function redeem(uint256 shares_, address receiver_, address owner_)
+    function redeem(
+        uint256 shares_,
+        address receiver_,
+        address owner_
+    )
         public
         virtual
         override

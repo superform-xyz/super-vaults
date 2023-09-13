@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.21;
 
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {ERC4626} from "solmate/mixins/ERC4626.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { ERC4626 } from "solmate/mixins/ERC4626.sol";
 
-import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
-import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
+import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
+import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
 
-import {IBToken} from "./interfaces/IBToken.sol";
-import {IFairLaunch} from "./interfaces/IFairLaunch.sol";
-import {IVaultConfig} from "./interfaces/IVaultConfig.sol";
-import {DexSwap} from "../_global/swapUtils.sol";
+import { IBToken } from "./interfaces/IBToken.sol";
+import { IFairLaunch } from "./interfaces/IFairLaunch.sol";
+import { IVaultConfig } from "./interfaces/IVaultConfig.sol";
+import { DexSwap } from "../_global/swapUtils.sol";
 
 /// @title Alpaca ERC4626 Wrapper
 /// @notice Extended AAVE-V2 logic using FairLaunch (and not AaveMining) for rewards distribution
@@ -126,7 +126,8 @@ contract AlpacaERC4626Reinvest is ERC4626 {
     /// @notice Harvest AlpacaToken rewards for all of the shares held by this vault
     /// @notice Amount gets reinvested into the vault after swap to the underlying
     /// @notice This implementation is sub-optimal for fair distribution of APY among shareholders
-    /// @notice Ie. Shareholder may request to withdraw his share before harvest accrued value, forfeiting his rewards boosted APY
+    /// @notice Ie. Shareholder may request to withdraw his share before harvest accrued value, forfeiting his rewards
+    /// boosted APY
     function harvest(uint256 minAmountOut_) external {
         staking.harvest(poolId);
 
@@ -246,7 +247,7 @@ contract AlpacaERC4626Reinvest is ERC4626 {
         uint256 vaultDebtVal = ibToken.vaultDebtVal();
         if (block.timestamp > ibToken.lastAccrueTime()) {
             uint256 interest = ibToken.pendingInterest(0);
-            uint256 toReserve = interest.mulDivDown(IVaultConfig(ibToken.config()).getReservePoolBps(), 10000);
+            uint256 toReserve = interest.mulDivDown(IVaultConfig(ibToken.config()).getReservePoolBps(), 10_000);
             reservePool = reservePool + (toReserve);
             vaultDebtVal = vaultDebtVal + (interest);
         }

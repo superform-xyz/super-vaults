@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.21;
 
-import {IUniswapV2Pair} from "../interfaces/IUniswapV2Pair.sol";
+import { IUniswapV2Pair } from "../interfaces/IUniswapV2Pair.sol";
 
 library SafeMath {
     function add(uint256 x, uint256 y) internal pure returns (uint256 z) {
@@ -22,7 +22,7 @@ library UniswapV2Library {
 
     /// @dev implementation details: https://blog.alphaventuredao.io/onesideduniswap/
     function getSwapAmount(uint256 resA, uint256 amt) internal pure returns (uint256) {
-        return (sqrt(resA.mul(resA.mul(3988009) + amt.mul(3988000))).sub(resA.mul(1997))) / 1994;
+        return (sqrt(resA.mul(resA.mul(3_988_009) + amt.mul(3_988_000))).sub(resA.mul(1997))) / 1994;
     }
 
     // returns sorted token addresses, used to handle return values from pairs sorted in this order
@@ -34,7 +34,11 @@ library UniswapV2Library {
 
     // fetches and sorts the reserves for a pair
     /// NOTE: Original lib implementation changed to accept pair address directly
-    function getReserves(address pair, address tokenA, address tokenB)
+    function getReserves(
+        address pair,
+        address tokenA,
+        address tokenB
+    )
         internal
         view
         returns (uint256 reserveA, uint256 reserveB)
@@ -52,7 +56,11 @@ library UniswapV2Library {
     }
 
     // given an input amount of an asset and pair reserves, returns the maximum output amount of the other asset
-    function getAmountOut(uint256 amountIn, uint256 reserveIn, uint256 reserveOut)
+    function getAmountOut(
+        uint256 amountIn,
+        uint256 reserveIn,
+        uint256 reserveOut
+    )
         internal
         pure
         returns (uint256 amountOut)
@@ -66,7 +74,11 @@ library UniswapV2Library {
     }
 
     // given an output amount of an asset and pair reserves, returns a required input amount of the other asset
-    function getAmountIn(uint256 amountOut, uint256 reserveIn, uint256 reserveOut)
+    function getAmountIn(
+        uint256 amountOut,
+        uint256 reserveIn,
+        uint256 reserveOut
+    )
         internal
         pure
         returns (uint256 amountIn)
@@ -79,7 +91,11 @@ library UniswapV2Library {
     }
 
     // performs chained getAmountOut calculations on any number of pairs
-    function getAmountsOut(address factory, uint256 amountIn, address[] memory path)
+    function getAmountsOut(
+        address factory,
+        uint256 amountIn,
+        address[] memory path
+    )
         internal
         view
         returns (uint256[] memory amounts)
@@ -94,7 +110,11 @@ library UniswapV2Library {
     }
 
     // performs chained getAmountIn calculations on any number of pairs
-    function getAmountsIn(address factory, uint256 amountOut, address[] memory path)
+    function getAmountsIn(
+        address factory,
+        uint256 amountOut,
+        address[] memory path
+    )
         internal
         view
         returns (uint256[] memory amounts)

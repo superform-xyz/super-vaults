@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.21;
 
-import {ERC4626} from "solmate/mixins/ERC4626.sol";
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
-import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import { ERC4626 } from "solmate/mixins/ERC4626.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
+import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
 
-import {IGUniPool} from "./utils/IGUniPool.sol";
-import {IUniswapV3Pool} from "v3-core/interfaces/IUniswapV3Pool.sol";
-import {TickMath} from "./utils/TickMath.sol";
-import {LiquidityAmounts, FullMath} from "./utils/LiquidityAmounts.sol";
-import {IArrakisRouter} from "./interfaces/IArrakisRouter.sol";
-import {IGauge} from "./interfaces/IGauge.sol";
+import { IGUniPool } from "./utils/IGUniPool.sol";
+import { IUniswapV3Pool } from "v3-core/interfaces/IUniswapV3Pool.sol";
+import { TickMath } from "./utils/TickMath.sol";
+import { LiquidityAmounts, FullMath } from "./utils/LiquidityAmounts.sol";
+import { IArrakisRouter } from "./interfaces/IArrakisRouter.sol";
+import { IGauge } from "./interfaces/IGauge.sol";
 
 /// @title ArrakisNonNativeVault
 /// @notice A vault for wrapping arrakis vault LP tokens and depositing them to the vault.
@@ -135,7 +135,8 @@ contract ArrakisNonNativeVault is ERC4626 {
         uint256 priceDecimals;
         uint256 liquidity;
         uint256 grossLiquidity;
-        /// @dev calculating non_asset price in terms on asset price to find virtual total assets in terms of deposit asset
+        /// @dev calculating non_asset price in terms on asset price to find virtual total assets in terms of deposit
+        /// asset
         if (zeroForOne) {
             /// @dev using sqrtPriceX96 * sqrtPriceX96 to calculate the price of non_asset in terms of asset
             priceDecimals = (((10 ** non_asset.decimals()) * X96) / ((sqrtRatioX96 * sqrtRatioX96) / X96));
@@ -161,7 +162,8 @@ contract ArrakisNonNativeVault is ERC4626 {
         (uint160 sqrtRatioX96,,,,,,) = arrakisVault.pool().slot0();
         uint256 priceDecimals = (1 ether * ((sqrtRatioX96 * sqrtRatioX96) / X96)) / X96;
 
-        /// @dev multiplying the price decimals by 1e12 as the price you get from sqrtRationX96 is 6 decimals but need 18 decimal value for this method
+        /// @dev multiplying the price decimals by 1e12 as the price you get from sqrtRationX96 is 6 decimals but need
+        /// 18 decimal value for this method
         (bool _direction, uint256 swapAmount) = getRebalanceParams(
             arrakisVault, zeroForOne ? underlyingAmount_ : 0, !zeroForOne ? underlyingAmount_ : 0, priceDecimals * 1e12
         );
@@ -180,7 +182,8 @@ contract ArrakisNonNativeVault is ERC4626 {
 
         _swap(params);
 
-        /// @notice we need a final swap to put the remaining amount of tokens into liquidity as before swap might have moved the liquidity positions needed.
+        /// @notice we need a final swap to put the remaining amount of tokens into liquidity as before swap might have
+        /// moved the liquidity positions needed.
         uint256 token0Bal = arrakisVault.token0().balanceOf(address(this));
         uint256 token1Bal = arrakisVault.token1().balanceOf(address(this));
         (uint256 amount0Used, uint256 amount1Used,) = arrakisVault.getMintAmounts(token0Bal, token1Bal);
@@ -270,30 +273,30 @@ contract ArrakisNonNativeVault is ERC4626 {
 
     /// @notice maximum amount of assets that can be deposited.
     function maxDeposit(address) public view override returns (uint256) {
-        if (arrakisVault.restrictedMintToggle() == 11111) return 0;
+        if (arrakisVault.restrictedMintToggle() == 11_111) return 0;
         return type(uint256).max;
     }
 
     /// @notice maximum amount of shares that can be minted.
     function maxMint(address) public view override returns (uint256) {
-        if (arrakisVault.restrictedMintToggle() == 11111) return 0;
+        if (arrakisVault.restrictedMintToggle() == 11_111) return 0;
         return type(uint256).max;
     }
 
     /// @notice Maximum amount of liquidity of the pool that can be withdrawn.
     function maxWithdraw(address owner) public view override returns (uint256) {
-        if (arrakisVault.restrictedMintToggle() == 11111) return 0;
+        if (arrakisVault.restrictedMintToggle() == 11_111) return 0;
         uint256 liquidityBalance = convertToAssets(balanceOf[owner]);
         return liquidityBalance;
     }
 
     /// @notice Maximum amount of shares that can be redeemed.
     function maxRedeem(address owner) public view override returns (uint256) {
-        if (arrakisVault.restrictedMintToggle() == 11111) return 0;
+        if (arrakisVault.restrictedMintToggle() == 11_111) return 0;
         return ERC20(address(this)).balanceOf(owner);
     }
 
-    receive() external payable {}
+    receive() external payable { }
 
     /*//////////////////////////////////////////////////////////////
                             UTILITIES METHODS
@@ -329,7 +332,12 @@ contract ArrakisNonNativeVault is ERC4626 {
                             SWAP LOGIC HELPERS
     //////////////////////////////////////////////////////////////*/
 
-    function getRebalanceParams(IGUniPool pool_, uint256 amount0In_, uint256 amount1In_, uint256 price18Decimals_)
+    function getRebalanceParams(
+        IGUniPool pool_,
+        uint256 amount0In_,
+        uint256 amount1In_,
+        uint256 price18Decimals_
+    )
         public
         view
         returns (bool direction, uint256 swapAmount)

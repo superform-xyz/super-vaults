@@ -2,14 +2,14 @@
 pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {ERC4626} from "solmate/mixins/ERC4626.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { ERC4626 } from "solmate/mixins/ERC4626.sol";
 
-import {GeistERC4626Reinvest} from "../GeistERC4626Reinvest.sol";
+import { GeistERC4626Reinvest } from "../GeistERC4626Reinvest.sol";
 
-import {IGLendingPool} from "../external/IGLendingPool.sol";
-import {IMultiFeeDistribution} from "../external/IMultiFeeDistribution.sol";
-import {DexSwap} from "../../_global/swapUtils.sol";
+import { IGLendingPool } from "../external/IGLendingPool.sol";
+import { IMultiFeeDistribution } from "../external/IMultiFeeDistribution.sol";
+import { DexSwap } from "../../_global/swapUtils.sol";
 
 contract GeistERC4626ReinvestTest is Test {
     ////////////////////////////////////////
@@ -57,8 +57,8 @@ contract GeistERC4626ReinvestTest is Test {
 
         alice = address(0x1);
         bob = address(0x2);
-        deal(address(asset), alice, 10000 ether);
-        deal(address(asset), bob, 10000 ether);
+        deal(address(asset), alice, 10_000 ether);
+        deal(address(asset), bob, 10_000 ether);
     }
 
     function testSingleDepositWithdraw() public {
@@ -142,16 +142,16 @@ contract GeistERC4626ReinvestTest is Test {
         asset.approve(address(vault), amount);
         uint256 aliceShareAmount = vault.deposit(amount, alice);
 
-        vm.roll(block.number + 1000000);
+        vm.roll(block.number + 1_000_000);
         /// @dev Deal 10000 GEIST reward tokens to the vault
-        deal(address(rewardToken), address(vault), 10000 ether);
+        deal(address(rewardToken), address(vault), 10_000 ether);
 
         assertEq(vault.totalSupply(), aliceShareAmount);
         assertEq(vault.totalAssets(), 100 ether);
         console.log("totalAssets before harvest", vault.totalAssets());
-        assertEq(ERC20(rewardToken).balanceOf(address(vault)), 10000 ether);
+        assertEq(ERC20(rewardToken).balanceOf(address(vault)), 10_000 ether);
 
-        vm.roll(block.number + 6492849);
+        vm.roll(block.number + 6_492_849);
         IMultiFeeDistribution.RewardData[] memory rewardData = vault.getRewardsAccrued();
 
         for (uint256 i = 0; i < rewardData.length; i++) {

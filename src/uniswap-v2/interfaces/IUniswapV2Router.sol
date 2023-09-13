@@ -10,7 +10,9 @@ interface IUniswapV2Router {
         uint256 amountBMin,
         address to,
         uint256 deadline
-    ) external returns (uint256 amountA, uint256 amountB);
+    )
+        external
+        returns (uint256 amountA, uint256 amountB);
 
     function addLiquidity(
         address tokenA,
@@ -21,7 +23,9 @@ interface IUniswapV2Router {
         uint256 amountBMin,
         address to,
         uint256 deadline
-    ) external returns (uint256 amountA, uint256 amountB, uint256 liquidity);
+    )
+        external
+        returns (uint256 amountA, uint256 amountB, uint256 liquidity);
 
     function swapTokensForExactTokens(
         uint256 amountOut,
@@ -29,7 +33,9 @@ interface IUniswapV2Router {
         address[] calldata path,
         address to,
         uint256 deadline
-    ) external returns (uint256[] memory amounts);
+    )
+        external
+        returns (uint256[] memory amounts);
 
     function swapExactTokensForTokens(
         uint256 amountIn,
@@ -37,5 +43,7 @@ interface IUniswapV2Router {
         address[] calldata path,
         address to,
         uint256 deadline
-    ) external returns (uint256[] memory amounts);
+    )
+        external
+        returns (uint256[] memory amounts);
 }

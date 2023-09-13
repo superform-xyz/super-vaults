@@ -4,22 +4,22 @@ pragma solidity 0.8.21;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {WETH} from "solmate/tokens/WETH.sol";
-import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { WETH } from "solmate/tokens/WETH.sol";
+import { MockERC20 } from "solmate/test/utils/mocks/MockERC20.sol";
 
-import {UniswapV2ERC4626Swap} from "../swap-built-in/UniswapV2ERC4626Swap.sol";
-import {UniswapV2ERC4626PoolFactory} from "../swap-built-in/UniswapV2ERC4626PoolFactory.sol";
-import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
+import { UniswapV2ERC4626Swap } from "../swap-built-in/UniswapV2ERC4626Swap.sol";
+import { UniswapV2ERC4626PoolFactory } from "../swap-built-in/UniswapV2ERC4626PoolFactory.sol";
+import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
 
-import {IUniswapV2Pair} from "../interfaces/IUniswapV2Pair.sol";
-import {IUniswapV2Router} from "../interfaces/IUniswapV2Router.sol";
+import { IUniswapV2Pair } from "../interfaces/IUniswapV2Pair.sol";
+import { IUniswapV2Router } from "../interfaces/IUniswapV2Router.sol";
 
 /// @dev Deploying localhost UniswapV2 contracts
-import {IUniswapV2Factory} from "../interfaces/IUniswapV2Factory.sol";
+import { IUniswapV2Factory } from "../interfaces/IUniswapV2Factory.sol";
 
-import {IUniswapV3Factory} from "../interfaces/IUniswapV3.sol";
-import {IUniswapV3Pool} from "../interfaces/IUniswapV3.sol";
+import { IUniswapV3Factory } from "../interfaces/IUniswapV3.sol";
+import { IUniswapV3Pool } from "../interfaces/IUniswapV3.sol";
 
 contract UniswapV2TestSwapLocalHost is Test {
     using FixedPointMathLib for uint256;
@@ -101,7 +101,7 @@ contract UniswapV2TestSwapLocalHost is Test {
 
     function seedLiquidity() public {
         for (uint256 i = 0; i < 100; i++) {
-            uint256 amount = 10000e18;
+            uint256 amount = 10_000e18;
 
             /// @dev generate pseudo random address for 100 deposits into pool
             address poolUser = address(uint160(uint256(keccak256(abi.encodePacked(i, blockhash(block.number))))));
@@ -228,7 +228,7 @@ contract UniswapV2TestSwapLocalHost is Test {
         /// as MINIMAL amount of shares. where function differs is that if user was to run calculations
         /// himself, directly against UniswapV2 Pair, calculations would output smaller number of assets
         /// required for that amountOfSharesToMint, that is because UniV2 Pair doesn't need to swapJoin()
-        uint256 amountOfSharesToMint = 44323816369031;
+        uint256 amountOfSharesToMint = 44_323_816_369_031;
         console.log("amountOfSharesToMint", amountOfSharesToMint);
         vm.startPrank(alice);
 
@@ -362,7 +362,8 @@ contract UniswapV2TestSwapLocalHost is Test {
         /// alice should be able to withdraw more assets than she deposited
         assertGe(aliceAssetsToWithdraw, amount);
 
-        /// @dev Here, caller assumes trust in previewRedeem, under normal circumstances it should be queried few times or calculated fully off-chain
+        /// @dev Here, caller assumes trust in previewRedeem, under normal circumstances it should be queried few times
+        /// or calculated fully off-chain
         uint256 minAmountOut = vault.previewRedeem(aliceShareBalance);
         /// TODO: Investiage why here we need to give higher slippage?
         minAmountOut = (minAmountOut * 995) / 1000;
@@ -386,7 +387,7 @@ contract UniswapV2TestSwapLocalHost is Test {
     }
 
     function testProtectedMintRedeem() public {
-        uint256 amountOfSharesToMint = 44323816369031;
+        uint256 amountOfSharesToMint = 44_323_816_369_031;
         console.log("amountOfSharesToMint", amountOfSharesToMint);
         vm.startPrank(alice);
 
@@ -399,7 +400,8 @@ contract UniswapV2TestSwapLocalHost is Test {
 
         asset.approve(address(vault), assetsToApprove);
 
-        /// @dev Caller assumes trust in previewMint, under normal circumstances it should be queried few times or calculated fully off-chain
+        /// @dev Caller assumes trust in previewMint, under normal circumstances it should be queried few times or
+        /// calculated fully off-chain
         uint256 minSharesOut = (amountOfSharesToMint * 997) / 1000;
         uint256 aliceAssetsMinted = vault.mint(amountOfSharesToMint, alice, minSharesOut);
 
@@ -423,7 +425,8 @@ contract UniswapV2TestSwapLocalHost is Test {
         uint256 aliceSharesToBurn = vault.previewWithdraw(aliceAssetsToWithdraw);
         console.log("aliceSharesToBurn", aliceSharesToBurn);
 
-        /// @dev Caller assumes trust in previewMint, under normal circumstances it should be queried few times or calculated fully off-chain
+        /// @dev Caller assumes trust in previewMint, under normal circumstances it should be queried few times or
+        /// calculated fully off-chain
         uint256 minAmountOut = (aliceAssetsToWithdraw * 30) / 1000;
         uint256 assetsReceived = vault.redeem(aliceBalanceOfShares, alice, alice, minAmountOut);
 

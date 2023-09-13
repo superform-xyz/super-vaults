@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.21;
 
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {ERC4626} from "solmate/mixins/ERC4626.sol";
-import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
-import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { ERC4626 } from "solmate/mixins/ERC4626.sol";
+import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
+import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
 
-import {IUniswapV2Pair} from "../interfaces/IUniswapV2Pair.sol";
-import {IUniswapV2Router} from "../interfaces/IUniswapV2Router.sol";
-import {UniswapV2Library} from "../utils/UniswapV2Library.sol";
+import { IUniswapV2Pair } from "../interfaces/IUniswapV2Pair.sol";
+import { IUniswapV2Router } from "../interfaces/IUniswapV2Router.sol";
+import { UniswapV2Library } from "../utils/UniswapV2Library.sol";
 
 /// @title UniswapV2WrapperERC4626
 /// @notice Custom ERC4626 Wrapper for UniV2 Pools without swapping, accepting token0/token1 transfers
@@ -16,10 +16,12 @@ import {UniswapV2Library} from "../utils/UniswapV2Library.sol";
 /// @notice Basic flow description:
 /// @notice Vault (ERC4626) - totalAssets() == lpToken of Uniswap Pool
 /// @notice deposit(assets) -> assets == lpToken amount to receive
-/// @notice - user needs to approve both A,B tokens in X,Y amounts (see getLiquidityAmounts / getAssetsAmounts functions)
+/// @notice - user needs to approve both A,B tokens in X,Y amounts (see getLiquidityAmounts / getAssetsAmounts
+/// functions)
 /// @notice - check is run if A,B covers requested Z amount of UniLP
 /// @notice - deposit() safeTransfersFrom A,B to _min Z amount of UniLP
-/// @notice withdraw() -> withdraws both A,B in accrued X+n,Y+n amounts, burns Z amount of UniLP (or Vault's LP, those are 1:1)
+/// @notice withdraw() -> withdraws both A,B in accrued X+n,Y+n amounts, burns Z amount of UniLP (or Vault's LP, those
+/// are 1:1)
 /// @dev https://v2.info.uniswap.org/pair/0xae461ca67b15dc8dc81ce7615e0320da1a9ab8d5 (DAI-USDC LP/PAIR on ETH)
 /// @author ZeroPoint Labs
 contract UniswapV2WrapperERC4626 is ERC4626 {
@@ -36,7 +38,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
     address public immutable manager;
 
     uint256 public slippage;
-    uint256 public immutable slippageFloat = 10000;
+    uint256 public immutable slippageFloat = 10_000;
 
     IUniswapV2Pair public immutable pair;
     IUniswapV2Router public immutable router;
@@ -67,7 +69,9 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         IUniswapV2Pair pair_,
         /// Pair address (to opti)
         uint256 slippage_
-    ) ERC4626(asset_, name_, symbol_) {
+    )
+        ERC4626(asset_, name_, symbol_)
+    {
         manager = msg.sender;
         pair = pair_;
         router = router_;
@@ -80,7 +84,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
     /// @param amount_ amount of slippage
     function setSlippage(uint256 amount_) external {
         require(msg.sender == manager, "owner");
-        require(amount_ < 10000 && amount_ > 9000);
+        require(amount_ < 10_000 && amount_ > 9000);
         /// 10% max slippage
         slippage = amount_;
     }
@@ -136,8 +140,10 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Deposit pre-calculated amount of token0/1 to get amount of UniLP (assets/getUniLpFromAssets_)
-    /// @notice REQUIREMENT: Calculate amount of assets and have enough of assets0/1 to cover this amount for LP requested (slippage!)
-    /// @param getUniLpFromAssets_ Assume caller called getAssetsAmounts() first to know amount of assets to approve to this contract
+    /// @notice REQUIREMENT: Calculate amount of assets and have enough of assets0/1 to cover this amount for LP
+    /// requested (slippage!)
+    /// @param getUniLpFromAssets_ Assume caller called getAssetsAmounts() first to know amount of assets to approve to
+    /// this contract
     /// @param receiver_ - Who will receive shares (Standard ERC4626)
     /// @return shares - Of this Vault (Standard ERC4626)
     function deposit(uint256 getUniLpFromAssets_, address receiver_) public override returns (uint256 shares) {
@@ -160,8 +166,10 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         afterDeposit(getUniLpFromAssets_, shares);
     }
 
-    /// @notice Mint amount of shares of this Vault (1:1 with UniLP). Requires precalculating amount of assets to approve to this contract.
-    /// @param sharesOfThisVault_ shares value == amount of Vault token (shares) to mint from requested lpToken. (1:1 with lpToken).
+    /// @notice Mint amount of shares of this Vault (1:1 with UniLP). Requires precalculating amount of assets to
+    /// approve to this contract.
+    /// @param sharesOfThisVault_ shares value == amount of Vault token (shares) to mint from requested lpToken. (1:1
+    /// with lpToken).
     /// @param receiver_ == receiver of shares (Vault token)
     /// @return assets == amount of LPTOKEN minted (1:1 with sharesOfThisVault_ input)
     function mint(uint256 sharesOfThisVault_, address receiver_) public override returns (uint256 assets) {
@@ -181,7 +189,8 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         afterDeposit(assets, sharesOfThisVault_);
     }
 
-    /// @notice Withdraw amount of token0/1 from burning Vault shares (1:1 with UniLP). Ie. User wants to burn 100 UniLP (underlying) for N worth of token0/1
+    /// @notice Withdraw amount of token0/1 from burning Vault shares (1:1 with UniLP). Ie. User wants to burn 100 UniLP
+    /// (underlying) for N worth of token0/1
     /// @param assets_ - amount of UniLP to burn (calculate amount of expected token0/1 from helper functions)
     /// @param receiver_ - Who will receive shares (Standard ERC4626)
     /// @param owner_ - Who owns shares (Standard ERC4626)
@@ -189,7 +198,11 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         uint256 assets_, // amount of underlying asset (pool Lp) to withdraw
         address receiver_,
         address owner_
-    ) public override returns (uint256 shares) {
+    )
+        public
+        override
+        returns (uint256 shares)
+    {
         shares = previewWithdraw(assets_);
 
         (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets_);
@@ -214,7 +227,8 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         token1.safeTransfer(receiver_, assets1);
     }
 
-    /// @notice Redeem amount of Vault shares (1:1 with UniLP) for arbitrary amount of token0/1. Calculate amount of expected token0/1 from helper functions.
+    /// @notice Redeem amount of Vault shares (1:1 with UniLP) for arbitrary amount of token0/1. Calculate amount of
+    /// expected token0/1 from helper functions.
     /// @param shares_ - amount of UniLP to burn
     /// @param receiver_ - Who will receive shares (Standard ERC4626)
     /// @param owner_ - Who owns shares (Standard ERC4626)

@@ -2,11 +2,11 @@
 pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {AlpacaERC4626Reinvest} from "../AlpacaERC4626Reinvest.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { AlpacaERC4626Reinvest } from "../AlpacaERC4626Reinvest.sol";
 
-import {IBToken} from "../interfaces/IBToken.sol";
-import {IFairLaunch} from "../interfaces/IFairLaunch.sol";
+import { IBToken } from "../interfaces/IBToken.sol";
+import { IFairLaunch } from "../interfaces/IFairLaunch.sol";
 
 /// Deployment addresses: https://github.com/alpaca-finance/bsc-alpaca-contract/blob/main/.mainnet.json
 contract AlpacaERC4626ReinvestTest is Test {
@@ -50,7 +50,7 @@ contract AlpacaERC4626ReinvestTest is Test {
         vm.prank(manager);
         vault.setRoute(address(asset), swapPair1, swapPair1);
 
-        deal(address(asset), alice, 100000000 ether);
+        deal(address(asset), alice, 100_000_000 ether);
     }
 
     function setVault(IBToken asset_, uint256 poolId_) public {
@@ -66,7 +66,7 @@ contract AlpacaERC4626ReinvestTest is Test {
     }
 
     function testDepositWithdraw() public {
-        uint256 amount = 10000 ether;
+        uint256 amount = 10_000 ether;
 
         vm.startPrank(alice);
 
@@ -86,7 +86,7 @@ contract AlpacaERC4626ReinvestTest is Test {
     }
 
     function testHarvest() public {
-        uint256 amount = 10000 ether;
+        uint256 amount = 10_000 ether;
 
         vm.startPrank(alice);
 
@@ -102,7 +102,7 @@ contract AlpacaERC4626ReinvestTest is Test {
         assertEq(vault.balanceOf(alice), aliceShareAmount);
 
         /// @dev temp hack to get ALPACA, impl should be tested more anyways
-        deal(address(alpacaToken), address(vault), 100000 ether);
+        deal(address(alpacaToken), address(vault), 100_000 ether);
         vault.harvest(1);
     }
 }

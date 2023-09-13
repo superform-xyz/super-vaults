@@ -2,12 +2,12 @@
 pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
-import {ERC20} from "solmate/tokens/ERC20.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
 
-import {BenqiNativeERC4626Reinvest} from "../BenqiNativeERC4626Reinvest.sol";
+import { BenqiNativeERC4626Reinvest } from "../BenqiNativeERC4626Reinvest.sol";
 
-import {IBEther} from "../external/IBEther.sol";
-import {IBComptroller} from "../external/IBComptroller.sol";
+import { IBEther } from "../external/IBEther.sol";
+import { IBComptroller } from "../external/IBComptroller.sol";
 
 contract BenqiNativeERC4626ReinvestTest is Test {
     address public manager;
@@ -30,7 +30,7 @@ contract BenqiNativeERC4626ReinvestTest is Test {
     constructor() {
         avaxFork = vm.createFork(AVAX_RPC_URL);
         vm.selectFork(avaxFork);
-        vm.roll(12649496);
+        vm.roll(12_649_496);
         manager = msg.sender;
         comptroller = IBComptroller(vm.envAddress("BENQI_COMPTROLLER"));
 
@@ -50,8 +50,8 @@ contract BenqiNativeERC4626ReinvestTest is Test {
         alice = address(0x1);
         bob = address(0x2);
         hoax(alice, 1000 ether);
-        deal(address(asset), alice, 100000000 ether);
-        deal(address(asset), bob, 100000000 ether);
+        deal(address(asset), alice, 100_000_000 ether);
+        deal(address(asset), bob, 100_000_000 ether);
     }
 
     function setVault(ERC20 underylyingAsset, ERC20 reward_, IBEther cToken_) public {
@@ -72,7 +72,7 @@ contract BenqiNativeERC4626ReinvestTest is Test {
     }
 
     function testDepositWithdraw() public {
-        uint256 amount = 1000000 ether;
+        uint256 amount = 1_000_000 ether;
 
         vm.startPrank(alice);
         uint256 aliceUnderlyingAmount = amount;
@@ -101,7 +101,7 @@ contract BenqiNativeERC4626ReinvestTest is Test {
         vm.prank(alice);
         uint256 aliceUnderlyingAmount = amount;
 
-        uint256 aliceShareAmount = vault.deposit{value: aliceUnderlyingAmount}(alice);
+        uint256 aliceShareAmount = vault.deposit{ value: aliceUnderlyingAmount }(alice);
 
         uint256 aliceAssetsToWithdraw = vault.convertToAssets(aliceShareAmount);
         assertEq(aliceUnderlyingAmount, aliceShareAmount);

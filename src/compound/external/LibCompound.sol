@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.21;
 
-import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
+import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
 
-import {ICERC20} from "./ICERC20.sol";
+import { ICERC20 } from "./ICERC20.sol";
 
 /// @notice Get up to date cToken data without mutating state.
 /// @notice Forked from Transmissions11 (https://github.com/transmissions11/libcompound) to upgrade version
@@ -30,7 +30,8 @@ library LibCompound {
 
         uint256 borrowRateMantissa = cToken.interestRateModel().getBorrowRate(totalCash, borrowsPrior, reservesPrior);
 
-        if (borrowRateMantissa > 0.0005e16) revert RATE_TOO_HIGH(); // Same as borrowRateMaxMantissa in CTokenInterfaces.sol
+        if (borrowRateMantissa > 0.0005e16) revert RATE_TOO_HIGH(); // Same as borrowRateMaxMantissa in
+            // CTokenInterfaces.sol
 
         uint256 interestAccumulated =
             borrowRateMantissa * block.number - accrualBlockNumberPrior.mulWadDown(borrowsPrior);

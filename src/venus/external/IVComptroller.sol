@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.21;
 
-import {IVERC20} from "./IVERC20.sol";
+import { IVERC20 } from "./IVERC20.sol";
 
 interface IVComptroller {
     struct VenusMarketState {

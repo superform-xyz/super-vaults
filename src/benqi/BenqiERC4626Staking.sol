@@ -1,19 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.21;
 
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {ERC4626} from "solmate/mixins/ERC4626.sol";
-import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
-import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { ERC4626 } from "solmate/mixins/ERC4626.sol";
+import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
+import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
 
-import {IPair, DexSwap} from "../_global/swapUtils.sol";
-import {IStakedAvax} from "./interfaces/IStakedAvax.sol";
-import {IWETH} from "../lido/interfaces/IWETH.sol";
+import { IPair, DexSwap } from "../_global/swapUtils.sol";
+import { IStakedAvax } from "./interfaces/IStakedAvax.sol";
+import { IWETH } from "../lido/interfaces/IWETH.sol";
 
 /// @title BenqiERC4626Staking
 /// @notice Accepts WAVAX to deposit into Benqi's staking contract - sAVAX, provides ERC4626 interface over token
-/// @notice Withdraw/Redeem to AVAX is not a part of this base contract. Withdraw/Redeem is only possible to sAVAX token.
-/// @notice Two possible ways of extending this contract: https://docs.benqi.fi/benqi-liquid-staking/staking-and-unstaking
+/// @notice Withdraw/Redeem to AVAX is not a part of this base contract. Withdraw/Redeem is only possible to sAVAX
+/// token.
+/// @notice Two possible ways of extending this contract:
+/// https://docs.benqi.fi/benqi-liquid-staking/staking-and-unstaking
 /// @notice In contrast to Lido's stETH, sAVAX can be Unstaked with 15d cooldown period.
 /// @author ZeroPoint Labs
 contract BenqiERC4626Staking is ERC4626 {
@@ -47,7 +49,10 @@ contract BenqiERC4626Staking is ERC4626 {
 
     /// @param wavax_ wavax address (Vault's underlying / deposit token)
     /// @param sAvax_ sAVAX (Benqi staking contract) address
-    constructor(address wavax_, address sAvax_)
+    constructor(
+        address wavax_,
+        address sAvax_
+    )
         // address tradeJoePool_
         ERC4626(ERC20(wavax_), "ERC4626-Wrapped sAVAX", "wLsAVAX")
     {
@@ -56,14 +61,14 @@ contract BenqiERC4626Staking is ERC4626 {
         wavax = IWETH(wavax_);
     }
 
-    receive() external payable {}
+    receive() external payable { }
 
     /*//////////////////////////////////////////////////////////////
                           INTERNAL HOOKS LOGIC
     //////////////////////////////////////////////////////////////*/
 
     function _addLiquidity(uint256 wAvaxAmt_, uint256) internal returns (uint256 sAvaxAmt) {
-        sAvaxAmt = sAVAX.submit{value: wAvaxAmt_}();
+        sAvaxAmt = sAVAX.submit{ value: wAvaxAmt_ }();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -115,7 +120,8 @@ contract BenqiERC4626Staking is ERC4626 {
 
     /// @notice Withdraw amount of ETH represented by stEth / ERC4626-stEth. Output token is stEth.
     function withdraw(uint256 assets_, address receiver_, address owner_) public override returns (uint256 shares) {
-        /// @dev In base implementation, previeWithdraw allows to get sAvax amount to withdraw for virtual amount from convertToAssets
+        /// @dev In base implementation, previeWithdraw allows to get sAvax amount to withdraw for virtual amount from
+        /// convertToAssets
         shares = previewWithdraw(assets_);
 
         if (msg.sender != owner_) {

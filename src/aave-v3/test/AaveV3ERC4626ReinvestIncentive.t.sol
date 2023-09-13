@@ -2,14 +2,14 @@
 pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {ERC4626} from "solmate/mixins/ERC4626.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { ERC4626 } from "solmate/mixins/ERC4626.sol";
 
-import {AaveV3ERC4626ReinvestIncentive} from "../AaveV3ERC4626ReinvestIncentive.sol";
-import {AaveV3ERC4626ReinvestIncentiveFactory} from "../AaveV3ERC4626ReinvestIncentiveFactory.sol";
+import { AaveV3ERC4626ReinvestIncentive } from "../AaveV3ERC4626ReinvestIncentive.sol";
+import { AaveV3ERC4626ReinvestIncentiveFactory } from "../AaveV3ERC4626ReinvestIncentiveFactory.sol";
 
-import {IRewardsController} from "../../aave-v3/external/IRewardsController.sol";
-import {IPool} from "../external/IPool.sol";
+import { IRewardsController } from "../../aave-v3/external/IRewardsController.sol";
+import { IPool } from "../external/IPool.sol";
 
 contract AaveV3ERC4626ReinvestIncentiveTest is Test {
     ////////////////////////////////////////
@@ -48,7 +48,7 @@ contract AaveV3ERC4626ReinvestIncentiveTest is Test {
         manager = msg.sender;
 
         vm.selectFork(avaxFork);
-        vm.rollFork(26800000);
+        vm.rollFork(26_800_000);
         rewards = IRewardsController(vm.envAddress("AAVEV3_AVAX_REWARDS"));
         lendingPool = IPool(vm.envAddress("AAVEV3_AVAX_LENDINGPOOL"));
 
@@ -89,8 +89,8 @@ contract AaveV3ERC4626ReinvestIncentiveTest is Test {
         bob = address(0x2);
         harvestCaller = address(0x3);
         /// TODO: Should be e18 by default
-        deal(address(asset), alice, 10000e6);
-        deal(address(asset), bob, 10000e6);
+        deal(address(asset), alice, 10_000e6);
+        deal(address(asset), bob, 10_000e6);
     }
 
     function testFactoryDeployDAIAndDeposit() public {

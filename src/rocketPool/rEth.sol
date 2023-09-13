@@ -1,23 +1,25 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.21;
 
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {ERC4626} from "solmate/mixins/ERC4626.sol";
-import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
-import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { ERC4626 } from "solmate/mixins/ERC4626.sol";
+import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
+import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
 
-import {IWETH} from "./interfaces/IWETH.sol";
-import {IRETH} from "./interfaces/IReth.sol";
-import {IRSTORAGE} from "./interfaces/IRstorage.sol";
-import {IRPROTOCOL} from "./interfaces/IRProtocol.sol";
-import {IRETHTOKEN} from "./interfaces/IRethToken.sol";
+import { IWETH } from "./interfaces/IWETH.sol";
+import { IRETH } from "./interfaces/IReth.sol";
+import { IRSTORAGE } from "./interfaces/IRstorage.sol";
+import { IRPROTOCOL } from "./interfaces/IRProtocol.sol";
+import { IRETHTOKEN } from "./interfaces/IRethToken.sol";
 
 /// @title rEthERC4626
 /// @notice Experimental RocketPool's rETH ERC4626 Wrapper
 /// @notice Preview functions allow to check current value of held rETH tokens denominated as ETH
 /// @notice Redemption is denominated in rETH as RocketPool doesn't allow to redeem ETH directly
-/// @notice Adapter can be used as a good base for building rETH oriented strategy (requires changes to shares calculation)
-/// @notice deposit & mint are "entry" functions to RocketPool - caller gives weth, caller receives wrEth, vault holds rEth
+/// @notice Adapter can be used as a good base for building rETH oriented strategy (requires changes to shares
+/// calculation)
+/// @notice deposit & mint are "entry" functions to RocketPool - caller gives weth, caller receives wrEth, vault holds
+/// rEth
 /// @notice withdraw & redeem are "exit" functions from rEthERC4626  - caller gives wrEth, caller receives rEth
 /// @author ZeroPoint Labs
 contract rEthERC4626 is ERC4626 {
@@ -92,7 +94,7 @@ contract rEthERC4626 is ERC4626 {
         rEthAsset = ERC20(rocketTokenRETHAddress);
     }
 
-    receive() external payable {}
+    receive() external payable { }
 
     /*//////////////////////////////////////////////////////////////
                         ERC4626 OVERRIDES
@@ -123,7 +125,7 @@ contract rEthERC4626 is ERC4626 {
         uint256 startBalance = rEthAsset.balanceOf(address(this));
 
         /// @dev Deposit eth to rocket pool
-        rEth.deposit{value: assets_}();
+        rEth.deposit{ value: assets_ }();
 
         /// @dev How much rEth are we receiving after deposit to the rocket pool
         /// NOTE: Prone to inflation attack on balance of this contract!!!
@@ -163,7 +165,7 @@ contract rEthERC4626 is ERC4626 {
         uint256 startBalance = rEthAsset.balanceOf(address(this));
 
         /// @dev Deposit eth to rocket pool
-        rEth.deposit{value: assets}();
+        rEth.deposit{ value: assets }();
 
         /// @dev How much rEth are we receiving after deposit to the rocket pool
         /// NOTE: Prone to inflation attack on balance of this contract!!!
@@ -175,11 +177,13 @@ contract rEthERC4626 is ERC4626 {
         emit Deposit(msg.sender, receiver_, assets, rEthReceived);
     }
 
-    /// @notice Withdraw in this implementation allows to receive rEth from wrEth, not redeem directly to ETH (from rEth)
+    /// @notice Withdraw in this implementation allows to receive rEth from wrEth, not redeem directly to ETH (from
+    /// rEth)
     /// @notice caller is asking for asset rETH/wrEth to withdraw, where asset is virtually equal to ETH-backing
     /// @notice rocket pool has no redeem-to-eth function
     /// @dev To allow withdrawing "assets" as ETH, directly from rEth, would require an exchange of rEth to ETH on a DEX
-    /// @dev That is considered an extension to the following implementation, which is strict ERC4626 wrapper over rEth token interface
+    /// @dev That is considered an extension to the following implementation, which is strict ERC4626 wrapper over rEth
+    /// token interface
     function withdraw(uint256 assets_, address receiver_, address owner_) public override returns (uint256 shares) {
         /// @dev Returns
         shares = previewWithdraw(assets_);
@@ -206,7 +210,8 @@ contract rEthERC4626 is ERC4626 {
     /// @notice Redeem rETH for burning wrEth shares (of this vault)
     /// @notice caller is asking to redeem wrEth shares to rEth, exit asset is rEth
     /// @dev To allow redeeming "assets" as ETH, directly from rEth, would require an exchange of rEth to ETH on a DEX
-    /// @dev That is considered an extension to the following implementation, which is strict ERC4626 wrapper over rEth token interface
+    /// @dev That is considered an extension to the following implementation, which is strict ERC4626 wrapper over rEth
+    /// token interface
     function redeem(uint256 shares_, address receiver_, address owner_) public override returns (uint256 assets) {
         if (msg.sender != owner_) {
             uint256 allowed = allowance[owner_][msg.sender];
@@ -225,7 +230,8 @@ contract rEthERC4626 is ERC4626 {
 
         emit Withdraw(msg.sender, receiver_, owner_, assets, shares_);
 
-        /// @dev Transfers amount of the requested rEth shares. We can transfer "shares" in this impl because of 1:1 ratio rEth:wrEth
+        /// @dev Transfers amount of the requested rEth shares. We can transfer "shares" in this impl because of 1:1
+        /// ratio rEth:wrEth
         rEthAsset.safeTransfer(receiver_, shares_);
     }
 

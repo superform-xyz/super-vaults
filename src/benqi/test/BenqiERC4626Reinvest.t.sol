@@ -2,12 +2,12 @@
 pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
-import {ERC20} from "solmate/tokens/ERC20.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
 
-import {BenqiERC4626Reinvest} from "../BenqiERC4626Reinvest.sol";
+import { BenqiERC4626Reinvest } from "../BenqiERC4626Reinvest.sol";
 
-import {IBERC20} from "../external/IBERC20.sol";
-import {IBComptroller} from "../external/IBComptroller.sol";
+import { IBERC20 } from "../external/IBERC20.sol";
+import { IBComptroller } from "../external/IBComptroller.sol";
 
 contract BenqiERC4626ReinvestTest is Test {
     address public manager;
@@ -55,8 +55,8 @@ contract BenqiERC4626ReinvestTest is Test {
 
         alice = address(0x1);
         bob = address(0x2);
-        deal(address(asset), alice, 100000000 ether);
-        deal(address(asset), bob, 100000000 ether);
+        deal(address(asset), alice, 100_000_000 ether);
+        deal(address(asset), bob, 100_000_000 ether);
 
         /// @dev Making contracts persistent
         vm.makePersistent(address(comptroller));
@@ -90,7 +90,7 @@ contract BenqiERC4626ReinvestTest is Test {
     }
 
     function testDepositWithdraw() public {
-        uint256 amount = 1000000 ether;
+        uint256 amount = 1_000_000 ether;
 
         vm.startPrank(alice);
         uint256 aliceUnderlyingAmount = amount;
@@ -115,7 +115,7 @@ contract BenqiERC4626ReinvestTest is Test {
 
     /// @dev Contracts require a careful selection of blocks to roll
     function testHarvest() public {
-        uint256 amount = 10000 ether;
+        uint256 amount = 10_000 ether;
 
         //////////////////////////////////////////////////////////////
 
