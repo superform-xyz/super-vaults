@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
@@ -13,11 +13,7 @@ library LibCompound {
 
     error RATE_TOO_HIGH();
 
-    function viewUnderlyingBalanceOf(ICERC20 cToken, address user)
-        internal
-        view
-        returns (uint256)
-    {
+    function viewUnderlyingBalanceOf(ICERC20 cToken, address user) internal view returns (uint256) {
         return cToken.balanceOf(user).mulWadDown(viewExchangeRate(cToken));
     }
 
@@ -32,29 +28,19 @@ library LibCompound {
         uint256 borrowsPrior = cToken.totalBorrows();
         uint256 reservesPrior = cToken.totalReserves();
 
-        uint256 borrowRateMantissa = cToken.interestRateModel().getBorrowRate(
-            totalCash,
-            borrowsPrior,
-            reservesPrior
-        );
+        uint256 borrowRateMantissa = cToken.interestRateModel().getBorrowRate(totalCash, borrowsPrior, reservesPrior);
 
         if (borrowRateMantissa > 0.0005e16) revert RATE_TOO_HIGH(); // Same as borrowRateMaxMantissa in CTokenInterfaces.sol
 
-        uint256 interestAccumulated = borrowRateMantissa *
-            block.number -
-            accrualBlockNumberPrior.mulWadDown(borrowsPrior);
+        uint256 interestAccumulated =
+            borrowRateMantissa * block.number - accrualBlockNumberPrior.mulWadDown(borrowsPrior);
 
-        uint256 totalReserves = cToken.reserveFactorMantissa().mulWadDown(
-            interestAccumulated
-        ) + reservesPrior;
+        uint256 totalReserves = cToken.reserveFactorMantissa().mulWadDown(interestAccumulated) + reservesPrior;
         uint256 totalBorrows = interestAccumulated + borrowsPrior;
         uint256 totalSupply = cToken.totalSupply();
 
-        return
-            totalSupply == 0
-                ? cToken.initialExchangeRateMantissa()
-                : totalCash +
-                    totalBorrows -
-                    totalReserves.divWadDown(totalSupply);
+        return totalSupply == 0
+            ? cToken.initialExchangeRateMantissa()
+            : totalCash + totalBorrows - totalReserves.divWadDown(totalSupply);
     }
 }

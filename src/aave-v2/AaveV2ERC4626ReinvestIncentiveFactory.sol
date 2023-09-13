@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
@@ -29,16 +29,10 @@ contract AaveV2ERC4626ReinvestIncentiveFactory {
     event HarvestERC4626Reinvest(AaveV2ERC4626ReinvestIncentive vault);
 
     /// @notice Emitted when minTokensToReinvest has been updated for a given aToken vault
-    event UpdateMinTokensToReinvest(
-        AaveV2ERC4626ReinvestIncentive vault,
-        uint256 minTokensToHarvest
-    );
+    event UpdateMinTokensToReinvest(AaveV2ERC4626ReinvestIncentive vault, uint256 minTokensToHarvest);
 
     /// @notice Emitted when reinvestRewardBps has been updated for a given aToken vault
-    event UpdateReinvestRewardBps(
-        AaveV2ERC4626ReinvestIncentive vault,
-        uint256 reinvestRewardBps
-    );
+    event UpdateReinvestRewardBps(AaveV2ERC4626ReinvestIncentive vault, uint256 reinvestRewardBps);
 
     /*//////////////////////////////////////////////////////////////
                                 ERRORS
@@ -78,12 +72,7 @@ contract AaveV2ERC4626ReinvestIncentiveFactory {
     /// @param lendingPool_ The Aave LendingPool contract
     /// @param rewardToken_ address of reward token from AAVE liquidity mining
     /// @param manager_ Manager for setting swap routes for harvest() per each vault
-    constructor(
-        IAaveMining aaveMining_,
-        ILendingPool lendingPool_,
-        address rewardToken_,
-        address manager_
-    ) {
+    constructor(IAaveMining aaveMining_, ILendingPool lendingPool_, address rewardToken_, address manager_) {
         manager = manager_;
 
         /// @dev in case any of those contracts changes, we need to redeploy factory
@@ -98,14 +87,9 @@ contract AaveV2ERC4626ReinvestIncentiveFactory {
 
     /// @notice Create a new AaveV2ERC4626 vault
     /// @param asset_ The base asset used by the vault
-    function createERC4626(ERC20 asset_)
-        external
-        virtual
-        returns (ERC4626 vault)
-    {
+    function createERC4626(ERC20 asset_) external virtual returns (ERC4626 vault) {
         if (msg.sender != manager) revert INVALID_ACCESS();
-        ILendingPool.ReserveData memory reserveData = lendingPool
-            .getReserveData(address(asset_));
+        ILendingPool.ReserveData memory reserveData = lendingPool.getReserveData(address(asset_));
         address aTokenAddress = reserveData.aTokenAddress;
         if (aTokenAddress == address(0)) {
             revert ATOKEN_NON_EXISTENT();
@@ -129,12 +113,7 @@ contract AaveV2ERC4626ReinvestIncentiveFactory {
     /// @param token_ The token to swap for
     /// @param pair1_ The address of the pool pair containing harvested token/middle token
     /// @param pair2_ The address of the pool pair containing middle token/base token
-    function setRoute(
-        AaveV2ERC4626ReinvestIncentive vault_,
-        address token_,
-        address pair1_,
-        address pair2_
-    ) external {
+    function setRoute(AaveV2ERC4626ReinvestIncentive vault_, address token_, address pair1_, address pair2_) external {
         if (msg.sender != manager) revert INVALID_ACCESS();
         vault_.setRoute(token_, pair1_, pair2_);
 
@@ -145,10 +124,7 @@ contract AaveV2ERC4626ReinvestIncentiveFactory {
      * @notice Update reinvest min threshold
      * @param newValue_ threshold
      */
-    function updateMinTokensToReinvest(
-        AaveV2ERC4626ReinvestIncentive vault_,
-        uint256 newValue_
-    ) external {
+    function updateMinTokensToReinvest(AaveV2ERC4626ReinvestIncentive vault_, uint256 newValue_) external {
         if (msg.sender != manager) revert INVALID_ACCESS();
         emit UpdateMinTokensToReinvest(vault_, newValue_);
         vault_.updateMinTokensToHarvest(newValue_);
@@ -158,10 +134,7 @@ contract AaveV2ERC4626ReinvestIncentiveFactory {
      * @notice Update reinvest min threshold
      * @param newValue_ threshold
      */
-    function updateReinvestRewardBps(
-        AaveV2ERC4626ReinvestIncentive vault_,
-        uint256 newValue_
-    ) external {
+    function updateReinvestRewardBps(AaveV2ERC4626ReinvestIncentive vault_, uint256 newValue_) external {
         if (msg.sender != manager) revert INVALID_ACCESS();
         if (newValue_ > 150) revert REWARD_TOO_HIGH();
         emit UpdateReinvestRewardBps(vault_, newValue_);
@@ -170,10 +143,7 @@ contract AaveV2ERC4626ReinvestIncentiveFactory {
 
     /// @notice Harvest rewards from specified vault
     /// @param minAmountOut_ Minimum amount of asset to reinvest
-    function harvestFrom(
-        AaveV2ERC4626ReinvestIncentive vault_,
-        uint256 minAmountOut_
-    ) external {
+    function harvestFrom(AaveV2ERC4626ReinvestIncentive vault_, uint256 minAmountOut_) external {
         vault_.harvest(minAmountOut_);
         emit HarvestERC4626Reinvest(vault_);
     }

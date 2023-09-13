@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 interface ICometRewards {
     struct RewardConfig {
@@ -7,6 +7,10 @@ interface ICometRewards {
         uint64 rescaleFactor;
         bool shouldUpscale;
     }
-    function rewardConfig(address comet) external view returns(address token, uint64 rescaleFactor, bool shouldUpscale);
-    function claim(address comet , address src, bool shouldAccrue) external;
+
+    function rewardConfig(address comet)
+        external
+        view
+        returns (address token, uint64 rescaleFactor, bool shouldUpscale);
+    function claim(address comet, address src, bool shouldAccrue) external;
 }

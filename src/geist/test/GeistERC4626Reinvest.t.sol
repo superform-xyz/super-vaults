@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
@@ -33,15 +33,12 @@ contract GeistERC4626ReinvestTest is Test {
     ERC20 public asset = ERC20(vm.envAddress("GEIST_DAI_ASSET"));
     ERC20 public aToken = ERC20(vm.envAddress("GEIST_DAI_ATOKEN"));
     ERC20 public rewardToken = ERC20(vm.envAddress("GEIST_REWARD_TOKEN"));
-    IMultiFeeDistribution public rewards =
-        IMultiFeeDistribution(vm.envAddress("GEIST_REWARDS_DISTRIBUTION"));
-    IGLendingPool public lendingPool =
-        IGLendingPool(vm.envAddress("GEIST_LENDINGPOOL"));
+    IMultiFeeDistribution public rewards = IMultiFeeDistribution(vm.envAddress("GEIST_REWARDS_DISTRIBUTION"));
+    IGLendingPool public lendingPool = IGLendingPool(vm.envAddress("GEIST_LENDINGPOOL"));
 
     ////////////////////////////////////////
 
     function setUp() public {
-
         /// 	48129547
         ftmFork = vm.createFork(FTM_RPC_URL, 48_129_547);
 
@@ -57,7 +54,7 @@ contract GeistERC4626ReinvestTest is Test {
             rewardToken,
             manager
         );
-    
+
         alice = address(0x1);
         bob = address(0x2);
         deal(address(asset), alice, 10000 ether);
@@ -79,22 +76,13 @@ contract GeistERC4626ReinvestTest is Test {
 
         // Expect exchange rate to be 1:1 on initial deposit.
         assertEq(aliceUnderlyingAmount, aliceShareAmount);
-        assertEq(
-            vault.previewWithdraw(aliceShareAmount),
-            aliceUnderlyingAmount
-        );
+        assertEq(vault.previewWithdraw(aliceShareAmount), aliceUnderlyingAmount);
         assertEq(vault.previewDeposit(aliceUnderlyingAmount), aliceShareAmount);
         assertEq(vault.totalSupply(), aliceShareAmount);
         assertEq(vault.totalAssets(), aliceUnderlyingAmount);
         assertEq(vault.balanceOf(alice), aliceShareAmount);
-        assertEq(
-            vault.convertToAssets(vault.balanceOf(alice)),
-            aliceUnderlyingAmount
-        );
-        assertEq(
-            asset.balanceOf(alice),
-            alicePreDepositBal - aliceUnderlyingAmount
-        );
+        assertEq(vault.convertToAssets(vault.balanceOf(alice)), aliceUnderlyingAmount);
+        assertEq(asset.balanceOf(alice), alicePreDepositBal - aliceUnderlyingAmount);
 
         vault.withdraw(aliceUnderlyingAmount, alice, alice);
 
@@ -120,22 +108,13 @@ contract GeistERC4626ReinvestTest is Test {
 
         // Expect exchange rate to be 1:1 on initial mint.
         assertEq(aliceShareAmount, aliceUnderlyingAmount);
-        assertEq(
-            vault.previewWithdraw(aliceShareAmount),
-            aliceUnderlyingAmount
-        );
+        assertEq(vault.previewWithdraw(aliceShareAmount), aliceUnderlyingAmount);
         assertEq(vault.previewDeposit(aliceUnderlyingAmount), aliceShareAmount);
         assertEq(vault.totalSupply(), aliceShareAmount);
         assertEq(vault.totalAssets(), aliceUnderlyingAmount);
         assertEq(vault.balanceOf(alice), aliceUnderlyingAmount);
-        assertEq(
-            vault.convertToAssets(vault.balanceOf(alice)),
-            aliceUnderlyingAmount
-        );
-        assertEq(
-            asset.balanceOf(alice),
-            alicePreDepositBal - aliceUnderlyingAmount
-        );
+        assertEq(vault.convertToAssets(vault.balanceOf(alice)), aliceUnderlyingAmount);
+        assertEq(asset.balanceOf(alice), alicePreDepositBal - aliceUnderlyingAmount);
 
         vault.redeem(aliceShareAmount, alice, alice);
 
@@ -175,7 +154,7 @@ contract GeistERC4626ReinvestTest is Test {
         vm.roll(block.number + 6492849);
         IMultiFeeDistribution.RewardData[] memory rewardData = vault.getRewardsAccrued();
 
-        for (uint i = 0; i < rewardData.length; i++) {
+        for (uint256 i = 0; i < rewardData.length; i++) {
             address tok = rewardData[i].token;
             uint256 amt = rewardData[i].amount;
             console.log("tok", tok, "amt", amt);

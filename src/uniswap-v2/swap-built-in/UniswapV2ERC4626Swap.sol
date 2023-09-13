@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
@@ -98,10 +98,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
     }
 
     /// @notice Remove liquidity from the underlying UniswapV2Pair. Receive both token0 and token1 on the Vault address.
-    function _liquidityRemove(uint256, uint256 shares_)
-        internal
-        returns (uint256 assets0, uint256 assets1)
-    {
+    function _liquidityRemove(uint256, uint256 shares_) internal returns (uint256 assets0, uint256 assets1) {
         /// @dev Values are sorted because we sort if t0/t1 == asset at runtime
         (assets0, assets1) = getAssetsAmounts(shares_);
 
@@ -112,42 +109,41 @@ contract UniswapV2ERC4626Swap is ERC4626 {
             address(token0),
             address(token1),
             shares_,
-            assets0 - _getSlippage(assets0), /// NOTE: No MEV protection, only ensuring execution within certain range to avoid reverts
-            assets1 - _getSlippage(assets1), /// NOTE: No MEV protection, only ensuring execution within certain range to avoid reverts
+            assets0 - _getSlippage(assets0),
+            /// NOTE: No MEV protection, only ensuring execution within certain range to avoid reverts
+            assets1 - _getSlippage(assets1),
+            /// NOTE: No MEV protection, only ensuring execution within certain range to avoid reverts
             address(this),
-            block.timestamp + 100 /// temp implementation
+            block.timestamp + 100
         );
+        /// temp implementation
     }
 
     /// @notice Add liquidity to the underlying UniswapV2Pair. Send both token0 and token1 from the Vault address.
-    function _liquidityAdd(uint256 assets0_, uint256 assets1_)
-        internal
-        returns (uint256 li)
-    {
+    function _liquidityAdd(uint256 assets0_, uint256 assets1_) internal returns (uint256 li) {
         /// temp should be more elegant. better than max approve though
         token0.approve(address(router), assets0_);
         token1.approve(address(router), assets1_);
 
         /// temp implementation, we should call directly on a pair
-        (, , li) = router.addLiquidity(
+        (,, li) = router.addLiquidity(
             address(token0),
             address(token1),
             assets0_,
             assets1_,
-            assets0_ - _getSlippage(assets0_), /// NOTE: No MEV protection, only ensuring execution within certain range to avoid reverts
-            assets1_ - _getSlippage(assets1_), /// NOTE: No MEV protection, only ensuring execution within certain range to avoid reverts
+            assets0_ - _getSlippage(assets0_),
+            /// NOTE: No MEV protection, only ensuring execution within certain range to avoid reverts
+            assets1_ - _getSlippage(assets1_),
+            /// NOTE: No MEV protection, only ensuring execution within certain range to avoid reverts
             address(this),
-            block.timestamp + 100 /// temp implementation
+            block.timestamp + 100
         );
+        /// temp implementation
     }
 
     /// @notice Non-ERC4626 deposit function taking additional protection parameters for execution
     /// @dev Caller can calculate minSharesOut using previewDeposit function range of outputs
-    function deposit(
-        uint256 assets_,
-        address receiver_,
-        uint256 minSharesOut_
-    ) public returns (uint256 shares) {
+    function deposit(uint256 assets_, address receiver_, uint256 minSharesOut_) public returns (uint256 shares) {
         asset.safeTransferFrom(msg.sender, address(this), assets_);
 
         /// @dev caller calculates minSwapOut from uniswapV2Library off-chain, reverts if swap is manipulated
@@ -168,11 +164,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
     /// @dev unsecure deposit function, trusting external asset reserves
     /// @dev Standard ERC4626 deposit is prone to manipulation because of no minSharesOut argument allowed
     /// @dev Caller can calculate shares through previewDeposit and trust previewDeposit returned value to revert here
-    function deposit(uint256 assets_, address receiver_)
-        public
-        override
-        returns (uint256 shares)
-    {
+    function deposit(uint256 assets_, address receiver_) public override returns (uint256 shares) {
         /// @dev can be manipulated before making deposit() call
         /// NOTE: Re-think if calling this after _swapJoin() and _liquidityAdd() is better
         /// NOTE: What if we would call two times and check delta between outputs? May be just another weak validation
@@ -209,11 +201,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
     }
 
     /// @notice Non-ERC4626 mint function taking additional protection parameters for execution
-    function mint(
-        uint256 shares_,
-        address receiver_,
-        uint256 minSharesOut_
-    ) public returns (uint256 assets) {
+    function mint(uint256 shares_, address receiver_, uint256 minSharesOut_) public returns (uint256 assets) {
         assets = previewMint(shares_);
 
         asset.safeTransferFrom(msg.sender, address(this), assets);
@@ -232,11 +220,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
 
     /// @notice mint exact amount of this Vault shares and effectivley UniswapV2Pair shares (1:1 relation)
     /// @dev Requires caller to have a prior knowledge of what amount of `assets` to approve (use this contract helper functions)
-    function mint(uint256 shares_, address receiver_)
-        public
-        override
-        returns (uint256 assets)
-    {
+    function mint(uint256 shares_, address receiver_) public override returns (uint256 assets) {
         assets = previewMint(shares_);
 
         asset.safeTransferFrom(msg.sender, address(this), assets);
@@ -255,28 +239,26 @@ contract UniswapV2ERC4626Swap is ERC4626 {
 
     /// @notice Non-ERC4626 withdraw function taking additional protection parameters for execution
     /// @dev Caller specifies minAmountOut_ of this Vault's underlying to receive for burning Vault's shares (and UniswapV2Pair shares)
-    function withdraw(
-        uint256 assets_,
-        address receiver_,
-        address owner_,
-        uint256 minAmountOut_ /// @dev calculated off-chain, "secure" withdraw function.
-    ) public returns (uint256 shares) {
+    function withdraw(uint256 assets_, address receiver_, address owner_, uint256 minAmountOut_)
+        /// @dev calculated off-chain, "secure" withdraw function.
+        public
+        returns (uint256 shares)
+    {
         shares = previewWithdraw(assets_);
 
         if (msg.sender != owner_) {
             uint256 allowed = allowance[owner_][msg.sender];
 
-            if (allowed != type(uint256).max)
+            if (allowed != type(uint256).max) {
                 allowance[owner_][msg.sender] = allowed - shares;
+            }
         }
 
         (uint256 assets0, uint256 assets1) = _liquidityRemove(assets_, shares);
 
         _burn(owner_, shares);
 
-        uint256 amount = asset == token0
-            ? _swapExit(assets1) + assets0
-            : _swapExit(assets0) + assets1;
+        uint256 amount = asset == token0 ? _swapExit(assets1) + assets0 : _swapExit(assets0) + assets1;
 
         /// @dev Protected amountOut check
         if (amount < minAmountOut_) revert NOT_MIN_AMOUNT_OUT();
@@ -287,18 +269,15 @@ contract UniswapV2ERC4626Swap is ERC4626 {
     }
 
     /// @notice Receive amount of `assets` of underlying token of this Vault (token0 or token1 of underlying UniswapV2Pair)
-    function withdraw(
-        uint256 assets_,
-        address receiver_,
-        address owner_
-    ) public override returns (uint256 shares) {
+    function withdraw(uint256 assets_, address receiver_, address owner_) public override returns (uint256 shares) {
         shares = previewWithdraw(assets_);
 
         if (msg.sender != owner_) {
             uint256 allowed = allowance[owner_][msg.sender];
 
-            if (allowed != type(uint256).max)
+            if (allowed != type(uint256).max) {
                 allowance[owner_][msg.sender] = allowed - shares;
+            }
         }
 
         (uint256 assets0, uint256 assets1) = _liquidityRemove(assets_, shares);
@@ -306,9 +285,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         _burn(owner_, shares);
 
         /// @dev ideally contract for token0/1 should know what assets amount to use without conditional checks, gas overhead
-        uint256 amount = asset == token0
-            ? _swapExit(assets1) + assets0
-            : _swapExit(assets0) + assets1;
+        uint256 amount = asset == token0 ? _swapExit(assets1) + assets0 : _swapExit(assets0) + assets1;
 
         /// NOTE: This is a weak check anyways. previews can be manipulated.
         /// NOTE: If enabled, withdraws() which didn't accrue enough of the yield to cover deposit's _swapJoin() will fail
@@ -322,17 +299,17 @@ contract UniswapV2ERC4626Swap is ERC4626 {
 
     /// @notice Non-ERC4626 redeem function taking additional protection parameters for execution
     /// @dev Caller needs to know the amount of minAmountOut to receive for burning amount of shares beforehand
-    function redeem(
-        uint256 shares_,
-        address receiver_,
-        address owner_,
-        uint256 minAmountOut_ /// @dev calculated off-chain, "secure" withdraw function.
-    ) public returns (uint256 assets) {
+    function redeem(uint256 shares_, address receiver_, address owner_, uint256 minAmountOut_)
+        /// @dev calculated off-chain, "secure" withdraw function.
+        public
+        returns (uint256 assets)
+    {
         if (msg.sender != owner_) {
             uint256 allowed = allowance[owner_][msg.sender];
 
-            if (allowed != type(uint256).max)
+            if (allowed != type(uint256).max) {
                 allowance[owner_][msg.sender] = allowed - shares_;
+            }
         }
 
         if ((assets = previewRedeem(shares_)) == 0) revert ZERO_ASSETS();
@@ -341,9 +318,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
 
         _burn(owner_, shares_);
 
-        uint256 amount = asset == token0
-            ? _swapExit(assets1) + assets0
-            : _swapExit(assets0) + assets1;
+        uint256 amount = asset == token0 ? _swapExit(assets1) + assets0 : _swapExit(assets0) + assets1;
 
         /// @dev Protected amountOut check
         if (amount < minAmountOut_) revert NOT_MIN_AMOUNT_OUT();
@@ -354,16 +329,13 @@ contract UniswapV2ERC4626Swap is ERC4626 {
     }
 
     /// @notice Burn amount of 'shares' of this Vault (and UniswapV2Pair shares) to receive some amount of underlying token of this vault
-    function redeem(
-        uint256 shares_,
-        address receiver_,
-        address owner
-    ) public override returns (uint256 assets) {
+    function redeem(uint256 shares_, address receiver_, address owner) public override returns (uint256 assets) {
         if (msg.sender != owner) {
             uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
 
-            if (allowed != type(uint256).max)
+            if (allowed != type(uint256).max) {
                 allowance[owner][msg.sender] = allowed - shares_;
+            }
         }
 
         // Check for rounding error since we round down in previewRedeem.
@@ -374,9 +346,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         _burn(owner, shares_);
 
         /// @dev ideally contract for token0/1 should know what assets amount to use without conditional checks, gas overhead
-        uint256 amount = asset == token0
-            ? _swapExit(assets1) + assets0
-            : _swapExit(assets0) + assets1;
+        uint256 amount = asset == token0 ? _swapExit(assets1) + assets0 : _swapExit(assets0) + assets1;
 
         /// NOTE: See note in withdraw()
         // require(amount >= assets, "ASSETS_AMOUNT_OUT");
@@ -396,65 +366,37 @@ contract UniswapV2ERC4626Swap is ERC4626 {
     }
 
     /// @notice for this many asset (ie token0) we get this many shares
-    function previewDeposit(uint256 assets_)
-        public
-        view
-        override
-        returns (uint256 shares)
-    {
+    function previewDeposit(uint256 assets_) public view override returns (uint256 shares) {
         return getSharesFromAssets(assets_);
     }
 
     /// @notice for this many shares/uniLp we need to pay at least this many assets
     /// @dev adds slippage for over-approving asset to cover possible reserves fluctuation. value is returned to the user in full
-    function previewMint(uint256 shares_)
-        public
-        view
-        override
-        returns (uint256 assets)
-    {
+    function previewMint(uint256 shares_) public view override returns (uint256 assets) {
         /// NOTE: Ensure this covers liquidity requested for a block!
         assets = mintAssets(shares_);
     }
 
     /// @notice how many shares of this wrapper LP we need to burn to get this amount of token0 assets
-    function previewWithdraw(uint256 assets_)
-        public
-        view
-        override
-        returns (uint256 shares)
-    {
+    function previewWithdraw(uint256 assets_) public view override returns (uint256 shares) {
         return getSharesFromAssets(assets_);
     }
 
-    function previewRedeem(uint256 shares_)
-        public
-        view
-        override
-        returns (uint256 assets)
-    {
+    function previewRedeem(uint256 shares_) public view override returns (uint256 assets) {
         /// NOTE: Because we add slipage for mint() here it means extra funds to redeemer.
         return redeemAssets(shares_);
     }
 
     /// I am burning SHARES, how much of (virtual) ASSETS (tokenX) do I get (as sum of both tokens)
-    function convertToAssets(uint256 shares_)
-        public
-        view
-        override
-        returns (uint256 assets)
-    {
+    function convertToAssets(uint256 shares_) public view override returns (uint256 assets) {
         assets = redeemAssets(shares_);
     }
 
     /// @notice calculate value of shares of this vault as the sum of t0/t1 of UniV2 pair simulated as t0 or t1 total amount after swap
     /// @notice This is vulnerable to manipulation of getReserves!
     function mintAssets(uint256 shares_) public view returns (uint256 assets) {
-        (uint256 reserveA, uint256 reserveB) = UniswapV2Library.getReserves(
-            address(pair),
-            address(token0),
-            address(token1)
-        );
+        (uint256 reserveA, uint256 reserveB) =
+            UniswapV2Library.getReserves(address(pair), address(token0), address(token1));
         /// shares of uni pair contract
         uint256 pairSupply = pair.totalSupply();
 
@@ -468,31 +410,20 @@ contract UniswapV2ERC4626Swap is ERC4626 {
 
         if (a1 == 0 || a0 == 0) return 0;
 
-        (reserveA, reserveB) = UniswapV2Library.getReserves(
-            address(pair),
-            address(token0),
-            address(token1)
-        );
+        (reserveA, reserveB) = UniswapV2Library.getReserves(address(pair), address(token0), address(token1));
 
         /// NOTE: Can be manipulated!
         return a0 + UniswapV2Library.getAmountOut(a1, reserveB, reserveA);
     }
 
     /// @notice separate from mintAssets virtual assets calculation from shares, but with omitted slippage to stop overwithdraw from Vault's balance
-    function redeemAssets(uint256 shares_)
-        public
-        view
-        returns (uint256 assets)
-    {
+    function redeemAssets(uint256 shares_) public view returns (uint256 assets) {
         (uint256 a0, uint256 a1) = getAssetsAmounts(shares_);
 
         if (a1 == 0 || a0 == 0) return 0;
 
-        (uint256 reserveA, uint256 reserveB) = UniswapV2Library.getReserves(
-            address(pair),
-            address(token0),
-            address(token1)
-        );
+        (uint256 reserveA, uint256 reserveB) =
+            UniswapV2Library.getReserves(address(pair), address(token0), address(token1));
 
         /// NOTE: Can be manipulated!
         return a0 + UniswapV2Library.getAmountOut(a1, reserveB, reserveA);
@@ -512,20 +443,14 @@ contract UniswapV2ERC4626Swap is ERC4626 {
     }
 
     /// @dev NOTE: Unused now, useful for on-chain oracle implemented inside of withdraw/redeem standard ERC4626 functions
-    function _swapExitProtected(uint256 assets_, uint256 minAmountOut_)
-        internal
-        returns (uint256 amounts)
-    {
+    function _swapExitProtected(uint256 assets_, uint256 minAmountOut_) internal returns (uint256 amounts) {
         (amounts) = _swapExit(assets_);
         if (amounts < minAmountOut_) revert NOT_MIN_AMOUNT_OUT();
     }
 
     /// @notice directional swap from asset to opposite token (asset != tokenX)
     /// @notice calculates optimal (for the current block) amount of token0/token1 to deposit into UniswapV2Pair and splits provided assets according to the formula
-    function _swapJoin(uint256 assets_)
-        internal
-        returns (uint256 amount0, uint256 amount1)
-    {
+    function _swapJoin(uint256 assets_) internal returns (uint256 amount0, uint256 amount1) {
         uint256 reserve = _getReserves();
         /// NOTE:
         /// resA if asset == token0
@@ -589,17 +514,9 @@ contract UniswapV2ERC4626Swap is ERC4626 {
     /// @notice Selector for reseve of underlying asset
     function _getReserves() internal view returns (uint256 assetReserves) {
         if (token0 == asset) {
-            (assetReserves, ) = UniswapV2Library.getReserves(
-                address(pair),
-                address(token0),
-                address(token1)
-            );
+            (assetReserves,) = UniswapV2Library.getReserves(address(pair), address(token0), address(token1));
         } else {
-            (, assetReserves) = UniswapV2Library.getReserves(
-                address(pair),
-                address(token0),
-                address(token1)
-            );
+            (, assetReserves) = UniswapV2Library.getReserves(address(pair), address(token0), address(token1));
         }
     }
 
@@ -608,17 +525,10 @@ contract UniswapV2ERC4626Swap is ERC4626 {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice for requested 100 UniLp tokens, how much tok0/1 we need to give?
-    function getAssetsAmounts(uint256 poolLpAmount_)
-        public
-        view
-        returns (uint256 assets0, uint256 assets1)
-    {
+    function getAssetsAmounts(uint256 poolLpAmount_) public view returns (uint256 assets0, uint256 assets1) {
         /// get xy=k here, where x=ra0,y=ra1
-        (uint256 reserveA, uint256 reserveB) = UniswapV2Library.getReserves(
-            address(pair),
-            address(token0),
-            address(token1)
-        );
+        (uint256 reserveA, uint256 reserveB) =
+            UniswapV2Library.getReserves(address(pair), address(token0), address(token1));
         /// shares of uni pair contract
         uint256 pairSupply = pair.totalSupply();
 
@@ -630,49 +540,30 @@ contract UniswapV2ERC4626Swap is ERC4626 {
     }
 
     /// @notice Take amount of token0 > split to token0/token1 amounts > calculate how much shares to burn
-    function getSharesFromAssets(uint256 assets_)
-        public
-        view
-        returns (uint256 poolLpAmount)
-    {
+    function getSharesFromAssets(uint256 assets_) public view returns (uint256 poolLpAmount) {
         (uint256 assets0, uint256 assets1) = getSplitAssetAmounts(assets_);
 
         poolLpAmount = getLiquidityAmountOutFor(assets0, assets1);
     }
 
     /// @notice Take amount of token0 (underlying) > split to token0/token1 (virtual) amounts
-    function getSplitAssetAmounts(uint256 assets_)
-        public
-        view
-        returns (uint256 assets0, uint256 assets1)
-    {
-        (uint256 resA, uint256 resB) = UniswapV2Library.getReserves(
-            address(pair),
-            address(token0),
-            address(token1)
-        );
+    function getSplitAssetAmounts(uint256 assets_) public view returns (uint256 assets0, uint256 assets1) {
+        (uint256 resA, uint256 resB) = UniswapV2Library.getReserves(address(pair), address(token0), address(token1));
 
         uint256 toSwapForUnderlying = UniswapV2Library.getSwapAmount(
-            _getReserves(), /// either resA or resB
+            _getReserves(),
+            /// either resA or resB
             assets_
         );
 
         if (token0 == asset) {
             /// @dev we use getMountOut because it includes 0.3 fee
-            uint256 resultOfSwap = UniswapV2Library.getAmountOut(
-                toSwapForUnderlying,
-                resA,
-                resB
-            );
+            uint256 resultOfSwap = UniswapV2Library.getAmountOut(toSwapForUnderlying, resA, resB);
 
             assets0 = assets_ - toSwapForUnderlying;
             assets1 = resultOfSwap;
         } else {
-            uint256 resultOfSwap = UniswapV2Library.getAmountOut(
-                toSwapForUnderlying,
-                resB,
-                resA
-            );
+            uint256 resultOfSwap = UniswapV2Library.getAmountOut(toSwapForUnderlying, resB, resA);
 
             assets0 = resultOfSwap;
             assets1 = assets_ - toSwapForUnderlying;
@@ -680,22 +571,12 @@ contract UniswapV2ERC4626Swap is ERC4626 {
     }
 
     /// @notice Calculate amount of UniswapV2Pair lp-token you will get for supply X & Y amount of token0/token1
-    function getLiquidityAmountOutFor(uint256 assets0_, uint256 assets1_)
-        public
-        view
-        returns (uint256 poolLpAmount)
-    {
+    function getLiquidityAmountOutFor(uint256 assets0_, uint256 assets1_) public view returns (uint256 poolLpAmount) {
         uint256 pairSupply = pair.totalSupply();
 
-        (uint256 reserveA, uint256 reserveB) = UniswapV2Library.getReserves(
-            address(pair),
-            address(token0),
-            address(token1)
-        );
-        poolLpAmount = min(
-            ((assets0_ * pairSupply) / reserveA),
-            (assets1_ * pairSupply) / reserveB
-        );
+        (uint256 reserveA, uint256 reserveB) =
+            UniswapV2Library.getReserves(address(pair), address(token0), address(token1));
+        poolLpAmount = min(((assets0_ * pairSupply) / reserveA), (assets1_ * pairSupply) / reserveB);
     }
 
     /*//////////////////////////////////////////////////////////////

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
@@ -37,7 +37,7 @@ contract VenusERC4626WrapperTest is Test {
 
     constructor() {
         fork = vm.createFork(BSC_RPC_URL);
-        
+
         /// 21_375_198
         vm.rollFork(fork, 21_375_198);
         vm.selectFork(fork);
@@ -57,12 +57,7 @@ contract VenusERC4626WrapperTest is Test {
         cToken = IVERC20(VENUS_VUSDC_CTOKEN);
     }
 
-    function setVault(
-        ERC20 underylyingAsset,
-        ERC20 reward_,
-        IVERC20 cToken_,
-        IVComptroller comptroller_
-    ) public {
+    function setVault(ERC20 underylyingAsset, ERC20 reward_, IVERC20 cToken_, IVComptroller comptroller_) public {
         vm.startPrank(manager);
 
         asset = underylyingAsset;
@@ -111,15 +106,10 @@ contract VenusERC4626WrapperTest is Test {
         assertEq(vault.balanceOf(alice), aliceShareAmount);
 
         uint256 aliceBalanceBeforeWithdraw = asset.balanceOf(alice);
-        uint256 expectedAssetsAfterWithdraw = aliceBalanceBeforeWithdraw +
-            aliceAssetsToWithdraw;
+        uint256 expectedAssetsAfterWithdraw = aliceBalanceBeforeWithdraw + aliceAssetsToWithdraw;
         console.log("aliceBalanceBeforeWithdraw", aliceBalanceBeforeWithdraw);
 
-        uint256 aliceSharesBurned = vault.withdraw(
-            aliceAssetsToWithdraw,
-            alice,
-            alice
-        );
+        uint256 aliceSharesBurned = vault.withdraw(aliceAssetsToWithdraw, alice, alice);
         uint256 aliceBalanceAfterWithdraw = asset.balanceOf(alice);
 
         console.log("aliceBalanceBeforeDeposit", aliceBalanceBeforeDeposit);
@@ -159,7 +149,7 @@ contract VenusERC4626WrapperTest is Test {
         uint256 amount = 10000 ether;
 
         fork = vm.createFork(BSC_RPC_URL);
-        
+
         setVault(
             ERC20(vm.envAddress("VENUS_USDC_ASSET")),
             ERC20(vm.envAddress("VENUS_REWARD_XVS")),
@@ -168,11 +158,7 @@ contract VenusERC4626WrapperTest is Test {
         );
 
         vm.startPrank(manager);
-        vault.setRoute(
-            VENUS_SWAPTOKEN_USDC,
-            VENUS_PAIR1_USDC,
-            VENUS_PAIR2_USDC
-        );
+        vault.setRoute(VENUS_SWAPTOKEN_USDC, VENUS_PAIR1_USDC, VENUS_PAIR2_USDC);
         vm.stopPrank();
 
         vm.startPrank(alice);

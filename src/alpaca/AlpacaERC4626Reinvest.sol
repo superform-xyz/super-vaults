@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
@@ -92,25 +92,17 @@ contract AlpacaERC4626Reinvest is ERC4626 {
                           INTERNAL HOOKS LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function beforeWithdraw(uint256 underlyingAmount_, uint256)
-        internal
-        override
-    {
+    function beforeWithdraw(uint256 underlyingAmount_, uint256) internal override {
         // convert asset token amount to ibtokens for withdrawal
-        uint256 sharesToWithdraw = underlyingAmount_.mulDivDown(
-            ERC20(address(ibToken)).totalSupply(),
-            alpacaVaultTotalToken()
-        );
+        uint256 sharesToWithdraw =
+            underlyingAmount_.mulDivDown(ERC20(address(ibToken)).totalSupply(), alpacaVaultTotalToken());
 
         // Withdraw the underlying tokens from the cToken.
         _unstake(sharesToWithdraw);
         ibToken.withdraw(sharesToWithdraw);
     }
 
-    function afterDeposit(uint256 underlyingAmount_, uint256)
-        internal
-        override
-    {
+    function afterDeposit(uint256 underlyingAmount_, uint256) internal override {
         asset.safeApprove(address(ibToken), underlyingAmount_);
 
         ibToken.deposit(underlyingAmount_);
@@ -118,11 +110,7 @@ contract AlpacaERC4626Reinvest is ERC4626 {
         /// WARN: balanceOf(address(this))
         ibToken.approve(address(staking), ibToken.balanceOf(address(this)));
 
-        staking.deposit(
-            address(this),
-            poolId,
-            ERC20(address(ibToken)).balanceOf(address(this))
-        );
+        staking.deposit(address(this), poolId, ERC20(address(ibToken)).balanceOf(address(this)));
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -130,11 +118,7 @@ contract AlpacaERC4626Reinvest is ERC4626 {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Set swap routes for selling rewards
-    function setRoute(
-        address token_,
-        address pair1_,
-        address pair2_
-    ) external {
+    function setRoute(address token_, address pair1_, address pair2_) external {
         if (msg.sender != manager) revert INVALID_ACCESS();
         SwapInfo = swapInfo(token_, pair1_, pair2_);
     }
@@ -156,34 +140,43 @@ contract AlpacaERC4626Reinvest is ERC4626 {
             rewardToken.approve(SwapInfo.pair1, earned);
 
             reinvestAmount = DexSwap.swap(
-                earned, /// ALPACA amount to swap
+                earned,
+                /// ALPACA amount to swap
                 alpacaToken, // from ALPACA (because of liquidity)
-                address(asset), /// to target underlying of BaseWrapper ie USDC
-                SwapInfo.pair1 /// pairToken (pool)
-                /// https://pancakeswap.finance/info/pool/0x2354ef4df11afacb85a5c7f98b624072eccddbb1
+                address(asset),
+                /// to target underlying of BaseWrapper ie USDC
+                SwapInfo.pair1
             );
+            /// pairToken (pool)
+            /// https://pancakeswap.finance/info/pool/0x2354ef4df11afacb85a5c7f98b624072eccddbb1
 
             /// Two swaps needed
         } else {
             rewardToken.approve(SwapInfo.pair1, earned);
 
             uint256 swapTokenAmount = DexSwap.swap(
-                earned, /// ALPACA amount to swap
-                alpacaToken, /// fromToken ALPACA
-                SwapInfo.token, /// toToken ie BUSD (because of liquidity)
-                SwapInfo.pair1 /// pairToken (pool)
-                /// https://pancakeswap.finance/info/pool/0x7752e1fa9f3a2e860856458517008558deb989e3
+                earned,
+                /// ALPACA amount to swap
+                alpacaToken,
+                /// fromToken ALPACA
+                SwapInfo.token,
+                /// toToken ie BUSD (because of liquidity)
+                SwapInfo.pair1
             );
+            /// pairToken (pool)
+            /// https://pancakeswap.finance/info/pool/0x7752e1fa9f3a2e860856458517008558deb989e3
 
             ERC20(SwapInfo.token).approve(SwapInfo.pair2, swapTokenAmount);
 
             reinvestAmount = DexSwap.swap(
                 swapTokenAmount,
                 SwapInfo.token, // from received BUSD (because of liquidity)
-                address(asset), /// to target underlying of BaseWrapper USDC
-                SwapInfo.pair2 /// pairToken (pool)
-                /// https://pancakeswap.finance/info/pool/0x2354ef4df11afacb85a5c7f98b624072eccddbb1
+                address(asset),
+                /// to target underlying of BaseWrapper USDC
+                SwapInfo.pair2
             );
+            /// pairToken (pool)
+            /// https://pancakeswap.finance/info/pool/0x2354ef4df11afacb85a5c7f98b624072eccddbb1
         }
         if (reinvestAmount < minAmountOut_) {
             revert MIN_AMOUNT_ERROR();
@@ -196,18 +189,15 @@ contract AlpacaERC4626Reinvest is ERC4626 {
                             ERC4626 OVERRIDES
     //////////////////////////////////////////////////////////////*/
 
-    function withdraw(
-        uint256 assets_,
-        address receiver_,
-        address owner_
-    ) public override returns (uint256 shares) {
+    function withdraw(uint256 assets_, address receiver_, address owner_) public override returns (uint256 shares) {
         shares = previewWithdraw(assets_); // No need to check for rounding error, previewWithdraw rounds up.
 
         if (msg.sender != owner_) {
             uint256 allowed = allowance[owner_][msg.sender]; // Saves gas for limited approvals.
 
-            if (allowed != type(uint256).max)
+            if (allowed != type(uint256).max) {
                 allowance[owner_][msg.sender] = allowed - shares;
+            }
         }
 
         beforeWithdraw(assets_, shares);
@@ -220,16 +210,13 @@ contract AlpacaERC4626Reinvest is ERC4626 {
         asset.safeTransfer(receiver_, asset.balanceOf(address(this)));
     }
 
-    function redeem(
-        uint256 shares_,
-        address receiver_,
-        address owner_
-    ) public override returns (uint256 assets) {
+    function redeem(uint256 shares_, address receiver_, address owner_) public override returns (uint256 assets) {
         if (msg.sender != owner_) {
             uint256 allowed = allowance[owner_][msg.sender]; // Saves gas for limited approvals.
 
-            if (allowed != type(uint256).max)
+            if (allowed != type(uint256).max) {
                 allowance[owner_][msg.sender] = allowed - shares_;
+            }
         }
 
         // Check for rounding error since we round down in previewRedeem.
@@ -239,13 +226,7 @@ contract AlpacaERC4626Reinvest is ERC4626 {
 
         _burn(owner_, shares_);
 
-        emit Withdraw(
-            msg.sender,
-            receiver_,
-            owner_,
-            asset.balanceOf(address(this)),
-            shares_
-        );
+        emit Withdraw(msg.sender, receiver_, owner_, asset.balanceOf(address(this)), shares_);
 
         /// WARN: balanceOf(address(this))
         asset.safeTransfer(receiver_, asset.balanceOf(address(this)));
@@ -256,15 +237,8 @@ contract AlpacaERC4626Reinvest is ERC4626 {
     }
 
     function _viewUnderlyingBalanceOf() internal view returns (uint256) {
-        IFairLaunch._userInfo memory depositDetails = staking.userInfo(
-            poolId,
-            address(this)
-        );
-        return
-            depositDetails.amount.mulDivUp(
-                alpacaVaultTotalToken(),
-                ERC20(address(ibToken)).totalSupply()
-            );
+        IFairLaunch._userInfo memory depositDetails = staking.userInfo(poolId, address(this));
+        return depositDetails.amount.mulDivUp(alpacaVaultTotalToken(), ERC20(address(ibToken)).totalSupply());
     }
 
     function alpacaVaultTotalToken() public view returns (uint256) {
@@ -272,15 +246,11 @@ contract AlpacaERC4626Reinvest is ERC4626 {
         uint256 vaultDebtVal = ibToken.vaultDebtVal();
         if (block.timestamp > ibToken.lastAccrueTime()) {
             uint256 interest = ibToken.pendingInterest(0);
-            uint256 toReserve = interest.mulDivDown(
-                IVaultConfig(ibToken.config()).getReservePoolBps(),
-                10000
-            );
+            uint256 toReserve = interest.mulDivDown(IVaultConfig(ibToken.config()).getReservePoolBps(), 10000);
             reservePool = reservePool + (toReserve);
             vaultDebtVal = vaultDebtVal + (interest);
         }
-        return
-            asset.balanceOf(address(ibToken)) + (vaultDebtVal) - (reservePool);
+        return asset.balanceOf(address(ibToken)) + (vaultDebtVal) - (reservePool);
     }
 
     /// @notice AUM of the Vault (ibToken balance)
@@ -293,21 +263,11 @@ contract AlpacaERC4626Reinvest is ERC4626 {
                         ERC20 METADATA GENERATION
     //////////////////////////////////////////////////////////////*/
 
-    function _vaultName(ERC20 asset_)
-        internal
-        view
-        virtual
-        returns (string memory vaultName)
-    {
+    function _vaultName(ERC20 asset_) internal view virtual returns (string memory vaultName) {
         vaultName = string.concat("ERC4626-Wrapped Alpaca-", asset_.symbol());
     }
 
-    function _vaultSymbol(ERC20 asset_)
-        internal
-        view
-        virtual
-        returns (string memory vaultSymbol)
-    {
+    function _vaultSymbol(ERC20 asset_) internal view virtual returns (string memory vaultSymbol) {
         vaultSymbol = string.concat("alp4626-", asset_.symbol());
     }
 }

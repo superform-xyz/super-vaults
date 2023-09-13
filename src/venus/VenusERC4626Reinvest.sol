@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
@@ -82,13 +82,9 @@ contract VenusERC4626Reinvest is ERC4626 {
     /// @param cToken_ The address of the cToken contract
     /// @param comptroller_ The address of the comptroller contract
     /// @param manager_ The address of the manager
-    constructor(
-        ERC20 asset_,
-        ERC20 reward_,
-        IVERC20 cToken_,
-        IVComptroller comptroller_,
-        address manager_
-    ) ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_)) {
+    constructor(ERC20 asset_, ERC20 reward_, IVERC20 cToken_, IVComptroller comptroller_, address manager_)
+        ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_))
+    {
         reward = reward_;
         cToken = cToken_;
         comptroller = comptroller_;
@@ -100,11 +96,7 @@ contract VenusERC4626Reinvest is ERC4626 {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Set swap route for XVS rewards
-    function setRoute(
-        address token_,
-        address pair1_,
-        address pair2_
-    ) external {
+    function setRoute(address token_, address pair1_, address pair2_) external {
         if (msg.sender != manager) revert INVALID_ACCESS();
         SwapInfo = swapInfo(token_, pair1_, pair2_);
     }
@@ -126,30 +118,39 @@ contract VenusERC4626Reinvest is ERC4626 {
             reward.approve(SwapInfo.pair1, earned);
 
             reinvestAmount = DexSwap.swap(
-                earned, /// REWARDS amount to swap
+                earned,
+                /// REWARDS amount to swap
                 rewardToken, // from REWARD (because of liquidity)
-                address(asset), /// to target underlying of this Vault ie USDC
-                SwapInfo.pair1 /// pairToken (pool)
+                address(asset),
+                /// to target underlying of this Vault ie USDC
+                SwapInfo.pair1
             );
+            /// pairToken (pool)
             /// If two swaps needed
         } else {
             reward.approve(SwapInfo.pair1, earned);
 
             uint256 swapTokenAmount = DexSwap.swap(
-                earned, /// REWARDS amount to swap
-                rewardToken, /// fromToken REWARD
-                SwapInfo.token, /// to intermediary token with high liquidity (no direct pools)
-                SwapInfo.pair1 /// pairToken (pool)
+                earned,
+                /// REWARDS amount to swap
+                rewardToken,
+                /// fromToken REWARD
+                SwapInfo.token,
+                /// to intermediary token with high liquidity (no direct pools)
+                SwapInfo.pair1
             );
+            /// pairToken (pool)
 
             ERC20(SwapInfo.token).approve(SwapInfo.pair2, swapTokenAmount);
 
             reinvestAmount = DexSwap.swap(
                 swapTokenAmount,
                 SwapInfo.token, // from received BUSD (because of liquidity)
-                address(asset), /// to target underlying of this Vault ie USDC
-                SwapInfo.pair2 /// pairToken (pool)
+                address(asset),
+                /// to target underlying of this Vault ie USDC
+                SwapInfo.pair2
             );
+            /// pairToken (pool)
         }
         if (reinvestAmount < minAmountOut_) {
             revert MIN_AMOUNT_ERROR();
@@ -170,10 +171,7 @@ contract VenusERC4626Reinvest is ERC4626 {
         return cToken.viewUnderlyingBalanceOf(address(this));
     }
 
-    function beforeWithdraw(
-        uint256 assets_,
-        uint256 /*shares*/
-    ) internal virtual override {
+    function beforeWithdraw(uint256 assets_, uint256 /*shares*/ ) internal virtual override {
         /// @dev withdraw assets from venus
 
         uint256 errorCode = cToken.redeemUnderlying(assets_);
@@ -182,10 +180,7 @@ contract VenusERC4626Reinvest is ERC4626 {
         }
     }
 
-    function afterDeposit(
-        uint256 assets_,
-        uint256 /*shares*/
-    ) internal virtual override {
+    function afterDeposit(uint256 assets_, uint256 /*shares*/ ) internal virtual override {
         /// @dev deposit assets into venus
 
         // approve to cToken
@@ -208,12 +203,7 @@ contract VenusERC4626Reinvest is ERC4626 {
         return type(uint256).max;
     }
 
-    function maxWithdraw(address owner_)
-        public
-        view
-        override
-        returns (uint256)
-    {
+    function maxWithdraw(address owner_) public view override returns (uint256) {
         uint256 cash = cToken.getCash();
         uint256 assetsBalance = convertToAssets(balanceOf[owner_]);
         return cash < assetsBalance ? cash : assetsBalance;
@@ -230,21 +220,11 @@ contract VenusERC4626Reinvest is ERC4626 {
                             ERC20 METADATA
     //////////////////////////////////////////////////////////////*/
 
-    function _vaultName(ERC20 asset_)
-        internal
-        view
-        virtual
-        returns (string memory vaultName)
-    {
+    function _vaultName(ERC20 asset_) internal view virtual returns (string memory vaultName) {
         vaultName = string.concat("ERC4626-Wrapped Venus-", asset_.symbol());
     }
 
-    function _vaultSymbol(ERC20 asset_)
-        internal
-        view
-        virtual
-        returns (string memory vaultSymbol)
-    {
+    function _vaultSymbol(ERC20 asset_) internal view virtual returns (string memory vaultSymbol) {
         vaultSymbol = string.concat("vs46-", asset_.symbol());
     }
 }

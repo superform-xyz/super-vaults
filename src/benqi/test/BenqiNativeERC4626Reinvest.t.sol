@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
@@ -54,11 +54,7 @@ contract BenqiNativeERC4626ReinvestTest is Test {
         deal(address(asset), bob, 100000000 ether);
     }
 
-    function setVault(
-        ERC20 underylyingAsset,
-        ERC20 reward_,
-        IBEther cToken_
-    ) public {
+    function setVault(ERC20 underylyingAsset, ERC20 reward_, IBEther cToken_) public {
         vm.startPrank(manager);
 
         asset = underylyingAsset;
@@ -91,11 +87,7 @@ contract BenqiNativeERC4626ReinvestTest is Test {
         assertEq(vault.balanceOf(alice), aliceShareAmount);
 
         uint256 preWithdrawBalance = asset.balanceOf(alice);
-        uint256 sharesBurned = vault.withdraw(
-            aliceAssetsToWithdraw,
-            alice,
-            alice
-        );
+        uint256 sharesBurned = vault.withdraw(aliceAssetsToWithdraw, alice, alice);
         uint256 totalBalance = aliceAssetsToWithdraw + preWithdrawBalance;
 
         assertEq(totalBalance, asset.balanceOf(alice));
@@ -109,9 +101,7 @@ contract BenqiNativeERC4626ReinvestTest is Test {
         vm.prank(alice);
         uint256 aliceUnderlyingAmount = amount;
 
-        uint256 aliceShareAmount = vault.deposit{value: aliceUnderlyingAmount}(
-            alice
-        );
+        uint256 aliceShareAmount = vault.deposit{value: aliceUnderlyingAmount}(alice);
 
         uint256 aliceAssetsToWithdraw = vault.convertToAssets(aliceShareAmount);
         assertEq(aliceUnderlyingAmount, aliceShareAmount);

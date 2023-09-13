@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
@@ -39,7 +39,6 @@ contract stMaticTest is Test {
         manager = msg.sender;
 
         deal(matic, alice, ONE_THOUSAND_E18);
-
     }
 
     function testDepositWithdraw() public {
@@ -49,14 +48,9 @@ contract stMaticTest is Test {
         console.log("alice bal matic", _matic.balanceOf(alice));
 
         _matic.approve(address(vault), aliceUnderlyingAmount);
-        assertEq(
-            _matic.allowance(alice, address(vault)),
-            aliceUnderlyingAmount
-        );
+        assertEq(_matic.allowance(alice, address(vault)), aliceUnderlyingAmount);
 
-        uint256 expectedSharesFromAssets = vault.convertToShares(
-            aliceUnderlyingAmount
-        );
+        uint256 expectedSharesFromAssets = vault.convertToShares(aliceUnderlyingAmount);
         uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
         assertEq(expectedSharesFromAssets, aliceShareAmount);
         console.log("aliceShareAmount", aliceShareAmount);
@@ -72,9 +66,7 @@ contract stMaticTest is Test {
 
         vm.startPrank(alice);
 
-        uint256 expectedAssetFromShares = vault.previewMint(
-            aliceSharesMint
-        );
+        uint256 expectedAssetFromShares = vault.previewMint(aliceSharesMint);
 
         _matic.approve(address(vault), expectedAssetFromShares);
 

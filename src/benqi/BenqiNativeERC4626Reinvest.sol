@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
@@ -98,12 +98,9 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
     /// @dev reward_ is the COMP-like token
     /// @dev cEther_ is the Compound concept of a share
     /// @dev manager_ is the address that can set swap routes
-    constructor(
-        ERC20 asset_,
-        ERC20 reward_,
-        IBEther cEther_,
-        address manager_
-    ) ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_)) {
+    constructor(ERC20 asset_, ERC20 reward_, IBEther cEther_, address manager_)
+        ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_))
+    {
         reward = reward_;
         cEther = cEther_;
         comptroller = IBComptroller(cEther.comptroller());
@@ -119,13 +116,9 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
     /// @notice Set type of reward we are harvesting and selling
     /// @dev 0 = BenqiToken, 1 = AVAX
     /// @dev Setting wrong addresses here will revert harvest() calls
-    function setRoute(
-        uint8 rewardType_,
-        address rewardToken_,
-        address token_,
-        address pair1_,
-        address pair2_
-    ) external {
+    function setRoute(uint8 rewardType_, address rewardToken_, address token_, address pair1_, address pair2_)
+        external
+    {
         if (msg.sender != manager) revert INVALID_ACCESS();
         swapInfoMap[rewardType_] = swapInfo(token_, pair1_, pair2_);
         rewardTokenMap[rewardType_] = rewardToken_;
@@ -145,30 +138,39 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
             rewardToken_.approve(swapMap.pair1, earned);
 
             reinvestAmount = DexSwap.swap(
-                earned, /// REWARDS amount to swap
+                earned,
+                /// REWARDS amount to swap
                 rewardToken, // from REWARD (because of liquidity)
-                address(asset), /// to target underlying of this Vault ie USDC
-                swapMap.pair1 /// pairToken (pool)
+                address(asset),
+                /// to target underlying of this Vault ie USDC
+                swapMap.pair1
             );
+            /// pairToken (pool)
             /// If two swaps needed
         } else {
             rewardToken_.approve(swapMap.pair1, earned);
 
             uint256 swapTokenAmount = DexSwap.swap(
-                earned, /// REWARDS amount to swap
-                rewardToken, /// fromToken REWARD
-                swapMap.token, /// to intermediary token with high liquidity (no direct pools)
-                swapMap.pair1 /// pairToken (pool)
+                earned,
+                /// REWARDS amount to swap
+                rewardToken,
+                /// fromToken REWARD
+                swapMap.token,
+                /// to intermediary token with high liquidity (no direct pools)
+                swapMap.pair1
             );
+            /// pairToken (pool)
 
             ERC20(swapMap.token).approve(swapMap.pair2, swapTokenAmount);
 
             reinvestAmount = DexSwap.swap(
                 swapTokenAmount,
                 swapMap.token, // from received BUSD (because of liquidity)
-                address(asset), /// to target underlying of this Vault ie USDC
-                swapMap.pair2 /// pairToken (pool)
+                address(asset),
+                /// to target underlying of this Vault ie USDC
+                swapMap.pair2
             );
+            /// pairToken (pool)
         }
         if (reinvestAmount < minAmountOut_) {
             revert MIN_AMOUNT_ERROR();
@@ -177,11 +179,7 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
     }
 
     /// @notice Check how much rewards are available to claim, useful before harvest()
-    function getRewardsAccrued(uint8 rewardType_)
-        external
-        view
-        returns (uint256 amount)
-    {
+    function getRewardsAccrued(uint8 rewardType_) external view returns (uint256 amount) {
         amount = comptroller.rewardAccrued(rewardType_, address(this));
     }
 
@@ -198,10 +196,7 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
     }
 
     function _viewUnderlyingBalanceOf() internal view returns (uint256) {
-        return
-            cEther.balanceOf(address(this)).mulWadDown(
-                cEther.exchangeRateStored()
-            );
+        return cEther.balanceOf(address(this)).mulWadDown(cEther.exchangeRateStored());
     }
 
     /// @notice "Regular" ERC20 deposit for WAVAX
@@ -216,11 +211,7 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
     }
 
     /// @notice Accept native token (AVAX) for deposit. Non-ERC4626 function.
-    function deposit(address receiver_)
-        public
-        payable
-        returns (uint256 shares)
-    {
+    function deposit(address receiver_) public payable returns (uint256 shares) {
         // Check for rounding error since we round down in previewDeposit.
         if ((shares = previewDeposit(msg.value)) == 0) revert ZERO_SHARES();
 
@@ -232,11 +223,7 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
     }
 
     /// @notice Standard ERC4626 deposit can only accept ERC20
-    function deposit(uint256 assets_, address receiver_)
-        public
-        override
-        returns (uint256 shares)
-    {
+    function deposit(uint256 assets_, address receiver_) public override returns (uint256 shares) {
         if ((shares = previewDeposit(assets_)) == 0) revert ZERO_SHARES();
 
         asset.safeTransferFrom(msg.sender, address(this), assets_);
@@ -275,12 +262,7 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
     /// @notice Maximum amount of assets that can be withdrawn.
     /// @notice This is capped by the amount of cash available on the cEther,
     /// @notice if all assets are borrowed, a user can't withdraw from the vault.
-    function maxWithdraw(address owner_)
-        public
-        view
-        override
-        returns (uint256)
-    {
+    function maxWithdraw(address owner_) public view override returns (uint256) {
         uint256 cash = cEther.getCash();
         uint256 assetsBalance = convertToAssets(balanceOf[owner_]);
         return cash < assetsBalance ? cash : assetsBalance;
@@ -297,18 +279,15 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
     }
 
     /// @notice withdraw assets of the owner.
-    function withdraw(
-        uint256 assets_,
-        address receiver_,
-        address owner_
-    ) public override returns (uint256 shares) {
+    function withdraw(uint256 assets_, address receiver_, address owner_) public override returns (uint256 shares) {
         shares = previewWithdraw(assets_); // No need to check for rounding error, previewWithdraw rounds up.
 
         if (msg.sender != owner_) {
             uint256 allowed = allowance[owner_][msg.sender]; // Saves gas for limited approvals.
 
-            if (allowed != type(uint256).max)
+            if (allowed != type(uint256).max) {
                 allowance[owner_][msg.sender] = allowed - shares;
+            }
         }
 
         beforeWithdraw(assets_, shares);
@@ -323,16 +302,13 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
         asset.safeTransfer(receiver_, assets_);
     }
 
-    function redeem(
-        uint256 shares_,
-        address receiver_,
-        address owner_
-    ) public override returns (uint256 assets) {
+    function redeem(uint256 shares_, address receiver_, address owner_) public override returns (uint256 assets) {
         if (msg.sender != owner_) {
             uint256 allowed = allowance[owner_][msg.sender]; // Saves gas for limited approvals.
 
-            if (allowed != type(uint256).max)
+            if (allowed != type(uint256).max) {
                 allowance[owner_][msg.sender] = allowed - shares_;
+            }
         }
 
         // Check for rounding error since we round down in previewRedeem.
@@ -356,21 +332,11 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
                       ERC20 METADATA
     //////////////////////////////////////////////////////////////*/
 
-    function _vaultName(ERC20 asset_)
-        internal
-        view
-        virtual
-        returns (string memory vaultName)
-    {
+    function _vaultName(ERC20 asset_) internal view virtual returns (string memory vaultName) {
         vaultName = string.concat("ERC4626-Wrapped Benqi -", asset_.symbol());
     }
 
-    function _vaultSymbol(ERC20 asset_)
-        internal
-        view
-        virtual
-        returns (string memory vaultSymbol)
-    {
+    function _vaultSymbol(ERC20 asset_) internal view virtual returns (string memory vaultSymbol) {
         vaultSymbol = string.concat("bq46-", asset_.symbol());
     }
 }

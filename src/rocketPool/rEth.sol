@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
@@ -54,8 +54,7 @@ contract rEthERC4626 is ERC4626 {
                       IMMUATABLES & VARIABLES
     //////////////////////////////////////////////////////////////*/
 
-    bytes32 public immutable DEPOSIT_POOL =
-        keccak256(abi.encodePacked("contract.address", "rocketDepositPool"));
+    bytes32 public immutable DEPOSIT_POOL = keccak256(abi.encodePacked("contract.address", "rocketDepositPool"));
 
     IWETH public weth;
     IRETH public rEth;
@@ -70,9 +69,7 @@ contract rEthERC4626 is ERC4626 {
 
     /// @param weth_ weth address (Vault's underlying / deposit token)
     /// @param rStorage_ rocketPool Storage contract address to read current implementation details
-    constructor(address weth_, address rStorage_)
-        ERC4626(ERC20(weth_), "ERC4626-Wrapped rEth", "wrEth")
-    {
+    constructor(address weth_, address rStorage_) ERC4626(ERC20(weth_), "ERC4626-Wrapped rEth", "wrEth") {
         /// NOTE: Non-upgradable contract
         rStorage = IRSTORAGE(rStorage_);
         weth = IWETH(weth_);
@@ -87,9 +84,8 @@ contract rEthERC4626 is ERC4626 {
 
         /// Get address of rETH ERC20 token
         /// NOTE: Non-upgradable contract
-        address rocketTokenRETHAddress = rStorage.getAddress(
-            keccak256(abi.encodePacked("contract.address", "rocketTokenRETH"))
-        );
+        address rocketTokenRETHAddress =
+            rStorage.getAddress(keccak256(abi.encodePacked("contract.address", "rocketTokenRETH")));
 
         /// @dev Workaround for solmate's safeTransferLib
         rEthToken = IRETHTOKEN(rocketTokenRETHAddress);
@@ -105,11 +101,7 @@ contract rEthERC4626 is ERC4626 {
     /// @notice Deposit into active RocketDepositPool. Standard ERC4626 deposit can only accept ERC20
     /// @return shares - rEth as both Vault's shares (wrEth) and underlying virtually backed by ETH
     /// @dev Deposit function obeys ERC4626 standard
-    function deposit(uint256 assets_, address receiver_)
-        public
-        override
-        returns (uint256 shares)
-    {
+    function deposit(uint256 assets_, address receiver_) public override returns (uint256 shares) {
         /// @dev Call to check if rEth address didn't change
         if (rEth != IRETH(rStorage.getAddress(DEPOSIT_POOL))) {
             rEth = IRETH(rStorage.getAddress(DEPOSIT_POOL));
@@ -149,11 +141,7 @@ contract rEthERC4626 is ERC4626 {
     /// @notice Mint specified amount of rETH (shares) from provided ETH (asset)
     /// @return assets - rEth as both Vault's shares and underlying
     /// @dev Mint function obeys ERC4626 standard
-    function mint(uint256 shares_, address receiver_)
-        public
-        override
-        returns (uint256 assets)
-    {
+    function mint(uint256 shares_, address receiver_) public override returns (uint256 assets) {
         /// @dev Call to check if rEth address didn't change
         if (rEth != IRETH(rStorage.getAddress(DEPOSIT_POOL))) {
             rEth = IRETH(rStorage.getAddress(DEPOSIT_POOL));
@@ -192,11 +180,7 @@ contract rEthERC4626 is ERC4626 {
     /// @notice rocket pool has no redeem-to-eth function
     /// @dev To allow withdrawing "assets" as ETH, directly from rEth, would require an exchange of rEth to ETH on a DEX
     /// @dev That is considered an extension to the following implementation, which is strict ERC4626 wrapper over rEth token interface
-    function withdraw(
-        uint256 assets_,
-        address receiver_,
-        address owner_
-    ) public override returns (uint256 shares) {
+    function withdraw(uint256 assets_, address receiver_, address owner_) public override returns (uint256 shares) {
         /// @dev Returns
         shares = previewWithdraw(assets_);
 
@@ -206,8 +190,9 @@ contract rEthERC4626 is ERC4626 {
         if (msg.sender != owner_) {
             uint256 allowed = allowance[owner_][msg.sender];
 
-            if (allowed != type(uint256).max)
+            if (allowed != type(uint256).max) {
                 allowance[owner_][msg.sender] = allowed - shares;
+            }
         }
 
         _burn(owner_, shares);
@@ -222,16 +207,13 @@ contract rEthERC4626 is ERC4626 {
     /// @notice caller is asking to redeem wrEth shares to rEth, exit asset is rEth
     /// @dev To allow redeeming "assets" as ETH, directly from rEth, would require an exchange of rEth to ETH on a DEX
     /// @dev That is considered an extension to the following implementation, which is strict ERC4626 wrapper over rEth token interface
-    function redeem(
-        uint256 shares_,
-        address receiver_,
-        address owner_
-    ) public override returns (uint256 assets) {
+    function redeem(uint256 shares_, address receiver_, address owner_) public override returns (uint256 assets) {
         if (msg.sender != owner_) {
             uint256 allowed = allowance[owner_][msg.sender];
 
-            if (allowed != type(uint256).max)
+            if (allowed != type(uint256).max) {
                 allowance[owner_][msg.sender] = allowed - shares_;
+            }
         }
 
         /// @dev return virtual amount of ETH backing rEth shares
@@ -267,52 +249,30 @@ contract rEthERC4626 is ERC4626 {
 
     /// @notice Get amount of rEth from ETH
     /// @notice Calculated against RocketPool Deposit Pool with fee subtracted
-    function previewDeposit(uint256 assets_)
-        public
-        view
-        override
-        returns (uint256)
-    {
+    function previewDeposit(uint256 assets_) public view override returns (uint256) {
         return convertToShares(assets_);
     }
 
     /// @notice Get amount of rEth from ETH
     /// @notice Calculated against RocketPool Deposit Pool with fee subtracted
-    function convertToShares(uint256 assets_)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function convertToShares(uint256 assets_) public view virtual override returns (uint256) {
         /// https://github.com/rocket-pool/rocketpool/blob/967e4d3c32721a84694921751920af313d1467af/contracts/interface/token/RocketTokenRETHInterface.sol#L9
         /// https://github.com/rocket-pool/rocketpool/blob/967e4d3c32721a84694921751920af313d1467af/contracts/contract/deposit/RocketDepositPool.sol#L82
-        uint256 depositFee = assets_.mulDivUp(rProtocol.getDepositFee(), 1e18); /// rEth.calcBase()
+        uint256 depositFee = assets_.mulDivUp(rProtocol.getDepositFee(), 1e18);
+        /// rEth.calcBase()
         uint256 depositNet = assets_ - depositFee;
         return rEthToken.getRethValue(depositNet);
     }
 
     /// @notice Get (virtual) amount of ETH-backing for provided rEth shares
     /// @notice to get X rEth shares you need to supply Y eth assets
-    function previewMint(uint256 shares_)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function previewMint(uint256 shares_) public view virtual override returns (uint256) {
         /// https://github.com/rocket-pool/rocketpool/blob/967e4d3c32721a84694921751920af313d1467af/contracts/interface/token/RocketTokenRETHInterface.sol#L8
         return rEthToken.getEthValue(shares_) + 1;
     }
 
     /// @notice Get amount of rEth shares for provided ETH-backing
-    function previewWithdraw(uint256 assets_)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function previewWithdraw(uint256 assets_) public view virtual override returns (uint256) {
         /// https://github.com/rocket-pool/rocketpool/blob/967e4d3c32721a84694921751920af313d1467af/contracts/interface/token/RocketTokenRETHInterface.sol#L9
         /// https://github.com/rocket-pool/rocketpool/blob/967e4d3c32721a84694921751920af313d1467af/contracts/contract/deposit/RocketDepositPool.sol#L82
         return rEthToken.getRethValue(assets_);
@@ -321,34 +281,18 @@ contract rEthERC4626 is ERC4626 {
     /// @notice Get (virtual) amount of ETH-backing for provided rEth shares
     /// @dev Vault doesn't use this value internally as it only operates on rEth shares
     /// @dev Value can be used to calculate real value of rEth shares
-    function previewRedeem(uint256 shares_)
-        public
-        view
-        override
-        returns (uint256)
-    {
+    function previewRedeem(uint256 shares_) public view override returns (uint256) {
         return convertToAssets(shares_);
     }
 
     /// @notice Get (virtual) amount of ETH-backing for provided rEth shares
-    function convertToAssets(uint256 shares_)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function convertToAssets(uint256 shares_) public view virtual override returns (uint256) {
         /// https://github.com/rocket-pool/rocketpool/blob/967e4d3c32721a84694921751920af313d1467af/contracts/interface/token/RocketTokenRETHInterface.sol#L8
         return rEthToken.getEthValue(shares_) + 1;
     }
 
     /// @notice Max withdraw of rEth (wrEth shares)
-    function maxWithdraw(address owner_)
-        public
-        view
-        override
-        returns (uint256)
-    {
+    function maxWithdraw(address owner_) public view override returns (uint256) {
         return balanceOf[owner_];
     }
 
@@ -358,11 +302,7 @@ contract rEthERC4626 is ERC4626 {
     }
 
     /// @notice Max amount of ETH user will receive from his wrEth/rEth shares
-    function maxRedeemable(address owner_)
-        public
-        view
-        returns (uint256 ethBackedAmount)
-    {
+    function maxRedeemable(address owner_) public view returns (uint256 ethBackedAmount) {
         uint256 balance = balanceOf[owner_];
         return previewRedeem(balance);
     }
@@ -381,24 +321,11 @@ contract rEthERC4626 is ERC4626 {
 
     /// @notice Get address of active rEth contract (rocketDepositPool)
     function _rocketDepositPoolAddress() internal view returns (address) {
-        return
-            rStorage.getAddress(
-                keccak256(
-                    abi.encodePacked("contract.address", "rocketDepositPool")
-                )
-            );
+        return rStorage.getAddress(keccak256(abi.encodePacked("contract.address", "rocketDepositPool")));
     }
 
     /// @notice Get address of active rEth contract (rocketTokenRETH)
     function _rocketProtocolAddress() internal view returns (address) {
-        return
-            rStorage.getAddress(
-                keccak256(
-                    abi.encodePacked(
-                        "contract.address",
-                        "rocketDAOProtocolSettingsDeposit"
-                    )
-                )
-            );
+        return rStorage.getAddress(keccak256(abi.encodePacked("contract.address", "rocketDAOProtocolSettingsDeposit")));
     }
 }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
@@ -56,8 +56,11 @@ contract StETHERC4626Swap is ERC4626 {
     uint256 public slippage;
     uint256 public immutable slippageFloat = 10000;
 
-    int128 public immutable index_eth = 0; /// ETH
-    int128 public immutable index_stEth = 1; /// stETH
+    int128 public immutable index_eth = 0;
+
+    /// ETH
+    int128 public immutable index_stEth = 1;
+    /// stETH
 
     /*//////////////////////////////////////////////////////////////
                                 CONSTRUCTOR
@@ -67,12 +70,9 @@ contract StETHERC4626Swap is ERC4626 {
     /// @param stEth_ stETH (Lido contract) address
     /// @param curvePool_ CurvePool address
     /// @param manager_ manager address
-    constructor(
-        address weth_,
-        address stEth_,
-        address curvePool_,
-        address manager_
-    ) ERC4626(ERC20(weth_), "ERC4626-Wrapped stETH", "wLstETH") {
+    constructor(address weth_, address stEth_, address curvePool_, address manager_)
+        ERC4626(ERC20(weth_), "ERC4626-Wrapped stETH", "wLstETH")
+    {
         stEth = IStETH(stEth_);
         weth = IWETH(weth_);
         curvePool = ICurve(curvePool_);
@@ -89,23 +89,18 @@ contract StETHERC4626Swap is ERC4626 {
     //////////////////////////////////////////////////////////////*/
 
     function beforeWithdraw(uint256 assets_, uint256) internal override {
-        uint256 min_dy = _getSlippage(
-            curvePool.get_dy(index_stEth, index_eth, assets_)
-        );
+        uint256 min_dy = _getSlippage(curvePool.get_dy(index_stEth, index_eth, assets_));
         curvePool.exchange(index_stEth, index_eth, assets_, min_dy);
     }
 
     function afterDeposit(uint256 ethAmount, uint256) internal override {
-        stEth.submit{value: ethAmount}(address(this)); /// Lido's submit() accepts only native ETH
+        stEth.submit{value: ethAmount}(address(this));
+        /// Lido's submit() accepts only native ETH
     }
 
     /// @notice Standard ERC4626 deposit can only accept ERC20
     /// @notice Vault's underlying is WETH (ERC20), Lido expects ETH (Native), we make wraperooo magic
-    function deposit(uint256 assets_, address receiver_)
-        public
-        override
-        returns (uint256 shares)
-    {
+    function deposit(uint256 assets_, address receiver_) public override returns (uint256 shares) {
         if ((shares = previewDeposit(assets_)) == 0) revert ZERO_SHARES();
 
         asset.safeTransferFrom(msg.sender, address(this), assets_);
@@ -120,11 +115,7 @@ contract StETHERC4626Swap is ERC4626 {
     }
 
     /// @notice Deposit function accepting ETH (Native) directly
-    function deposit(address receiver_)
-        public
-        payable
-        returns (uint256 shares)
-    {
+    function deposit(address receiver_) public payable returns (uint256 shares) {
         if (msg.value == 0) revert ZERO_DEPOSIT();
 
         if ((shares = previewDeposit(msg.value)) == 0) revert ZERO_SHARES();
@@ -136,11 +127,7 @@ contract StETHERC4626Swap is ERC4626 {
         afterDeposit(msg.value, shares);
     }
 
-    function mint(uint256 shares_, address receiver_)
-        public
-        override
-        returns (uint256 assets)
-    {
+    function mint(uint256 shares_, address receiver_) public override returns (uint256 assets) {
         assets = previewMint(shares_);
 
         asset.safeTransferFrom(msg.sender, address(this), assets);
@@ -154,18 +141,15 @@ contract StETHERC4626Swap is ERC4626 {
         afterDeposit(assets, shares_);
     }
 
-    function withdraw(
-        uint256 assets_,
-        address receiver_,
-        address owner_
-    ) public override returns (uint256 shares) {
+    function withdraw(uint256 assets_, address receiver_, address owner_) public override returns (uint256 shares) {
         shares = previewWithdraw(assets_);
 
         if (msg.sender != owner_) {
             uint256 allowed = allowance[owner_][msg.sender];
 
-            if (allowed != type(uint256).max)
+            if (allowed != type(uint256).max) {
                 allowance[owner_][msg.sender] = allowed - shares;
+            }
         }
 
         beforeWithdraw(assets_, shares);
@@ -178,16 +162,13 @@ contract StETHERC4626Swap is ERC4626 {
         SafeTransferLib.safeTransferETH(receiver_, address(this).balance);
     }
 
-    function redeem(
-        uint256 shares_,
-        address receiver_,
-        address owner_
-    ) public override returns (uint256 assets) {
+    function redeem(uint256 shares_, address receiver_, address owner_) public override returns (uint256 assets) {
         if (msg.sender != owner_) {
             uint256 allowed = allowance[owner_][msg.sender];
 
-            if (allowed != type(uint256).max)
+            if (allowed != type(uint256).max) {
                 allowance[owner_][msg.sender] = allowed - shares_;
+            }
         }
 
         if ((assets = previewRedeem(shares_)) == 0) revert ZERO_ASSETS();
@@ -205,51 +186,25 @@ contract StETHERC4626Swap is ERC4626 {
         return stEth.balanceOf(address(this));
     }
 
-    function convertToShares(uint256 assets_)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function convertToShares(uint256 assets_) public view virtual override returns (uint256) {
         uint256 supply = totalSupply;
 
-        return
-            supply == 0 ? assets_ : assets_.mulDivDown(supply, totalAssets());
+        return supply == 0 ? assets_ : assets_.mulDivDown(supply, totalAssets());
     }
 
-    function convertToAssets(uint256 assets_)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function convertToAssets(uint256 assets_) public view virtual override returns (uint256) {
         uint256 supply = totalSupply;
 
-        return
-            supply == 0 ? assets_ : assets_.mulDivDown(totalAssets(), supply);
+        return supply == 0 ? assets_ : assets_.mulDivDown(totalAssets(), supply);
     }
 
-    function previewMint(uint256 assets_)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function previewMint(uint256 assets_) public view virtual override returns (uint256) {
         uint256 supply = totalSupply;
 
         return supply == 0 ? assets_ : assets_.mulDivUp(totalAssets(), supply);
     }
 
-    function previewWithdraw(uint256 assets_)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function previewWithdraw(uint256 assets_) public view virtual override returns (uint256) {
         uint256 supply = totalSupply;
 
         return supply == 0 ? assets_ : assets_.mulDivUp(supply, totalAssets());

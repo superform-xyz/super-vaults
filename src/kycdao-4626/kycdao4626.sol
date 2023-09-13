@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
@@ -52,10 +52,7 @@ contract kycDAO4626 is ERC4626 {
     /// @notice Constructor
     /// @param asset_ The ERC20 asset to wrap
     /// @param kycValidity_ The address of the KYCDAO contract
-    constructor(
-        ERC20 asset_,
-        address kycValidity_
-    ) ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_)) {
+    constructor(ERC20 asset_, address kycValidity_) ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_)) {
         kycValidity = IKycValidity(kycValidity_);
     }
 
@@ -63,10 +60,7 @@ contract kycDAO4626 is ERC4626 {
                             ERC4626 OVERRIDES
     //////////////////////////////////////////////////////////////*/
 
-    function deposit(
-        uint256 assets_,
-        address receiver_
-    ) public virtual override hasKYC returns (uint256 shares) {
+    function deposit(uint256 assets_, address receiver_) public virtual override hasKYC returns (uint256 shares) {
         // Check for rounding error since we round down in previewDeposit.
         if ((shares = previewDeposit(assets_)) == 0) revert ZERO_SHARES();
 
@@ -80,10 +74,7 @@ contract kycDAO4626 is ERC4626 {
         afterDeposit(assets_, shares);
     }
 
-    function mint(
-        uint256 shares_,
-        address receiver_
-    ) public virtual override hasKYC returns (uint256 assets) {
+    function mint(uint256 shares_, address receiver_) public virtual override hasKYC returns (uint256 assets) {
         assets = previewMint(shares_); // No need to check for rounding error, previewMint rounds up.
 
         // Need to transfer before minting or ERC777s could reenter.
@@ -96,18 +87,21 @@ contract kycDAO4626 is ERC4626 {
         afterDeposit(assets, shares_);
     }
 
-    function withdraw(
-        uint256 assets_,
-        address receiver_,
-        address owner_
-    ) public virtual override hasKYC returns (uint256 shares) {
+    function withdraw(uint256 assets_, address receiver_, address owner_)
+        public
+        virtual
+        override
+        hasKYC
+        returns (uint256 shares)
+    {
         shares = previewWithdraw(assets_); // No need to check for rounding error, previewWithdraw rounds up.
 
         if (msg.sender != owner_) {
             uint256 allowed = allowance[owner_][msg.sender]; // Saves gas for limited approvals.
 
-            if (allowed != type(uint256).max)
+            if (allowed != type(uint256).max) {
                 allowance[owner_][msg.sender] = allowed - shares;
+            }
         }
 
         beforeWithdraw(assets_, shares);
@@ -119,16 +113,19 @@ contract kycDAO4626 is ERC4626 {
         asset.safeTransfer(receiver_, assets_);
     }
 
-    function redeem(
-        uint256 shares_,
-        address receiver_,
-        address owner_
-    ) public virtual override hasKYC returns (uint256 assets) {
+    function redeem(uint256 shares_, address receiver_, address owner_)
+        public
+        virtual
+        override
+        hasKYC
+        returns (uint256 assets)
+    {
         if (msg.sender != owner_) {
             uint256 allowed = allowance[owner_][msg.sender]; // Saves gas for limited approvals.
 
-            if (allowed != type(uint256).max)
+            if (allowed != type(uint256).max) {
                 allowance[owner_][msg.sender] = allowed - shares_;
+            }
         }
 
         // Check for rounding error since we round down in previewRedeem.
@@ -155,15 +152,11 @@ contract kycDAO4626 is ERC4626 {
                         ERC20 METADATA GENERATION
     //////////////////////////////////////////////////////////////*/
 
-    function _vaultName(
-        ERC20 asset_
-    ) internal view virtual returns (string memory vaultName) {
+    function _vaultName(ERC20 asset_) internal view virtual returns (string memory vaultName) {
         vaultName = string.concat("kycERC4626-", asset_.symbol());
     }
 
-    function _vaultSymbol(
-        ERC20 asset_
-    ) internal view virtual returns (string memory vaultSymbol) {
+    function _vaultSymbol(ERC20 asset_) internal view virtual returns (string memory vaultSymbol) {
         vaultSymbol = string.concat("kyc", asset_.symbol());
     }
 

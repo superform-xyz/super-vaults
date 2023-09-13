@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
@@ -26,10 +26,7 @@ contract AaveV3ERC4626ReinvestFactory {
     /// @notice Emitted when a new ERC4626 vault has been created
     /// @param asset The base asset used by the vault
     /// @param vault The vault that was created
-    event CreateERC4626Reinvest(
-        ERC20 indexed asset,
-        AaveV3ERC4626Reinvest vault
-    );
+    event CreateERC4626Reinvest(ERC20 indexed asset, AaveV3ERC4626Reinvest vault);
 
     /// @notice Emitted when rewards for a given aToken vault have been set
     event RewardsSetERC4626Reinvest(AaveV3ERC4626Reinvest vault);
@@ -73,11 +70,7 @@ contract AaveV3ERC4626ReinvestFactory {
     /// @param lendingPool_ The Aave Pool contract
     /// @param rewardsController_ The Aave RewardsController contract
     /// @param manager_ The manager for setting swap routes
-    constructor(
-        IPool lendingPool_,
-        IRewardsController rewardsController_,
-        address manager_
-    ) {
+    constructor(IPool lendingPool_, IRewardsController rewardsController_, address manager_) {
         lendingPool = lendingPool_;
         rewardsController = rewardsController_;
 
@@ -89,15 +82,9 @@ contract AaveV3ERC4626ReinvestFactory {
                       EXTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
-    function createERC4626(ERC20 asset_)
-        external
-        virtual
-        returns (AaveV3ERC4626Reinvest vault)
-    {
+    function createERC4626(ERC20 asset_) external virtual returns (AaveV3ERC4626Reinvest vault) {
         if (msg.sender != manager) revert INVALID_ACCESS();
-        IPool.ReserveData memory reserveData = lendingPool.getReserveData(
-            address(asset_)
-        );
+        IPool.ReserveData memory reserveData = lendingPool.getReserveData(address(asset_));
         address aTokenAddress = reserveData.aTokenAddress;
         if (aTokenAddress == address(0)) {
             revert ATOKEN_NON_EXISTENT();
@@ -122,10 +109,7 @@ contract AaveV3ERC4626ReinvestFactory {
     /// @notice Get all rewards from AAVE market
     /// @dev Call before setting routes
     /// @dev Requires manual management of Routes
-    function setRewards(AaveV3ERC4626Reinvest vault_)
-        external
-        returns (address[] memory rewards)
-    {
+    function setRewards(AaveV3ERC4626Reinvest vault_) external returns (address[] memory rewards) {
         if (msg.sender != manager) revert INVALID_ACCESS();
         rewards = vault_.setRewards();
 
@@ -155,10 +139,7 @@ contract AaveV3ERC4626ReinvestFactory {
     /// @notice Harvest rewards from specified vault
     /// @param vault_ The vault to harvest from
     /// @param minAmountOuts_ The minimum amount of underlying asset token to receive for each reward token
-    function harvestFrom(
-        AaveV3ERC4626Reinvest vault_,
-        uint256[] memory minAmountOuts_
-    ) external {
+    function harvestFrom(AaveV3ERC4626Reinvest vault_, uint256[] memory minAmountOuts_) external {
         vault_.harvest(minAmountOuts_);
         emit HarvestERC4626Reinvest(vault_);
     }

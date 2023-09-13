@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
@@ -36,14 +36,13 @@ contract rEthTest is Test {
     /// https://docs.rocketpool.net/overview/contracts-integrations/#protocol-contracts
     function setUp() public {
         ethFork = vm.createFork(ETH_RPC_URL);
-        
+
         /// @dev Set the block with freeSlots available to deposit
         vm.rollFork(ethFork, 15_565_892);
         vm.selectFork(ethFork);
 
-        address rocketDepositPoolAddress = _rStorage.getAddress(
-            keccak256(abi.encodePacked("contract.address", "rocketDepositPool"))
-        );
+        address rocketDepositPoolAddress =
+            _rStorage.getAddress(keccak256(abi.encodePacked("contract.address", "rocketDepositPool")));
 
         _rEth = IRETH(rocketDepositPoolAddress);
 
@@ -62,12 +61,10 @@ contract rEthTest is Test {
         _weth.approve(address(vault), aliceUnderlyingAmount);
         assertEq(_weth.allowance(alice, address(vault)), aliceUnderlyingAmount);
 
-        uint256 expectedSharesFromAssets = vault.convertToShares(
-            aliceUnderlyingAmount
-        );
+        uint256 expectedSharesFromAssets = vault.convertToShares(aliceUnderlyingAmount);
 
         console.log("expectedSharesFromAssets", expectedSharesFromAssets);
-   
+
         /// @dev Set the block with freeSlots available to deposit
         assertEq(block.number, 15_565_892);
         uint256 aliceShareAmount = vault.deposit(aliceUnderlyingAmount, alice);
@@ -90,20 +87,19 @@ contract rEthTest is Test {
 
         /// how much eth-backing we'll get for this amount of rEth
         /// previewMint should return amount of weth to supply for asked wrEth shares
-        uint256 expectedAssetFromShares = vault.previewMint(
-            aliceSharesMint /// wrEth amount (caller wants 1e18 wrEth : rEth)
-        );
+        uint256 expectedAssetFromShares = vault.previewMint(aliceSharesMint);
+        /// wrEth amount (caller wants 1e18 wrEth : rEth)
 
         console.log("expectedAssetFromShares", expectedAssetFromShares);
 
         _weth.approve(address(vault), expectedAssetFromShares);
 
         uint256 aliveRethMinted = vault.mint(aliceSharesMint, alice);
-        
+
         console.log("aliceAssetAmount", aliveRethMinted);
 
         // assertEq(expectedAssetFromShares, aliceAssetAmount);
-        
+
         uint256 aliceEthToRedeem = vault.previewRedeem(aliveRethMinted);
         uint256 aliceRethBalance = vault.balanceOf(alice);
 
@@ -123,6 +119,5 @@ contract rEthTest is Test {
             console.log("aliceMaxRedeem", aliceMaxRedeem);
             vault.redeem(aliceMaxRedeem, alice, alice);
         }
-
     }
 }

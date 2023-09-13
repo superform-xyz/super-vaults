@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
@@ -35,12 +35,7 @@ contract VenusERC4626HarvestTest is Test {
     IVERC20 public cToken;
     IVComptroller public comptroller;
 
-    function setVault(
-        ERC20 underylyingAsset,
-        ERC20 reward_,
-        IVERC20 cToken_,
-        IVComptroller comptroller_
-    ) public {
+    function setVault(ERC20 underylyingAsset, ERC20 reward_, IVERC20 cToken_, IVComptroller comptroller_) public {
         vm.startPrank(manager);
 
         asset = underylyingAsset;
@@ -107,11 +102,7 @@ contract VenusERC4626HarvestTest is Test {
         );
 
         vm.startPrank(manager);
-        vault.setRoute(
-            VENUS_SWAPTOKEN_USDC,
-            VENUS_PAIR1_USDC,
-            VENUS_PAIR2_USDC
-        );
+        vault.setRoute(VENUS_SWAPTOKEN_USDC, VENUS_PAIR1_USDC, VENUS_PAIR2_USDC);
         vm.stopPrank();
 
         vm.startPrank(alice);

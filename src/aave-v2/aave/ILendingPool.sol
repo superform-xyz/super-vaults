@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 // Aave lending pool interface
 // Documentation: https://docs.aave.com/developers/the-core-protocol/lendingpool/ilendingpool
@@ -54,12 +54,7 @@ interface ILendingPool {
      *   0 if the action is executed directly by the user, without any middle-man
      *
      */
-    function deposit(
-        address asset,
-        uint256 amount,
-        address onBehalfOf,
-        uint16 referralCode
-    ) external;
+    function deposit(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external;
 
     /**
      * @dev Withdraws an `amount` of underlying asset from the reserve, burning the equivalent aTokens owned
@@ -73,11 +68,7 @@ interface ILendingPool {
      * @return The final amount withdrawn
      *
      */
-    function withdraw(
-        address asset,
-        uint256 amount,
-        address to
-    ) external returns (uint256);
+    function withdraw(address asset, uint256 amount, address to) external returns (uint256);
 
     /**
      * @dev Returns the state and configuration of the reserve
@@ -85,10 +76,7 @@ interface ILendingPool {
      * @return The state of the reserve
      *
      */
-    function getReserveData(address asset)
-        external
-        view
-        returns (ReserveData memory);
+    function getReserveData(address asset) external view returns (ReserveData memory);
 
     function paused() external view returns (bool);
 }
