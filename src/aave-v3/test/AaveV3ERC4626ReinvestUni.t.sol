@@ -2,14 +2,14 @@
 pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {ERC4626} from "solmate/mixins/ERC4626.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { ERC4626 } from "solmate/mixins/ERC4626.sol";
 
-import {AaveV3ERC4626ReinvestUni} from "../AaveV3ERC4626ReinvestUni.sol";
-import {AaveV3ERC4626ReinvestUniFactory} from "../AaveV3ERC4626ReinvestUniFactory.sol";
+import { AaveV3ERC4626ReinvestUni } from "../AaveV3ERC4626ReinvestUni.sol";
+import { AaveV3ERC4626ReinvestUniFactory } from "../AaveV3ERC4626ReinvestUniFactory.sol";
 
-import {IRewardsController} from "../../aave-v3/external/IRewardsController.sol";
-import {IPool} from "../external/IPool.sol";
+import { IRewardsController } from "../../aave-v3/external/IRewardsController.sol";
+import { IPool } from "../external/IPool.sol";
 
 contract AaveV3ERC4626ReinvestUniTest is Test {
     ////////////////////////////////////////
@@ -48,7 +48,7 @@ contract AaveV3ERC4626ReinvestUniTest is Test {
         manager = msg.sender;
 
         vm.selectFork(optiFork);
-        vm.rollFork(24518058);
+        vm.rollFork(24_518_058);
         rewards = IRewardsController(vm.envAddress("AAVEV3_OPTIMISM_REWARDS"));
         lendingPool = IPool(vm.envAddress("AAVEV3_OPTIMISM_LENDINGPOOL"));
 
@@ -86,8 +86,8 @@ contract AaveV3ERC4626ReinvestUniTest is Test {
         alice = address(0x1);
         bob = address(0x2);
         /// TODO: Should be e18 by default
-        deal(address(asset), alice, 10000e6);
-        deal(address(asset), bob, 10000e6);
+        deal(address(asset), alice, 10_000e6);
+        deal(address(asset), bob, 10_000e6);
     }
 
     function testFailManagerCreateERC4626() public {

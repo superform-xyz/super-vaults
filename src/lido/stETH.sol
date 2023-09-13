@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.21;
 
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {ERC4626} from "solmate/mixins/ERC4626.sol";
-import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
-import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { ERC4626 } from "solmate/mixins/ERC4626.sol";
+import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
+import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
 
-import {IStETH} from "./interfaces/IStETH.sol";
-import {IWETH} from "./interfaces/IWETH.sol";
+import { IStETH } from "./interfaces/IStETH.sol";
+import { IWETH } from "./interfaces/IWETH.sol";
 
 /// @title StETHERC4626
 /// @notice WIP: Lido's stETH ERC4626 Wrapper - stEth as Vault's underlying token (and token received after withdraw).
-/// @notice Accepts WETH through ERC4626 interface, but can also accept ETH directly through different deposit() function signature.
+/// @notice Accepts WETH through ERC4626 interface, but can also accept ETH directly through different deposit()
+/// function signature.
 /// @notice  Vault balance holds stEth. Value is updated for each accounting call.
 /// @notice  Assets Under Managment (totalAssets()) operates on rebasing balance.
 /// @dev This Wrapper is a base implementation, providing ERC4626 interface over stEth without any additional strategy.
@@ -55,14 +56,14 @@ contract StETHERC4626 is ERC4626 {
         weth = IWETH(weth_);
     }
 
-    receive() external payable {}
+    receive() external payable { }
 
     /*//////////////////////////////////////////////////////////////
                         INTERNAL HOOKS LOGIC
     //////////////////////////////////////////////////////////////*/
 
     function _addLiquidity(uint256 ethAmount_, uint256) internal returns (uint256 stEthAmount) {
-        stEthAmount = stEth.submit{value: ethAmount_}(address(this));
+        stEthAmount = stEth.submit{ value: ethAmount_ }(address(this));
     }
 
     /*//////////////////////////////////////////////////////////////

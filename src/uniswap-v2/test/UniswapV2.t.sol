@@ -3,12 +3,12 @@ pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {UniswapV2WrapperERC4626} from "../no-swap/UniswapV2WrapperERC4626.sol";
-import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { UniswapV2WrapperERC4626 } from "../no-swap/UniswapV2WrapperERC4626.sol";
+import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
 
-import {IUniswapV2Pair} from "../interfaces/IUniswapV2Pair.sol";
-import {IUniswapV2Router} from "../interfaces/IUniswapV2Router.sol";
+import { IUniswapV2Pair } from "../interfaces/IUniswapV2Pair.sol";
+import { IUniswapV2Router } from "../interfaces/IUniswapV2Router.sol";
 
 contract UniswapV2Test is Test {
     uint256 public ethFork;
@@ -60,7 +60,7 @@ contract UniswapV2Test is Test {
 
     function testDepositMath() public {
         /// We use this odd number because UniLP amounts are oddly-small too
-        uint256 uniLpRequest = 887226683879712;
+        uint256 uniLpRequest = 887_226_683_879_712;
 
         vm.startPrank(alice);
 
@@ -76,7 +76,7 @@ contract UniswapV2Test is Test {
     /// DepositWithdraw flow where user is using LP amount to calculate assets0/assets1
     function testDepositWithdraw0() public {
         /// We use this odd number because UniLP amounts are oddly-small too
-        uint256 uniLpRequest = 887226683879712;
+        uint256 uniLpRequest = 887_226_683_879_712;
 
         vm.startPrank(alice);
 
@@ -144,7 +144,7 @@ contract UniswapV2Test is Test {
 
     function testMintRedeem() public {
         /// We use this odd number because UniLP amounts are oddly-small too
-        uint256 uniLpRequest = 887226683879712;
+        uint256 uniLpRequest = 887_226_683_879_712;
 
         vm.startPrank(alice);
 

@@ -106,7 +106,13 @@ abstract contract CometMainInterface {
     function balanceOf(address owner) public view virtual returns (uint256);
     function borrowBalanceOf(address account) public view virtual returns (uint256);
 
-    function pause(bool supplyPaused, bool transferPaused, bool withdrawPaused, bool absorbPaused, bool buyPaused)
+    function pause(
+        bool supplyPaused,
+        bool transferPaused,
+        bool withdrawPaused,
+        bool absorbPaused,
+        bool buyPaused
+    )
         external
         virtual;
     function isSupplyPaused() public view virtual returns (bool);

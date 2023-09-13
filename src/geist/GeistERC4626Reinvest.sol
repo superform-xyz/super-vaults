@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.21;
 
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {ERC4626} from "solmate/mixins/ERC4626.sol";
-import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { ERC4626 } from "solmate/mixins/ERC4626.sol";
+import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
 
-import {IMultiFeeDistribution} from "./external/IMultiFeeDistribution.sol";
-import {IGLendingPool} from "./external/IGLendingPool.sol";
-import {DexSwap} from "../_global/swapUtils.sol";
+import { IMultiFeeDistribution } from "./external/IMultiFeeDistribution.sol";
+import { IGLendingPool } from "./external/IGLendingPool.sol";
+import { DexSwap } from "../_global/swapUtils.sol";
 
 /// @title GeistERC4626Reinvest
 /// @notice AAVE-V2 Forked protocol with Curve-like rewards distribution in place of IAaveMining.
@@ -89,7 +89,9 @@ contract GeistERC4626Reinvest is ERC4626 {
         IGLendingPool lendingPool_,
         ERC20 rewardToken_,
         address manager_
-    ) ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_)) {
+    )
+        ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_))
+    {
         aToken = aToken_;
         rewards = rewards_;
         lendingPool = lendingPool_;
@@ -165,7 +167,11 @@ contract GeistERC4626Reinvest is ERC4626 {
                         ERC4626 OVERRIDES
     //////////////////////////////////////////////////////////////*/
 
-    function withdraw(uint256 assets_, address receiver_, address owner_)
+    function withdraw(
+        uint256 assets_,
+        address receiver_,
+        address owner_
+    )
         public
         virtual
         override
@@ -191,7 +197,11 @@ contract GeistERC4626Reinvest is ERC4626 {
         lendingPool.withdraw(address(asset), assets_, receiver_);
     }
 
-    function redeem(uint256 shares_, address receiver_, address owner_)
+    function redeem(
+        uint256 shares_,
+        address receiver_,
+        address owner_
+    )
         public
         virtual
         override

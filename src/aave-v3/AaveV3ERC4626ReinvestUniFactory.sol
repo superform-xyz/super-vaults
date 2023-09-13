@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.21;
 
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {ERC4626} from "solmate/mixins/ERC4626.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { ERC4626 } from "solmate/mixins/ERC4626.sol";
 
-import {IPool} from "./external/IPool.sol";
-import {AaveV3ERC4626ReinvestUni} from "./AaveV3ERC4626ReinvestUni.sol";
-import {IRewardsController} from "./external/IRewardsController.sol";
-import {Bytes32AddressLib} from "solmate/utils/Bytes32AddressLib.sol";
+import { IPool } from "./external/IPool.sol";
+import { AaveV3ERC4626ReinvestUni } from "./AaveV3ERC4626ReinvestUni.sol";
+import { IRewardsController } from "./external/IRewardsController.sol";
+import { Bytes32AddressLib } from "solmate/utils/Bytes32AddressLib.sol";
 
 /// @title AaveV3ERC4626ReinvestUniFactory
 /// @notice Forked from yield-daddy AaveV3ERC4626Factory for creating AaveV3ERC4626 contracts
@@ -136,7 +136,9 @@ contract AaveV3ERC4626ReinvestUniFactory {
         uint24 poolFee1_,
         address tokenMid_,
         uint24 poolFee2_
-    ) external {
+    )
+        external
+    {
         if (msg.sender != manager) revert INVALID_ACCESS();
         vault_.setRoutes(rewardToken_, poolFee1_, tokenMid_, poolFee2_);
 

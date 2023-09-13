@@ -1,19 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.21;
 
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {ERC4626} from "solmate/mixins/ERC4626.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { ERC4626 } from "solmate/mixins/ERC4626.sol";
 
-import {IUniswapV2Pair} from "../interfaces/IUniswapV2Pair.sol";
-import {IUniswapV2Router} from "../interfaces/IUniswapV2Router.sol";
-import {UniswapV2ERC4626Swap} from "./UniswapV2ERC4626Swap.sol";
+import { IUniswapV2Pair } from "../interfaces/IUniswapV2Pair.sol";
+import { IUniswapV2Router } from "../interfaces/IUniswapV2Router.sol";
+import { UniswapV2ERC4626Swap } from "./UniswapV2ERC4626Swap.sol";
 
-import {IUniswapV3Factory} from "../interfaces/IUniswapV3.sol";
-import {IUniswapV3Pool} from "../interfaces/IUniswapV3.sol";
+import { IUniswapV3Factory } from "../interfaces/IUniswapV3.sol";
+import { IUniswapV3Pool } from "../interfaces/IUniswapV3.sol";
 
 /// @title UniswapV2ERC4626PoolFactory
 /// @notice Uniswap V2 ERC4626 Pool Factory for instant deployment of adapter for two tokens of the Pair.
-/// @notice Use for stress-free deployment of an adapter for a single uniswap V2 pair. Oracle functionality is currently disabled.
+/// @notice Use for stress-free deployment of an adapter for a single uniswap V2 pair. Oracle functionality is currently
+/// disabled.
 /// @author ZeroPoint Labs
 contract UniswapV2ERC4626PoolFactory {
     /*//////////////////////////////////////////////////////////////
@@ -38,7 +39,10 @@ contract UniswapV2ERC4626PoolFactory {
         oracleFactory = oracleFactory_;
     }
 
-    function create(IUniswapV2Pair pair_, uint24 fee_)
+    function create(
+        IUniswapV2Pair pair_,
+        uint24 fee_
+    )
         external
         returns (UniswapV2ERC4626Swap v0, UniswapV2ERC4626Swap v1, address oracle)
     {

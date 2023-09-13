@@ -2,15 +2,15 @@
 pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {ERC4626} from "solmate/mixins/ERC4626.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { ERC4626 } from "solmate/mixins/ERC4626.sol";
 
-import {AaveV2ERC4626Reinvest} from "../AaveV2ERC4626Reinvest.sol";
-import {AaveV2ERC4626ReinvestFactory} from "../AaveV2ERC4626ReinvestFactory.sol";
+import { AaveV2ERC4626Reinvest } from "../AaveV2ERC4626Reinvest.sol";
+import { AaveV2ERC4626ReinvestFactory } from "../AaveV2ERC4626ReinvestFactory.sol";
 
-import {ILendingPool} from "../aave/ILendingPool.sol";
-import {IAaveMining} from "../aave/IAaveMining.sol";
-import {DexSwap} from "../../_global/swapUtils.sol";
+import { ILendingPool } from "../aave/ILendingPool.sol";
+import { IAaveMining } from "../aave/IAaveMining.sol";
+import { DexSwap } from "../../_global/swapUtils.sol";
 
 contract AaveV2ERC4626ReinvestTest is Test {
     ////////////////////////////////////////
@@ -54,7 +54,7 @@ contract AaveV2ERC4626ReinvestTest is Test {
         manager = msg.sender;
 
         vm.selectFork(polyFork);
-        vm.rollFork(39700000);
+        vm.rollFork(39_700_000);
 
         /// @dev Original AAVE v2 reward mining is disabled on each network
         /// @dev We can leave this set to whatever on V2, harvest() is just not used
@@ -92,8 +92,8 @@ contract AaveV2ERC4626ReinvestTest is Test {
     function setUp() public {
         alice = address(0x1);
         bob = address(0x2);
-        deal(address(asset), alice, 10000 ether);
-        deal(address(asset), bob, 10000 ether);
+        deal(address(asset), alice, 10_000 ether);
+        deal(address(asset), bob, 10_000 ether);
     }
 
     function testFactoryDeploy() public {
@@ -112,7 +112,7 @@ contract AaveV2ERC4626ReinvestTest is Test {
 
         /// @dev Just check if we can deposit
         uint256 amount = 100 ether;
-        deal(address(vaultAsset), alice, 10000 ether);
+        deal(address(vaultAsset), alice, 10_000 ether);
         uint256 aliceUnderlyingAmount = amount;
         vaultAsset.approve(address(vault_), aliceUnderlyingAmount);
         vault_.deposit(aliceUnderlyingAmount, alice);

@@ -4,11 +4,11 @@ pragma solidity 0.8.21;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
 
-import {kycDAO4626} from "../kycdao4626.sol";
-import {IKycValidity} from "../interfaces/IKycValidity.sol";
+import { kycDAO4626 } from "../kycdao4626.sol";
+import { IKycValidity } from "../interfaces/IKycValidity.sol";
 
 contract kycDAO4626Test is Test {
     uint256 public polygonFork;
@@ -44,7 +44,7 @@ contract kycDAO4626Test is Test {
     }
 
     function testDepositWithdraw() public {
-        uint256 underlyingAmount = 10000000000000000;
+        uint256 underlyingAmount = 10_000_000_000_000_000;
 
         vm.startPrank(kycNFTHolder);
 
@@ -61,7 +61,7 @@ contract kycDAO4626Test is Test {
     }
 
     function testMintRedeem() public {
-        uint256 sharesMint = 10000000000000000;
+        uint256 sharesMint = 10_000_000_000_000_000;
 
         vm.startPrank(kycNFTHolder);
 
@@ -79,7 +79,7 @@ contract kycDAO4626Test is Test {
     }
 
     function testRevertDeposit() public {
-        uint256 underlyingAmount = 10000000000000000;
+        uint256 underlyingAmount = 10_000_000_000_000_000;
 
         vm.startPrank(alice);
 
@@ -91,7 +91,7 @@ contract kycDAO4626Test is Test {
     }
 
     function testRevertMint() public {
-        uint256 sharesMint = 10000000000000000;
+        uint256 sharesMint = 10_000_000_000_000_000;
 
         vm.startPrank(alice);
 

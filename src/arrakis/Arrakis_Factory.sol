@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.21;
 
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {ERC4626} from "solmate/mixins/ERC4626.sol";
-import {ArrakisNonNativeVault, IArrakisRouter, IGUniPool} from "./Arrakis_Non_Native_LP_Vault.sol";
-import {IStakePool} from "./interfaces/IStakePool.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { ERC4626 } from "solmate/mixins/ERC4626.sol";
+import { ArrakisNonNativeVault, IArrakisRouter, IGUniPool } from "./Arrakis_Non_Native_LP_Vault.sol";
+import { IStakePool } from "./interfaces/IStakePool.sol";
 
 /// @title ArrakisFactory
 /// @notice Factory for creating ArrakisERC4626 contracts
@@ -67,7 +67,10 @@ contract ArrakisFactory {
         string memory symbol_,
         address gauge_,
         uint160 slippage_
-    ) external returns (ArrakisNonNativeVault vaultA, ArrakisNonNativeVault vaultB) {
+    )
+        external
+        returns (ArrakisNonNativeVault vaultA, ArrakisNonNativeVault vaultB)
+    {
         IGUniPool pool = IGUniPool(gUniPool_);
         ERC20 token0 = pool.token0();
         ERC20 token1 = pool.token1();

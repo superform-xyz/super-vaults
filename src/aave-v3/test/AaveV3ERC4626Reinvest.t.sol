@@ -2,14 +2,14 @@
 pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {ERC4626} from "solmate/mixins/ERC4626.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { ERC4626 } from "solmate/mixins/ERC4626.sol";
 
-import {AaveV3ERC4626Reinvest} from "../AaveV3ERC4626Reinvest.sol";
-import {AaveV3ERC4626ReinvestFactory} from "../AaveV3ERC4626ReinvestFactory.sol";
+import { AaveV3ERC4626Reinvest } from "../AaveV3ERC4626Reinvest.sol";
+import { AaveV3ERC4626ReinvestFactory } from "../AaveV3ERC4626ReinvestFactory.sol";
 
-import {IRewardsController} from "../../aave-v3/external/IRewardsController.sol";
-import {IPool} from "../external/IPool.sol";
+import { IRewardsController } from "../../aave-v3/external/IRewardsController.sol";
+import { IPool } from "../external/IPool.sol";
 
 contract AaveV3ERC4626ReinvestTest is Test {
     ////////////////////////////////////////
@@ -47,7 +47,7 @@ contract AaveV3ERC4626ReinvestTest is Test {
         manager = msg.sender;
 
         vm.selectFork(avaxFork);
-        vm.rollFork(26800000);
+        vm.rollFork(26_800_000);
 
         rewards = IRewardsController(vm.envAddress("AAVEV3_AVAX_REWARDS"));
         lendingPool = IPool(vm.envAddress("AAVEV3_AVAX_LENDINGPOOL"));
@@ -88,8 +88,8 @@ contract AaveV3ERC4626ReinvestTest is Test {
         alice = address(0x1);
         bob = address(0x2);
         /// TODO: Should be e18 by default
-        deal(address(asset), alice, 10000e6);
-        deal(address(asset), bob, 10000e6);
+        deal(address(asset), alice, 10_000e6);
+        deal(address(asset), bob, 10_000e6);
     }
 
     function testFactoryDeployDAIAndDeposit() public {

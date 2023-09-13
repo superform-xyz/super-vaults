@@ -2,12 +2,12 @@
 pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {VenusERC4626Reinvest} from "../VenusERC4626Reinvest.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { VenusERC4626Reinvest } from "../VenusERC4626Reinvest.sol";
 
-import {IVERC20} from "../external/IVERC20.sol";
-import {LibVCompound} from "../external/LibVCompound.sol";
-import {IVComptroller} from "../external/IVComptroller.sol";
+import { IVERC20 } from "../external/IVERC20.sol";
+import { LibVCompound } from "../external/LibVCompound.sol";
+import { IVComptroller } from "../external/IVComptroller.sol";
 
 contract VenusERC4626WrapperTest is Test {
     uint256 public fork;
@@ -78,8 +78,8 @@ contract VenusERC4626WrapperTest is Test {
     function setUp() public {
         alice = address(0x1);
         bob = address(0x2);
-        deal(address(asset), alice, 100000 ether);
-        deal(address(asset), bob, 100000 ether);
+        deal(address(asset), alice, 100_000 ether);
+        deal(address(asset), bob, 100_000 ether);
     }
 
     function testDepositWithdrawUSDC() public {
@@ -146,7 +146,7 @@ contract VenusERC4626WrapperTest is Test {
     }
 
     function testHarvest() public {
-        uint256 amount = 10000 ether;
+        uint256 amount = 10_000 ether;
 
         fork = vm.createFork(BSC_RPC_URL);
 

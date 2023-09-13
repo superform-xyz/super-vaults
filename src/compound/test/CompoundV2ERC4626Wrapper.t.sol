@@ -2,10 +2,10 @@
 pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {CompoundV2ERC4626Wrapper} from "../CompoundV2ERC4626Wrapper.sol";
-import {ICERC20} from "../external/ICERC20.sol";
-import {IComptroller} from "../external/IComptroller.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { CompoundV2ERC4626Wrapper } from "../CompoundV2ERC4626Wrapper.sol";
+import { ICERC20 } from "../external/ICERC20.sol";
+import { IComptroller } from "../external/IComptroller.sol";
 
 contract CompoundV2ERC4626Test is Test {
     uint256 public ethFork;

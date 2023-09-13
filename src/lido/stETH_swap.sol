@@ -1,19 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.21;
 
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {ERC4626} from "solmate/mixins/ERC4626.sol";
-import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
-import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { ERC4626 } from "solmate/mixins/ERC4626.sol";
+import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
+import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
 
-import {ICurve} from "./interfaces/ICurve.sol";
-import {IStETH} from "./interfaces/IStETH.sol";
-import {IWETH} from "./interfaces/IWETH.sol";
+import { ICurve } from "./interfaces/ICurve.sol";
+import { IStETH } from "./interfaces/IStETH.sol";
+import { IWETH } from "./interfaces/IWETH.sol";
 
 /// @title Lido's stETH ERC4626 Wrapper
 /// @notice Accepts WETH through ERC4626 interface, but can also accept ETH directly through other deposit() function.
 /// @notice Returns assets as ETH for brevity (community-version should return stEth)
-/// @notice Assets Under Managment (totalAssets()) operates on rebasing balance, re-calculated to the current value in ETH.
+/// @notice Assets Under Managment (totalAssets()) operates on rebasing balance, re-calculated to the current value in
+/// ETH.
 /// @notice Uses ETH/stETH CurvePool for a fast-exit with 1% slippage hardcoded.
 /// @author ZeroPoint Labs
 contract StETHERC4626Swap is ERC4626 {
@@ -54,7 +55,7 @@ contract StETHERC4626Swap is ERC4626 {
     ICurve public curvePool;
 
     uint256 public slippage;
-    uint256 public immutable slippageFloat = 10000;
+    uint256 public immutable slippageFloat = 10_000;
 
     int128 public immutable index_eth = 0;
 
@@ -70,7 +71,12 @@ contract StETHERC4626Swap is ERC4626 {
     /// @param stEth_ stETH (Lido contract) address
     /// @param curvePool_ CurvePool address
     /// @param manager_ manager address
-    constructor(address weth_, address stEth_, address curvePool_, address manager_)
+    constructor(
+        address weth_,
+        address stEth_,
+        address curvePool_,
+        address manager_
+    )
         ERC4626(ERC20(weth_), "ERC4626-Wrapped stETH", "wLstETH")
     {
         stEth = IStETH(stEth_);
@@ -82,7 +88,7 @@ contract StETHERC4626Swap is ERC4626 {
         slippage = 9900;
     }
 
-    receive() external payable {}
+    receive() external payable { }
 
     /*//////////////////////////////////////////////////////////////
                             ERC4626 OVERRIDES
@@ -94,7 +100,7 @@ contract StETHERC4626Swap is ERC4626 {
     }
 
     function afterDeposit(uint256 ethAmount, uint256) internal override {
-        stEth.submit{value: ethAmount}(address(this));
+        stEth.submit{ value: ethAmount }(address(this));
         /// Lido's submit() accepts only native ETH
     }
 
@@ -212,7 +218,7 @@ contract StETHERC4626Swap is ERC4626 {
 
     function setSlippage(uint256 amount_) external {
         if (msg.sender != manager) revert INVALID_ACCESS();
-        if (amount_ > 10000 || amount_ < 9000) revert INVALID_SLIPPAGE();
+        if (amount_ > 10_000 || amount_ < 9000) revert INVALID_SLIPPAGE();
         slippage = amount_;
     }
 

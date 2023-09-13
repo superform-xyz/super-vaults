@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.21;
 
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {ERC4626} from "solmate/mixins/ERC4626.sol";
-import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
-import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { ERC4626 } from "solmate/mixins/ERC4626.sol";
+import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
+import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
 
-import {IStMATIC} from "./interfaces/IStMATIC.sol";
-import {IMATIC} from "./interfaces/IMatic.sol";
+import { IStMATIC } from "./interfaces/IStMATIC.sol";
+import { IMATIC } from "./interfaces/IMatic.sol";
 
 /// @title StMATIC4626
 /// @notice Lido's stMATIC ERC4626 Wrapper - stMatic as Vault's underlying token (and token received after withdraw)
@@ -43,14 +43,17 @@ contract StMATIC4626 is ERC4626 {
 
     /// @param matic_ matic address (Vault's underlying / deposit token)
     /// @param stMatic_ stMatic (Lido contract) address
-    constructor(address matic_, address stMatic_)
+    constructor(
+        address matic_,
+        address stMatic_
+    )
         ERC4626(ERC20(matic_), "ERC4626-Wrapped stMatic", "ERC4626-stMatic")
     {
         stMatic = IStMATIC(stMatic_);
         stMaticAsset = ERC20(stMatic_);
     }
 
-    receive() external payable {}
+    receive() external payable { }
 
     /*//////////////////////////////////////////////////////////////
                           INTERNAL HOOKS LOGIC
