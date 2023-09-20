@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.21;
+pragma solidity ^0.8.19;
 
 // Aave lending pool interface
 // Documentation: https://docs.aave.com/developers/the-core-protocol/lendingpool/ilendingpool

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.21;
+pragma solidity ^0.8.19;
 
 interface IStMATIC {
     function submit(uint256 _amount, address _referal) external returns (uint256);
