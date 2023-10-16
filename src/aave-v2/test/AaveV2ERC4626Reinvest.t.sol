@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
 import "forge-std/Test.sol";
-import { ERC20 } from "solmate/tokens/ERC20.sol";
-import { ERC4626 } from "solmate/mixins/ERC4626.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
+import {ERC4626} from "solmate/mixins/ERC4626.sol";
 
-import { AaveV2ERC4626Reinvest } from "../AaveV2ERC4626Reinvest.sol";
-import { AaveV2ERC4626ReinvestFactory } from "../AaveV2ERC4626ReinvestFactory.sol";
+import {AaveV2ERC4626Reinvest} from "../AaveV2ERC4626Reinvest.sol";
+import {AaveV2ERC4626ReinvestFactory} from "../AaveV2ERC4626ReinvestFactory.sol";
 
-import { ILendingPool } from "../aave/ILendingPool.sol";
-import { IAaveMining } from "../aave/IAaveMining.sol";
-import { DexSwap } from "../../_global/swapUtils.sol";
+import {ILendingPool} from "../aave/ILendingPool.sol";
+import {IAaveMining} from "../aave/IAaveMining.sol";
+import {DexSwap} from "../../_global/swapUtils.sol";
 
 contract AaveV2ERC4626ReinvestTest is Test {
     ////////////////////////////////////////

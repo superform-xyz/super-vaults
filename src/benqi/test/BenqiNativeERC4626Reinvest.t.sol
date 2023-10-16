@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
 import "forge-std/Test.sol";
-import { ERC20 } from "solmate/tokens/ERC20.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
 
-import { BenqiNativeERC4626Reinvest } from "../BenqiNativeERC4626Reinvest.sol";
+import {BenqiNativeERC4626Reinvest} from "../BenqiNativeERC4626Reinvest.sol";
 
-import { IBEther } from "../external/IBEther.sol";
-import { IBComptroller } from "../external/IBComptroller.sol";
+import {IBEther} from "../external/IBEther.sol";
+import {IBComptroller} from "../external/IBComptroller.sol";
 
 contract BenqiNativeERC4626ReinvestTest is Test {
     address public manager;
@@ -101,7 +101,7 @@ contract BenqiNativeERC4626ReinvestTest is Test {
         vm.prank(alice);
         uint256 aliceUnderlyingAmount = amount;
 
-        uint256 aliceShareAmount = vault.deposit{ value: aliceUnderlyingAmount }(alice);
+        uint256 aliceShareAmount = vault.deposit{value: aliceUnderlyingAmount}(alice);
 
         uint256 aliceAssetsToWithdraw = vault.convertToAssets(aliceShareAmount);
         assertEq(aliceUnderlyingAmount, aliceShareAmount);

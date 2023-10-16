@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
 import "forge-std/Test.sol";
-import { ERC20 } from "solmate/tokens/ERC20.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
 
-import { BenqiERC4626Reinvest } from "../BenqiERC4626Reinvest.sol";
+import {BenqiERC4626Reinvest} from "../BenqiERC4626Reinvest.sol";
 
-import { IBERC20 } from "../external/IBERC20.sol";
-import { IBComptroller } from "../external/IBComptroller.sol";
+import {IBERC20} from "../external/IBERC20.sol";
+import {IBComptroller} from "../external/IBComptroller.sol";
 
 contract BenqiERC4626ReinvestTest is Test {
     address public manager;

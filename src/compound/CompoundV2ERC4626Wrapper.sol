@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
-import { ERC20 } from "solmate/tokens/ERC20.sol";
-import { ERC4626 } from "solmate/mixins/ERC4626.sol";
-import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
-import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
+import {ERC4626} from "solmate/mixins/ERC4626.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-import { ICERC20 } from "./external/ICERC20.sol";
-import { LibCompound } from "./external/LibCompound.sol";
-import { IComptroller } from "./external/IComptroller.sol";
-import { ISwapRouter } from "../aave-v2/utils/ISwapRouter.sol";
-import { DexSwap } from "../_global/swapUtils.sol";
+import {ICERC20} from "./external/ICERC20.sol";
+import {LibCompound} from "./external/LibCompound.sol";
+import {IComptroller} from "./external/IComptroller.sol";
+import {ISwapRouter} from "../aave-v2/utils/ISwapRouter.sol";
+import {DexSwap} from "../_global/swapUtils.sol";
 
 /// @title CompoundV2ERC4626Wrapper
 /// @notice Custom implementation of yield-daddy wrappers with flexible reinvesting logic
@@ -90,9 +90,7 @@ contract CompoundV2ERC4626Wrapper is ERC4626 {
         ICERC20 cToken_, // compound concept of a share
         IComptroller comptroller_,
         address manager_
-    )
-        ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_))
-    {
+    ) ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_)) {
         reward = reward_;
         cToken = cToken_;
         comptroller = comptroller_;

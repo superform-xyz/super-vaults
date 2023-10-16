@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
-import { ERC20 } from "solmate/tokens/ERC20.sol";
-import { ERC4626 } from "solmate/mixins/ERC4626.sol";
-import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
-import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
+import {ERC4626} from "solmate/mixins/ERC4626.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
-import { IWETH } from "./interfaces/IWETH.sol";
-import { IRETH } from "./interfaces/IReth.sol";
-import { IRSTORAGE } from "./interfaces/IRstorage.sol";
-import { IRPROTOCOL } from "./interfaces/IRProtocol.sol";
-import { IRETHTOKEN } from "./interfaces/IRethToken.sol";
+import {IWETH} from "./interfaces/IWETH.sol";
+import {IRETH} from "./interfaces/IReth.sol";
+import {IRSTORAGE} from "./interfaces/IRstorage.sol";
+import {IRPROTOCOL} from "./interfaces/IRProtocol.sol";
+import {IRETHTOKEN} from "./interfaces/IRethToken.sol";
 
 /// @title rEthERC4626
 /// @notice Experimental RocketPool's rETH ERC4626 Wrapper
@@ -94,7 +94,7 @@ contract rEthERC4626 is ERC4626 {
         rEthAsset = ERC20(rocketTokenRETHAddress);
     }
 
-    receive() external payable { }
+    receive() external payable {}
 
     /*//////////////////////////////////////////////////////////////
                         ERC4626 OVERRIDES
@@ -125,7 +125,7 @@ contract rEthERC4626 is ERC4626 {
         uint256 startBalance = rEthAsset.balanceOf(address(this));
 
         /// @dev Deposit eth to rocket pool
-        rEth.deposit{ value: assets_ }();
+        rEth.deposit{value: assets_}();
 
         /// @dev How much rEth are we receiving after deposit to the rocket pool
         /// NOTE: Prone to inflation attack on balance of this contract!!!
@@ -165,7 +165,7 @@ contract rEthERC4626 is ERC4626 {
         uint256 startBalance = rEthAsset.balanceOf(address(this));
 
         /// @dev Deposit eth to rocket pool
-        rEth.deposit{ value: assets }();
+        rEth.deposit{value: assets}();
 
         /// @dev How much rEth are we receiving after deposit to the rocket pool
         /// NOTE: Prone to inflation attack on balance of this contract!!!

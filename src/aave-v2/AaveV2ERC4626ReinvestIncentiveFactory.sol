@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
-import { ERC20 } from "solmate/tokens/ERC20.sol";
-import { ERC4626 } from "solmate/mixins/ERC4626.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
+import {ERC4626} from "solmate/mixins/ERC4626.sol";
 
-import { AaveV2ERC4626ReinvestIncentive } from "./AaveV2ERC4626ReinvestIncentive.sol";
-import { IAaveMining } from "./aave/IAaveMining.sol";
-import { ILendingPool } from "./aave/ILendingPool.sol";
+import {AaveV2ERC4626ReinvestIncentive} from "./AaveV2ERC4626ReinvestIncentive.sol";
+import {IAaveMining} from "./aave/IAaveMining.sol";
+import {ILendingPool} from "./aave/ILendingPool.sol";
 
 /// @title AaveV2ERC4626ReinvestFactory
 /// @notice Factory for creating AaveV2ERC4626Reinvest contracts

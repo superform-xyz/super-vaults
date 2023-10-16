@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
-import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-import { IBERC20 } from "./IBERC20.sol";
+import {IBERC20} from "./IBERC20.sol";
 
 /// @notice Get up to date cToken data without mutating state.
 /// @notice Forked from Transmissions11 (https://github.com/transmissions11/libcompound) to upgrade version

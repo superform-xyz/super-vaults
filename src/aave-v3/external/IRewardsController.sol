@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
 /**
  * @title IRewardsController
@@ -7,10 +7,7 @@ pragma solidity ^0.8.19;
  * @notice Defines the basic interface for a Rewards Controller.
  */
 interface IRewardsController {
-    function getAllUserRewards(
-        address[] calldata assets,
-        address user
-    )
+    function getAllUserRewards(address[] calldata assets, address user)
         external
         view
         returns (address[] memory rewardsList, uint256[] memory unclaimedAmounts);
@@ -33,10 +30,7 @@ interface IRewardsController {
      * @return claimedAmounts List that contains the claimed amount per reward, following same order as "rewardList"
      *
      */
-    function claimAllRewards(
-        address[] calldata assets,
-        address to
-    )
+    function claimAllRewards(address[] calldata assets, address to)
         external
         returns (address[] memory rewardsList, uint256[] memory claimedAmounts);
 }

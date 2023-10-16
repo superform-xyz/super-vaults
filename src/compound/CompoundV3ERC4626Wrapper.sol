@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
-import { ERC20 } from "solmate/tokens/ERC20.sol";
-import { ERC4626 } from "solmate/mixins/ERC4626.sol";
-import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
-import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
+import {ERC4626} from "solmate/mixins/ERC4626.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-import { CometMainInterface } from "./external/IComet.sol";
-import { LibCompound } from "./external/LibCompound.sol";
-import { ICometRewards } from "./external/ICometRewards.sol";
-import { ISwapRouter } from "../aave-v2/utils/ISwapRouter.sol";
-import { DexSwap } from "../_global/swapUtils.sol";
+import {CometMainInterface} from "./external/IComet.sol";
+import {LibCompound} from "./external/LibCompound.sol";
+import {ICometRewards} from "./external/ICometRewards.sol";
+import {ISwapRouter} from "../aave-v2/utils/ISwapRouter.sol";
+import {DexSwap} from "../_global/swapUtils.sol";
 
 /// @title CompoundV3ERC4626Wrapper
 /// @notice Custom implementation with flexible reinvesting logic
@@ -75,9 +75,7 @@ contract CompoundV3ERC4626Wrapper is ERC4626 {
         CometMainInterface cToken_, // compound concept of a share
         ICometRewards rewardsManager_,
         address manager_
-    )
-        ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_))
-    {
+    ) ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_)) {
         cToken = cToken_;
         rewardsManager = rewardsManager_;
         manager = manager_;

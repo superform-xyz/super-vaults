@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-import { ERC20 } from "solmate/tokens/ERC20.sol";
-import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-import { kycDAO4626 } from "../kycdao4626.sol";
-import { IKycValidity } from "../interfaces/IKycValidity.sol";
+import {kycDAO4626} from "../kycdao4626.sol";
+import {IKycValidity} from "../interfaces/IKycValidity.sol";
 
 contract kycDAO4626Test is Test {
     uint256 public polygonFork;

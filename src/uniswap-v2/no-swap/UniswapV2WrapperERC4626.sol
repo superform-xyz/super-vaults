@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
-import { ERC20 } from "solmate/tokens/ERC20.sol";
-import { ERC4626 } from "solmate/mixins/ERC4626.sol";
-import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
-import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
+import {ERC4626} from "solmate/mixins/ERC4626.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-import { IUniswapV2Pair } from "../interfaces/IUniswapV2Pair.sol";
-import { IUniswapV2Router } from "../interfaces/IUniswapV2Router.sol";
-import { UniswapV2Library } from "../utils/UniswapV2Library.sol";
+import {IUniswapV2Pair} from "../interfaces/IUniswapV2Pair.sol";
+import {IUniswapV2Router} from "../interfaces/IUniswapV2Router.sol";
+import {UniswapV2Library} from "../utils/UniswapV2Library.sol";
 
 /// @title UniswapV2WrapperERC4626
 /// @notice Custom ERC4626 Wrapper for UniV2 Pools without swapping, accepting token0/token1 transfers
@@ -69,9 +69,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         IUniswapV2Pair pair_,
         /// Pair address (to opti)
         uint256 slippage_
-    )
-        ERC4626(asset_, name_, symbol_)
-    {
+    ) ERC4626(asset_, name_, symbol_) {
         manager = msg.sender;
         pair = pair_;
         router = router_;
@@ -198,11 +196,7 @@ contract UniswapV2WrapperERC4626 is ERC4626 {
         uint256 assets_, // amount of underlying asset (pool Lp) to withdraw
         address receiver_,
         address owner_
-    )
-        public
-        override
-        returns (uint256 shares)
-    {
+    ) public override returns (uint256 shares) {
         shares = previewWithdraw(assets_);
 
         (uint256 assets0, uint256 assets1) = getAssetsAmounts(assets_);

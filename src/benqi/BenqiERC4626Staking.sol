@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
-import { ERC20 } from "solmate/tokens/ERC20.sol";
-import { ERC4626 } from "solmate/mixins/ERC4626.sol";
-import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
-import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
+import {ERC4626} from "solmate/mixins/ERC4626.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
-import { IPair, DexSwap } from "../_global/swapUtils.sol";
-import { IStakedAvax } from "./interfaces/IStakedAvax.sol";
-import { IWETH } from "../lido/interfaces/IWETH.sol";
+import {IPair, DexSwap} from "../_global/swapUtils.sol";
+import {IStakedAvax} from "./interfaces/IStakedAvax.sol";
+import {IWETH} from "../lido/interfaces/IWETH.sol";
 
 /// @title BenqiERC4626Staking
 /// @notice Accepts WAVAX to deposit into Benqi's staking contract - sAVAX, provides ERC4626 interface over token
@@ -49,10 +49,7 @@ contract BenqiERC4626Staking is ERC4626 {
 
     /// @param wavax_ wavax address (Vault's underlying / deposit token)
     /// @param sAvax_ sAVAX (Benqi staking contract) address
-    constructor(
-        address wavax_,
-        address sAvax_
-    )
+    constructor(address wavax_, address sAvax_)
         // address tradeJoePool_
         ERC4626(ERC20(wavax_), "ERC4626-Wrapped sAVAX", "wLsAVAX")
     {
@@ -61,14 +58,14 @@ contract BenqiERC4626Staking is ERC4626 {
         wavax = IWETH(wavax_);
     }
 
-    receive() external payable { }
+    receive() external payable {}
 
     /*//////////////////////////////////////////////////////////////
                           INTERNAL HOOKS LOGIC
     //////////////////////////////////////////////////////////////*/
 
     function _addLiquidity(uint256 wAvaxAmt_, uint256) internal returns (uint256 sAvaxAmt) {
-        sAvaxAmt = sAVAX.submit{ value: wAvaxAmt_ }();
+        sAvaxAmt = sAVAX.submit{value: wAvaxAmt_}();
     }
 
     /*//////////////////////////////////////////////////////////////
