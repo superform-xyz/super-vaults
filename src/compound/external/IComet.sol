@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
 /**
  * @title Compound's Comet Main Interface (without Ext)
@@ -106,13 +106,7 @@ abstract contract CometMainInterface {
     function balanceOf(address owner) public view virtual returns (uint256);
     function borrowBalanceOf(address account) public view virtual returns (uint256);
 
-    function pause(
-        bool supplyPaused,
-        bool transferPaused,
-        bool withdrawPaused,
-        bool absorbPaused,
-        bool buyPaused
-    )
+    function pause(bool supplyPaused, bool transferPaused, bool withdrawPaused, bool absorbPaused, bool buyPaused)
         external
         virtual;
     function isSupplyPaused() public view virtual returns (bool);

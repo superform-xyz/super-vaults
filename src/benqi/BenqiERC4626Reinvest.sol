@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
-import { ERC20 } from "solmate/tokens/ERC20.sol";
-import { ERC4626 } from "solmate/mixins/ERC4626.sol";
-import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
-import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
+import {ERC4626} from "solmate/mixins/ERC4626.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-import { IBERC20 } from "./external/IBERC20.sol";
-import { LibBCompound } from "./external/LibBCompound.sol";
-import { IBComptroller } from "./external/IBComptroller.sol";
+import {IBERC20} from "./external/IBERC20.sol";
+import {LibBCompound} from "./external/LibBCompound.sol";
+import {IBComptroller} from "./external/IBComptroller.sol";
 
-import { DexSwap } from "../_global/swapUtils.sol";
+import {DexSwap} from "../_global/swapUtils.sol";
 
 /// @title BenqiERC4626Reinvest
 /// @notice Custom implementation of yield-daddy Compound wrapper with flexible reinvesting logic
@@ -86,12 +86,7 @@ contract BenqiERC4626Reinvest is ERC4626 {
     /// @dev cToken_ is the Compound cToken contract
     /// @dev comptroller_ is the Compound comptroller contract
     /// @dev manager_ is the address that can set swap routes
-    constructor(
-        ERC20 asset_,
-        IBERC20 cToken_,
-        IBComptroller comptroller_,
-        address manager_
-    )
+    constructor(ERC20 asset_, IBERC20 cToken_, IBComptroller comptroller_, address manager_)
         ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_))
     {
         cToken = cToken_;
@@ -107,13 +102,7 @@ contract BenqiERC4626Reinvest is ERC4626 {
     /// @notice Set type of reward we are harvesting and selling
     /// @dev 0 = BenqiToken, 1 = AVAX
     /// @dev Setting wrong addresses here will revert harvest() calls
-    function setRoute(
-        uint8 rewardType_,
-        address rewardToken_,
-        address token_,
-        address pair1_,
-        address pair2_
-    )
+    function setRoute(uint8 rewardType_, address rewardToken_, address token_, address pair1_, address pair2_)
         external
     {
         if (msg.sender != manager) revert INVALID_ACCESS();

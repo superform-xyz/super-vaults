@@ -1,12 +1,12 @@
 /// SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
 import "forge-std/Test.sol";
-import { ERC20 } from "solmate/tokens/ERC20.sol";
-import { AlpacaERC4626Reinvest } from "../AlpacaERC4626Reinvest.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
+import {AlpacaERC4626Reinvest} from "../AlpacaERC4626Reinvest.sol";
 
-import { IBToken } from "../interfaces/IBToken.sol";
-import { IFairLaunch } from "../interfaces/IFairLaunch.sol";
+import {IBToken} from "../interfaces/IBToken.sol";
+import {IFairLaunch} from "../interfaces/IFairLaunch.sol";
 
 /// Deployment addresses: https://github.com/alpaca-finance/bsc-alpaca-contract/blob/main/.mainnet.json
 contract AlpacaERC4626ReinvestTest is Test {

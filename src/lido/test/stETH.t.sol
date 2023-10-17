@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-import { StETHERC4626 } from "../stETH.sol";
-import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
+import {StETHERC4626} from "../stETH.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-import { ICurve } from "../interfaces/ICurve.sol";
-import { IStETH } from "../interfaces/IStETH.sol";
-import { IWETH } from "../interfaces/IWETH.sol";
-import { wstETH } from "../interfaces/wstETH.sol";
+import {ICurve} from "../interfaces/ICurve.sol";
+import {IStETH} from "../interfaces/IStETH.sol";
+import {IWETH} from "../interfaces/IWETH.sol";
+import {wstETH} from "../interfaces/wstETH.sol";
 
 contract stEthTest is Test {
     uint256 public ethFork;
@@ -91,7 +91,7 @@ contract stEthTest is Test {
         startHoax(alice, aliceEth + 1 ether);
 
         uint256 expectedSharesFromAsset = vault.convertToShares(aliceEth);
-        uint256 aliceShareAmount = vault.deposit{ value: aliceEth }(alice);
+        uint256 aliceShareAmount = vault.deposit{value: aliceEth}(alice);
         assertEq(expectedSharesFromAsset, aliceShareAmount);
     }
 }

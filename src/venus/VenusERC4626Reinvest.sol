@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
-import { ERC20 } from "solmate/tokens/ERC20.sol";
-import { ERC4626 } from "solmate/mixins/ERC4626.sol";
-import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
-import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
+import {ERC4626} from "solmate/mixins/ERC4626.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-import { IVERC20 } from "./external/IVERC20.sol";
-import { LibVCompound } from "./external/LibVCompound.sol";
-import { IVComptroller } from "./external/IVComptroller.sol";
+import {IVERC20} from "./external/IVERC20.sol";
+import {LibVCompound} from "./external/LibVCompound.sol";
+import {IVComptroller} from "./external/IVComptroller.sol";
 
-import { DexSwap } from "../_global/swapUtils.sol";
+import {DexSwap} from "../_global/swapUtils.sol";
 
 /// @title VenusERC4626Reinvest
 /// @notice Extended implementation of yield-daddy CompoundV2 wrapper
@@ -82,13 +82,7 @@ contract VenusERC4626Reinvest is ERC4626 {
     /// @param cToken_ The address of the cToken contract
     /// @param comptroller_ The address of the comptroller contract
     /// @param manager_ The address of the manager
-    constructor(
-        ERC20 asset_,
-        ERC20 reward_,
-        IVERC20 cToken_,
-        IVComptroller comptroller_,
-        address manager_
-    )
+    constructor(ERC20 asset_, ERC20 reward_, IVERC20 cToken_, IVComptroller comptroller_, address manager_)
         ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_))
     {
         reward = reward_;

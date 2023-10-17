@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-import { BenqiERC4626Staking } from "../BenqiERC4626Staking.sol";
-import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
+import {BenqiERC4626Staking} from "../BenqiERC4626Staking.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-import { IPair, DexSwap } from "../../_global/swapUtils.sol";
-import { IStETH } from "../../lido/interfaces/IStETH.sol";
-import { IWETH } from "../../lido/interfaces/IWETH.sol";
+import {IPair, DexSwap} from "../../_global/swapUtils.sol";
+import {IStETH} from "../../lido/interfaces/IStETH.sol";
+import {IWETH} from "../../lido/interfaces/IWETH.sol";
 
 contract BenqiERC4626StakingTest is Test {
     uint256 public ethFork;
@@ -139,7 +139,7 @@ contract BenqiERC4626StakingTest is Test {
         startHoax(alice, aliceEth + 1 ether);
 
         uint256 expectedSharesFromAsset = vault.convertToShares(aliceEth);
-        uint256 aliceShareAmount = vault.deposit{ value: aliceEth }(alice);
+        uint256 aliceShareAmount = vault.deposit{value: aliceEth}(alice);
         assertEq(expectedSharesFromAsset, aliceShareAmount);
     }
 }

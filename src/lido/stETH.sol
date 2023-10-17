@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
-import { ERC20 } from "solmate/tokens/ERC20.sol";
-import { ERC4626 } from "solmate/mixins/ERC4626.sol";
-import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
-import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
+import {ERC4626} from "solmate/mixins/ERC4626.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
-import { IStETH } from "./interfaces/IStETH.sol";
-import { IWETH } from "./interfaces/IWETH.sol";
+import {IStETH} from "./interfaces/IStETH.sol";
+import {IWETH} from "./interfaces/IWETH.sol";
 
 /// @title StETHERC4626
 /// @notice WIP: Lido's stETH ERC4626 Wrapper - stEth as Vault's underlying token (and token received after withdraw).
@@ -56,14 +56,14 @@ contract StETHERC4626 is ERC4626 {
         weth = IWETH(weth_);
     }
 
-    receive() external payable { }
+    receive() external payable {}
 
     /*//////////////////////////////////////////////////////////////
                         INTERNAL HOOKS LOGIC
     //////////////////////////////////////////////////////////////*/
 
     function _addLiquidity(uint256 ethAmount_, uint256) internal returns (uint256 stEthAmount) {
-        stEthAmount = stEth.submit{ value: ethAmount_ }(address(this));
+        stEthAmount = stEth.submit{value: ethAmount_}(address(this));
     }
 
     /*//////////////////////////////////////////////////////////////

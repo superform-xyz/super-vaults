@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
-import { ERC20 } from "solmate/tokens/ERC20.sol";
-import { ERC4626 } from "solmate/mixins/ERC4626.sol";
-import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
+import {ERC4626} from "solmate/mixins/ERC4626.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
-import { ILendingPool } from "./aave/ILendingPool.sol";
-import { IAaveMining } from "./aave/IAaveMining.sol";
+import {ILendingPool} from "./aave/ILendingPool.sol";
+import {IAaveMining} from "./aave/IAaveMining.sol";
 
-import { DexSwap } from "../_global/swapUtils.sol";
+import {DexSwap} from "../_global/swapUtils.sol";
 
 /// @title AaveV2ERC4626Reinvest
 /// @notice Extended implementation of yield-daddy's ERC4626
@@ -89,9 +89,7 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
         ILendingPool lendingPool_,
         address rewardToken_,
         address manager_
-    )
-        ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_))
-    {
+    ) ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_)) {
         aToken = aToken_;
         rewards = rewards_;
         lendingPool = lendingPool_;
@@ -188,11 +186,7 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
     ///@param assets_ Amount of assets to withdraw
     ///@param receiver_ Address to send withdrawn assets to
     ///@param owner_ Address to burn shares from
-    function withdraw(
-        uint256 assets_,
-        address receiver_,
-        address owner_
-    )
+    function withdraw(uint256 assets_, address receiver_, address owner_)
         public
         virtual
         override
@@ -222,11 +216,7 @@ contract AaveV2ERC4626Reinvest is ERC4626 {
     ///@param shares_ Amount of shares to redeem
     ///@param receiver_ Address to send redeemed assets to
     ///@param owner_ Address to burn shares from
-    function redeem(
-        uint256 shares_,
-        address receiver_,
-        address owner_
-    )
+    function redeem(uint256 shares_, address receiver_, address owner_)
         public
         virtual
         override

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
-import { ICERC20 } from "./ICERC20.sol";
+import {ICERC20} from "./ICERC20.sol";
 
 interface IComptroller {
     function getAllMarkets() external view returns (ICERC20[] memory);

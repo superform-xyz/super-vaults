@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
-import { ERC4626 } from "solmate/mixins/ERC4626.sol";
-import { ERC20 } from "solmate/tokens/ERC20.sol";
-import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
-import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
+import {ERC4626} from "solmate/mixins/ERC4626.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
-import { IGUniPool } from "./utils/IGUniPool.sol";
-import { IUniswapV3Pool } from "v3-core/interfaces/IUniswapV3Pool.sol";
-import { TickMath } from "./utils/TickMath.sol";
-import { LiquidityAmounts, FullMath } from "./utils/LiquidityAmounts.sol";
-import { IArrakisRouter } from "./interfaces/IArrakisRouter.sol";
-import { IGauge } from "./interfaces/IGauge.sol";
+import {IGUniPool} from "./utils/IGUniPool.sol";
+import {IUniswapV3Pool} from "v3-core/interfaces/IUniswapV3Pool.sol";
+import {TickMath} from "./utils/TickMath.sol";
+import {LiquidityAmounts, FullMath} from "./utils/LiquidityAmounts.sol";
+import {IArrakisRouter} from "./interfaces/IArrakisRouter.sol";
+import {IGauge} from "./interfaces/IGauge.sol";
 
 /// @title ArrakisNonNativeVault
 /// @notice A vault for wrapping arrakis vault LP tokens and depositing them to the vault.
@@ -296,7 +296,7 @@ contract ArrakisNonNativeVault is ERC4626 {
         return ERC20(address(this)).balanceOf(owner);
     }
 
-    receive() external payable { }
+    receive() external payable {}
 
     /*//////////////////////////////////////////////////////////////
                             UTILITIES METHODS
@@ -332,12 +332,7 @@ contract ArrakisNonNativeVault is ERC4626 {
                             SWAP LOGIC HELPERS
     //////////////////////////////////////////////////////////////*/
 
-    function getRebalanceParams(
-        IGUniPool pool_,
-        uint256 amount0In_,
-        uint256 amount1In_,
-        uint256 price18Decimals_
-    )
+    function getRebalanceParams(IGUniPool pool_, uint256 amount0In_, uint256 amount1In_, uint256 price18Decimals_)
         public
         view
         returns (bool direction, uint256 swapAmount)

@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
-import { ERC20 } from "solmate/tokens/ERC20.sol";
-import { ERC4626 } from "solmate/mixins/ERC4626.sol";
-import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
+import {ERC4626} from "solmate/mixins/ERC4626.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
-import { IPool } from "./external/IPool.sol";
-import { IRewardsController } from "./external/IRewardsController.sol";
+import {IPool} from "./external/IPool.sol";
+import {IRewardsController} from "./external/IRewardsController.sol";
 
-import { DexSwap } from "../_global/swapUtils.sol";
+import {DexSwap} from "../_global/swapUtils.sol";
 
 /// @title AaveV3ERC4626Reinvest
 /// @notice Extended implementation of yield-daddy's ERC4626 for Aave V3 with rewards reinvesting
@@ -101,9 +101,7 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
         IPool lendingPool_,
         IRewardsController rewardsController_,
         address manager_
-    )
-        ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_))
-    {
+    ) ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_)) {
         aToken = aToken_;
         lendingPool = lendingPool_;
         rewardsController = rewardsController_;
@@ -254,11 +252,7 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
                       ERC4626 OVERRIDES
     //////////////////////////////////////////////////////////////*/
 
-    function withdraw(
-        uint256 assets_,
-        address receiver_,
-        address owner_
-    )
+    function withdraw(uint256 assets_, address receiver_, address owner_)
         public
         virtual
         override
@@ -286,11 +280,7 @@ contract AaveV3ERC4626Reinvest is ERC4626 {
         lendingPool.withdraw(address(asset), assets_, receiver_);
     }
 
-    function redeem(
-        uint256 shares_,
-        address receiver_,
-        address owner_
-    )
+    function redeem(uint256 shares_, address receiver_, address owner_)
         public
         virtual
         override

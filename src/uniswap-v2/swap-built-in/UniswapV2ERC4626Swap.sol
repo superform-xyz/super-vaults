@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
-import { ERC20 } from "solmate/tokens/ERC20.sol";
-import { ERC4626 } from "solmate/mixins/ERC4626.sol";
-import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
-import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
+import {ERC4626} from "solmate/mixins/ERC4626.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-import { IUniswapV2Pair } from "../interfaces/IUniswapV2Pair.sol";
-import { IUniswapV2Router } from "../interfaces/IUniswapV2Router.sol";
-import { UniswapV2Library } from "../utils/UniswapV2Library.sol";
+import {IUniswapV2Pair} from "../interfaces/IUniswapV2Pair.sol";
+import {IUniswapV2Router} from "../interfaces/IUniswapV2Router.sol";
+import {UniswapV2Library} from "../utils/UniswapV2Library.sol";
 
-import { IUniswapV3Pool } from "../interfaces/IUniswapV3.sol";
+import {IUniswapV3Pool} from "../interfaces/IUniswapV3.sol";
 
-import { DexSwap } from "../../_global/swapUtils.sol";
+import {DexSwap} from "../../_global/swapUtils.sol";
 
 /// @title UniswapV2ERC4626Swap
 /// @notice ERC4626 UniswapV2 Adapter - Allows exit & join to UniswapV2 LP Pools from ERC4626 interface. Single sided
@@ -82,9 +82,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
         IUniswapV2Router router_,
         IUniswapV2Pair pair_,
         IUniswapV3Pool oracle_
-    )
-        ERC4626(asset_, name_, symbol_)
-    {
+    ) ERC4626(asset_, name_, symbol_) {
         manager = msg.sender;
 
         pair = pair_;
@@ -250,12 +248,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
     /// @notice Non-ERC4626 withdraw function taking additional protection parameters for execution
     /// @dev Caller specifies minAmountOut_ of this Vault's underlying to receive for burning Vault's shares (and
     /// UniswapV2Pair shares)
-    function withdraw(
-        uint256 assets_,
-        address receiver_,
-        address owner_,
-        uint256 minAmountOut_
-    )
+    function withdraw(uint256 assets_, address receiver_, address owner_, uint256 minAmountOut_)
         /// @dev calculated off-chain, "secure" withdraw function.
         public
         returns (uint256 shares)
@@ -318,12 +311,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
 
     /// @notice Non-ERC4626 redeem function taking additional protection parameters for execution
     /// @dev Caller needs to know the amount of minAmountOut to receive for burning amount of shares beforehand
-    function redeem(
-        uint256 shares_,
-        address receiver_,
-        address owner_,
-        uint256 minAmountOut_
-    )
+    function redeem(uint256 shares_, address receiver_, address owner_, uint256 minAmountOut_)
         /// @dev calculated off-chain, "secure" withdraw function.
         public
         returns (uint256 assets)
@@ -463,10 +451,7 @@ contract UniswapV2ERC4626Swap is ERC4626 {
     //////////////////////////////////////////////////////////////*/
 
     /// @dev NOTE: Unused now, useful for on-chain oracle implemented inside of deposit/mint standard ERC4626 functions
-    function _swapJoinProtected(
-        uint256 assets_,
-        uint256 minAmountOut_
-    )
+    function _swapJoinProtected(uint256 assets_, uint256 minAmountOut_)
         internal
         returns (uint256 amount0, uint256 amount1)
     {

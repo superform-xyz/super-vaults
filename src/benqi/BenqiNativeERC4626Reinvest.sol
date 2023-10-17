@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
-import { ERC20 } from "solmate/tokens/ERC20.sol";
-import { ERC4626 } from "solmate/mixins/ERC4626.sol";
-import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
-import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
+import {ERC4626} from "solmate/mixins/ERC4626.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-import { IBEther } from "./external/IBEther.sol";
-import { LibBCompound } from "./external/LibBCompound.sol";
-import { IBComptroller } from "./external/IBComptroller.sol";
+import {IBEther} from "./external/IBEther.sol";
+import {LibBCompound} from "./external/LibBCompound.sol";
+import {IBComptroller} from "./external/IBComptroller.sol";
 
-import { DexSwap } from "../_global/swapUtils.sol";
-import { WrappedNative } from "./utils/wrappedNative.sol";
+import {DexSwap} from "../_global/swapUtils.sol";
+import {WrappedNative} from "./utils/wrappedNative.sol";
 
 /// @title BenqiNativeERC4626Reinvest
 /// @notice Custom implementation of yield-daddy Compound wrapper with flexible reinvesting logic
@@ -98,12 +98,7 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
     /// @dev reward_ is the COMP-like token
     /// @dev cEther_ is the Compound concept of a share
     /// @dev manager_ is the address that can set swap routes
-    constructor(
-        ERC20 asset_,
-        ERC20 reward_,
-        IBEther cEther_,
-        address manager_
-    )
+    constructor(ERC20 asset_, ERC20 reward_, IBEther cEther_, address manager_)
         ERC4626(asset_, _vaultName(asset_), _vaultSymbol(asset_))
     {
         reward = reward_;
@@ -121,13 +116,7 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
     /// @notice Set type of reward we are harvesting and selling
     /// @dev 0 = BenqiToken, 1 = AVAX
     /// @dev Setting wrong addresses here will revert harvest() calls
-    function setRoute(
-        uint8 rewardType_,
-        address rewardToken_,
-        address token_,
-        address pair1_,
-        address pair2_
-    )
+    function setRoute(uint8 rewardType_, address rewardToken_, address token_, address pair1_, address pair2_)
         external
     {
         if (msg.sender != manager) revert INVALID_ACCESS();
@@ -213,12 +202,12 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
     /// @notice "Regular" ERC20 deposit for WAVAX
     function afterDeposit(uint256 assets_, uint256) internal override {
         wavax.withdraw(assets_);
-        cEther.mint{ value: assets_ }();
+        cEther.mint{value: assets_}();
     }
 
     /// @notice "Payable" afterDeposit for special case when we deposit native token
     function afterDeposit(uint256 avaxAmt_) internal {
-        cEther.mint{ value: avaxAmt_ }();
+        cEther.mint{value: avaxAmt_}();
     }
 
     /// @notice Accept native token (AVAX) for deposit. Non-ERC4626 function.
@@ -308,7 +297,7 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
         emit Withdraw(msg.sender, receiver_, owner_, assets_, shares);
 
         /// @dev Output token is WAVAX, same as input token (consitency vs gas cost)
-        wavax.deposit{ value: assets_ }();
+        wavax.deposit{value: assets_}();
 
         asset.safeTransfer(receiver_, assets_);
     }
@@ -332,12 +321,12 @@ contract BenqiNativeERC4626Reinvest is ERC4626 {
         emit Withdraw(msg.sender, receiver_, owner_, assets, shares_);
 
         /// @dev Output token is WAVAX, same as input token (consitency vs gas cost)
-        wavax.deposit{ value: assets }();
+        wavax.deposit{value: assets}();
 
         asset.safeTransfer(receiver_, assets);
     }
 
-    receive() external payable { }
+    receive() external payable {}
 
     /*//////////////////////////////////////////////////////////////
                       ERC20 METADATA

@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
 import "forge-std/Test.sol";
-import { ERC20 } from "solmate/tokens/ERC20.sol";
-import { ERC4626 } from "solmate/mixins/ERC4626.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
+import {ERC4626} from "solmate/mixins/ERC4626.sol";
 
-import { GeistERC4626Reinvest } from "../GeistERC4626Reinvest.sol";
+import {GeistERC4626Reinvest} from "../GeistERC4626Reinvest.sol";
 
-import { IGLendingPool } from "../external/IGLendingPool.sol";
-import { IMultiFeeDistribution } from "../external/IMultiFeeDistribution.sol";
-import { DexSwap } from "../../_global/swapUtils.sol";
+import {IGLendingPool} from "../external/IGLendingPool.sol";
+import {IMultiFeeDistribution} from "../external/IMultiFeeDistribution.sol";
+import {DexSwap} from "../../_global/swapUtils.sol";
 
 contract GeistERC4626ReinvestTest is Test {
     ////////////////////////////////////////

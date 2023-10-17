@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
-import { ERC20 } from "solmate/tokens/ERC20.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
 
-import { IVInterestRateModel } from "./IVInterestRateModel.sol";
+import {IVInterestRateModel} from "./IVInterestRateModel.sol";
 
 abstract contract IVERC20 is ERC20 {
     function mint(uint256 underlyingAmount) external virtual returns (uint256);
