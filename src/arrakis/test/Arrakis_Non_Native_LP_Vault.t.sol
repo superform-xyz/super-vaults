@@ -133,26 +133,24 @@ contract Arrakis_LP_Test is Test {
             (,,, feeGrowthOutsideUpper,,,,) = pool.ticks(gUniPool.upperTick());
         }
 
-        unchecked {
-            // calculate fee growth below
-            uint256 feeGrowthBelow;
-            if (tick >= vault.arrakisVault().lowerTick()) {
-                feeGrowthBelow = feeGrowthOutsideLower;
-            } else {
-                feeGrowthBelow = feeGrowthGlobal - feeGrowthOutsideLower;
-            }
-
-            // calculate fee growth above
-            uint256 feeGrowthAbove;
-            if (tick < vault.arrakisVault().upperTick()) {
-                feeGrowthAbove = feeGrowthOutsideUpper;
-            } else {
-                feeGrowthAbove = feeGrowthGlobal - feeGrowthOutsideUpper;
-            }
-
-            uint256 feeGrowthInside = feeGrowthGlobal - feeGrowthBelow - feeGrowthAbove;
-            fee = (liquidity * (feeGrowthInside - feeGrowthInsideLast)) / 0x100000000000000000000000000000000;
+        // calculate fee growth below
+        uint256 feeGrowthBelow;
+        if (tick >= vault.arrakisVault().lowerTick()) {
+            feeGrowthBelow = feeGrowthOutsideLower;
+        } else {
+            feeGrowthBelow = feeGrowthGlobal - feeGrowthOutsideLower;
         }
+
+        // calculate fee growth above
+        uint256 feeGrowthAbove;
+        if (tick < vault.arrakisVault().upperTick()) {
+            feeGrowthAbove = feeGrowthOutsideUpper;
+        } else {
+            feeGrowthAbove = feeGrowthGlobal - feeGrowthOutsideUpper;
+        }
+
+        uint256 feeGrowthInside = feeGrowthGlobal - feeGrowthBelow - feeGrowthAbove;
+        fee = (liquidity * (feeGrowthInside - feeGrowthInsideLast)) / 0x100000000000000000000000000000000;
     }
 
     function getUnderlyingBalances() external view returns (uint256 amount0Current, uint256 amount1Current) {
