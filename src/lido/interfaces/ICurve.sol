@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.21;
+pragma solidity ^0.8.23;
 
 interface ICurve {
     function exchange(int128, int128, uint256, uint256) external returns (uint256);

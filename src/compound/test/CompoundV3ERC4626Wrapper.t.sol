@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.21;
+pragma solidity ^0.8.23;
 
 import "forge-std/Test.sol";
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {CompoundV3ERC4626Wrapper} from "../CompoundV3ERC4626Wrapper.sol";
-import {CometMainInterface} from "../external/IComet.sol";
-import {ICometRewards} from "../external/ICometRewards.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { CompoundV3ERC4626Wrapper } from "../CompoundV3ERC4626Wrapper.sol";
+import { CometMainInterface } from "../external/IComet.sol";
+import { ICometRewards } from "../external/ICometRewards.sol";
 
 contract CompoundV3ERC4626Test is Test {
     uint256 public ethFork;
@@ -28,7 +28,7 @@ contract CompoundV3ERC4626Test is Test {
     address public weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
     function setUp() public {
-        ethFork = vm.createFork(ETH_RPC_URL);
+        ethFork = vm.createSelectFork(ETH_RPC_URL, 18_516_276);
         vm.selectFork(ethFork);
         vault = new CompoundV3ERC4626Wrapper(
             asset,
