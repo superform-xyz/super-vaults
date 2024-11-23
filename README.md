@@ -73,4 +73,4 @@ Detailed view, inside of a protocol directory:
       ├── next-implementation-2
       ├── ExampleERC4626Vault.sol
 
-Each protocol directory should have its own `test` with coresponding entry in `MakeFile`. Follow established naming patterns. You can create additional directories inside of a protocol directory or host your Vaults together in root directory.
+Each protocol directory should have its own `test` with corresponding entry in `MakeFile`. Follow established naming patterns. You can create additional directories inside of a protocol directory or host your Vaults together in root directory.
